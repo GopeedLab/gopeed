@@ -38,6 +38,10 @@
   "rememberLastDownloadDir": "Varsayılan indirme klasörü olarak kaydet",
   "downloadDirValid": "Lütfen indirme dizinini seçin",
   "connections": "Bağlantılar",
+  "ftpTls": "FTP şifrelemesi",
+  "ftpTlsNone": "Yok",
+  "ftpTlsExplicit": "Açık TLS (FTPES)",
+  "ftpTlsImplicit": "Örtük TLS (FTPS)",
   "maxRetries": "Maksimum yeniden deneme",
   "useServerCtime": "Dosya oluşturma tarihi için sunucu zamanını kullan",
   "maxRunning": "Maksimum Çalışan İşlem",
@@ -94,7 +98,7 @@
   "startAll": "Tümünü Başlat",
   "pauseAll": "Tümünü Duraklat",
   "deleteTask": "@count işlemi sil",
-  "deleteTaskTip": "İndirilen dosyaları sakla",
+  "deleteTaskTip": "İndirilen dosyaları sil",
   "delete": "Sil",
   "add": "Ekle",
   "edit": "Düzenle",
@@ -368,7 +372,9 @@
   "torrentDataEmpty": "Torrent dosya verileri boş",
   "torrentPathUnavailable": "Hata dosya yoluna erişmek için kullanılamaz",
   "selectAtLeastOneFile": "En az bir dosya seçin",
-  "resolvedFiles": "Çözülen Dosyalar",
+  "resolvedFiles": "Dosya listesi",
+  "waitingToResolve": "Çözümleme bekleniyor",
+  "resolvingResource": "Kaynak çözümleniyor",
   "resolvedFileCount": "{count} dosyaları çözüldü",
   "resolvedCategoryDirectory": "Şuraya kaydedilecek: {path}",
   "resourceHasNoFiles": "Kaynak, uygun olmayan dosya listesine sahiptir",
@@ -473,5 +479,6 @@
   "trackerSubscriptionUpdateStatus": "Güncelleme durumu",
   "trackerSubscriptionTrackerCount": "Tracker sayısı",
   "trackerSubscriptionNotUpdated": "Henüz güncellenmedi",
-  "actions": "İşlemler"
+  "actions": "İşlemler",
+  "taskGroupDeleteImpact": "{taskCount} indirmeyi ve {fileCount} dosyayı etkiler."
 }

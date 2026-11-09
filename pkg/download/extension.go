@@ -825,6 +825,13 @@ func newOnDoneExtensionTask(task *Task) *Task {
 	return cloneExtensionTask(task)
 }
 
+// SetUrl replaces the task request URL.
+//
+// Deprecated: Use task.meta.req.setUrl instead.
+func (t *ExtensionTask) SetUrl(url string) {
+	t.Meta.Req.SetUrl(url)
+}
+
 func (t *OnErrorExtensionTask) Continue() error {
 	return t.download.Continue(&TaskFilter{
 		IDs: []string{t.ID},

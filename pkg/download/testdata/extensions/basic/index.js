@@ -1,5 +1,5 @@
 gopeed.events.onResolve(async function (ctx) {
-    for (const method of ['setUrl', 'setLabels', 'putLabel', 'delLabel', 'setMethod', 'putHeader', 'setTrackers']) {
+    for (const method of ['setUrl', 'setMethod', 'putHeader', 'setTrackers']) {
         if (typeof ctx.req[method] !== 'undefined') throw new Error(`onResolve exposes ${method}`);
     }
     ctx.req.labels = { replaced: "true", removed: "true" };

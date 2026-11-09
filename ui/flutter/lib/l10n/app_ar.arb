@@ -38,6 +38,10 @@
   "rememberLastDownloadDir": "حفظ كمجلد التنزيل الافتراضي",
   "downloadDirValid": "الرجاء تحديد مجلد التنزيل",
   "connections": "الاتصالات",
+  "ftpTls": "تشفير FTP",
+  "ftpTlsNone": "بدون",
+  "ftpTlsExplicit": "TLS صريح (FTPES)",
+  "ftpTlsImplicit": "TLS ضمني (FTPS)",
   "maxRetries": "الحد الأقصى لإعادة المحاولات",
   "useServerCtime": "استخدام وقت الخادم لإنشاء الملف",
   "maxRunning": "الحد الأقصى للمهام المتزامنة",
@@ -94,7 +98,7 @@
   "startAll": "بدء الكل",
   "pauseAll": "إيقاف الكل مؤقتاً",
   "deleteTask": "حذف @count مهمة",
-  "deleteTaskTip": "الاحتفاظ بالملفات التي تم تحميلها",
+  "deleteTaskTip": "حذف الملفات التي تم تنزيلها",
   "delete": "حذف",
   "add": "إضافة",
   "edit": "تعديل",
@@ -368,7 +372,9 @@
   "torrentDataEmpty": "بيانات الملف المُتعذّب فارغة",
   "torrentPathUnavailable": "غير قادر على الوصول إلى طريق الملف المُتعذّب",
   "selectAtLeastOneFile": "اختار ملف واحد على الأقل",
-  "resolvedFiles": "الملفات المبتغاة",
+  "resolvedFiles": "قائمة الملفات",
+  "waitingToResolve": "بانتظار التحليل",
+  "resolvingResource": "جارٍ تحليل المورد",
   "resolvedFileCount": "{count}",
   "resolvedCategoryDirectory": "سيتم الحفظ في {path}",
   "resourceHasNoFiles": "ولا توجد في هذا المورد قائمة ملف قابلة للاختيار",
@@ -473,5 +479,6 @@
   "trackerSubscriptionUpdateStatus": "حالة التحديث",
   "trackerSubscriptionTrackerCount": "عدد المتتبعات",
   "trackerSubscriptionNotUpdated": "لم يُحدّث بعد",
-  "actions": "الإجراءات"
+  "actions": "الإجراءات",
+  "taskGroupDeleteImpact": "سيؤثر على {taskCount} من مهام التنزيل و{fileCount} من الملفات."
 }

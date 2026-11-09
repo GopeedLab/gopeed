@@ -23,6 +23,22 @@ void main() {
     expect(stats.connections.last.completed, isTrue);
   });
 
+  test('FTP stats use the HTTP connection layout', () {
+    final stats =
+        TaskStats.fromJson(Protocol.ftp, {
+              'snapshot': {
+                'connections': [
+                  {'downloaded': 512, 'total': 1024, 'completed': false, 'failed': false, 'retryTimes': 1},
+                ],
+              },
+              'runtime': null,
+            })
+            as HttpTaskStats;
+
+    expect(stats.connections.single.downloaded, 512);
+    expect(stats.connections.single.retryTimes, 1);
+  });
+
   test('BT stats decode the ordered completion bitset and peer transport', () {
     final stats =
         TaskStats.fromJson(Protocol.bt, {

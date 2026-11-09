@@ -1,3 +1,7 @@
+import 'package:gopeed/features/tasks/application/pending_download.dart';
+import 'package:gopeed/api/model/options.dart' as preview_options;
+import 'package:gopeed/api/model/request.dart' as preview_request;
+import 'package:gopeed/api/model/resolve_result.dart' as preview_resolve;
 import 'dart:async';
 import 'dart:io';
 
@@ -30,6 +34,7 @@ import 'package:gopeed/app/application/app_notification_controller.dart';
 import 'package:gopeed/app/application/app_platform_controller.dart';
 import 'package:gopeed/app/application/app_runtime_controller.dart';
 import 'package:gopeed/api/model/create_task.dart';
+import 'package:gopeed/api/model/create_task_batch.dart';
 import 'package:gopeed/api/model/install_extension.dart';
 import 'package:gopeed/features/extensions/application/pending_extension_install.dart';
 import 'package:gopeed/api/model/downloader_config.dart';
@@ -128,9 +133,9 @@ void main() {
               ),
             ),
           )
-          ..bind(GopeedMethods.createTask, (_) {
+          ..bind(GopeedMethods.createTaskBatch, (_) {
             created++;
-            return 'new-task';
+            return CreateTaskBatchResult(taskIds: ['new-task']);
           });
         final container = ProviderContainer(
           overrides: [
@@ -1631,6 +1636,43 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('settings FTP connections save into the FTP protocol config', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(1024, 900));
+    final settingsController = FakeSettingsController();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appRuntimeControllerProvider.overrideWith(FakeRuntimeController.new),
+          appPlatformControllerProvider.overrideWith(FakePlatformController.new),
+          settingsControllerProvider.overrideWith(() => settingsController),
+        ],
+        child: const _SettingsTestApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Downloads'));
+    await tester.pumpAndSettle();
+
+    final ftpBlock = find.byKey(const ValueKey('settings-ftp-block'));
+    expect(ftpBlock, findsOneWidget);
+    expect(find.descendant(of: ftpBlock, matching: find.text('FTP')), findsOneWidget);
+    final connections = find.byKey(const ValueKey('ftp-connections-input'));
+    await tester.ensureVisible(connections);
+    await tester.pumpAndSettle();
+
+    await tester.enterText(connections, '6');
+    await tester.pump(const Duration(milliseconds: 700));
+    expect(settingsController.state.requireValue.config.protocolConfig.ftp.connections, 6);
+    expect(settingsController.state.requireValue.config.protocolConfig.http.connections, isNot(6));
+
+    // FTP servers usually allow only a few logins, so the field stops at 32.
+    await tester.enterText(connections, '64');
+    await tester.pump(const Duration(milliseconds: 700));
+    expect(tester.widget<shad.TextField>(connections).controller!.text, '32');
+    expect(settingsController.state.requireValue.config.protocolConfig.ftp.connections, 32);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('download directory keeps long text clear of its aligned picker action', (WidgetTester tester) async {
     await _setTestSize(tester, const Size(1024, 900));
     await tester.pumpWidget(
@@ -2589,9 +2631,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('dat is already used by 资料'), findsOneWidget);
-    AppPrimaryButton saveButton() => tester.widget<AppPrimaryButton>(
-      find.ancestor(of: find.text('Save'), matching: find.byType(AppPrimaryButton)),
-    );
+    AppPrimaryButton saveButton() =>
+        tester.widget<AppPrimaryButton>(find.ancestor(of: find.text('Save'), matching: find.byType(AppPrimaryButton)));
     expect(saveButton().onPressed, isNull);
 
     await tester.enterText(find.byKey(const ValueKey('download-category-extensions-input')), 'mkv');
@@ -2755,7 +2796,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('settings-language-select')));
     await tester.pumpAndSettle();
     expect(find.text('English'), findsOneWidget);
-    expect(SettingsLanguageSelect.supportedValues, hasLength(22));
+    expect(SettingsLanguageSelect.supportedValues, hasLength(AppLocalizations.supportedLocales.length));
     expect(SettingsLanguageSelect.supportedValues, containsAll(<String>['zh', 'zh_TW', 'pt']));
     expect(SettingsLanguageSelect.supportedValues, isNot(contains('zh_CN')));
     expect(SettingsLanguageSelect.supportedValues, isNot(contains('pt_BR')));
@@ -3293,7 +3334,7 @@ void main() {
       shad.ShadcnApp(
         theme: AppTheme.light(),
         materialTheme: AppTheme.materialLight(),
-        home: ResolveFileTree(
+        home: _singleResolveTree(
           files: [
             FileInfo(path: '', name: 'root.txt', size: 1),
             FileInfo(path: 'folder', name: 'first.txt', size: 2),
@@ -3313,7 +3354,7 @@ void main() {
     expect(find.text('third.txt'), findsNothing);
     expect(selected, [0, 1, 2, 3]);
 
-    await tester.tap(find.byKey(const ValueKey('resolve-tree-node-expand-folder:folder/nested')));
+    await tester.tap(find.byKey(const ValueKey('resolve-tree-node-expand-folder:source/folder/nested')));
     await tester.pumpAndSettle();
     expect(find.text('second.txt'), findsOneWidget);
     expect(find.text('deeper'), findsOneWidget);
@@ -3326,7 +3367,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('resolve-tree-expand-toggle')));
     await tester.pumpAndSettle();
     expect(find.text('first.txt'), findsNothing);
-    expect(find.text('root.txt'), findsOneWidget);
+    expect(find.text('root.txt'), findsNothing);
     expect(selected, [0, 1, 2, 3]);
     expect(tester.takeException(), isNull);
   });
@@ -3340,7 +3381,7 @@ void main() {
         materialTheme: AppTheme.materialLight(),
         home: Padding(
           padding: const EdgeInsets.all(24),
-          child: ResolveFileTree(
+          child: _singleResolveTree(
             files: [
               FileInfo(path: 'videos', name: 'clip.mp4', size: 0),
               FileInfo(path: 'docs', name: 'notes.txt', size: 0),
@@ -3410,30 +3451,30 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('clip.mp4'), findsOneWidget);
 
-    final videosExpand = find.byKey(const ValueKey('resolve-tree-node-expand-folder:videos'));
+    final videosExpand = find.byKey(const ValueKey('resolve-tree-node-expand-folder:source/videos'));
     expect(videosExpand, findsOneWidget);
-    expect(find.byKey(const ValueKey('resolve-tree-node-expand-file:0')), findsOneWidget);
+    expect(find.byKey(const ValueKey('resolve-tree-node-expand-file:source:0')), findsOneWidget);
 
     await tester.tap(videosExpand);
     await tester.pumpAndSettle();
-    expect(tester.widget<VirtualTreeView<dynamic>>(treeFinder).nodes.first.expanded, isFalse);
+    expect((tester.widget<VirtualTreeView<dynamic>>(treeFinder).nodes.first as shad.TreeItemNode<dynamic>).children.first.expanded, isFalse);
     expect(find.text('clip.mp4').hitTestable(), findsNothing);
     expect(find.text('videos').hitTestable(), findsOneWidget);
     expect(selected, [0, 1, 2]);
 
     await tester.tap(find.text('videos'));
     await tester.pump();
-    expect(tester.widget<VirtualTreeView<dynamic>>(treeFinder).nodes.first.expanded, isFalse);
+    expect((tester.widget<VirtualTreeView<dynamic>>(treeFinder).nodes.first as shad.TreeItemNode<dynamic>).children.first.expanded, isFalse);
     expect(selected, [1, 2]);
 
     await tester.tap(find.text('videos'));
     await tester.pump();
-    expect(tester.widget<VirtualTreeView<dynamic>>(treeFinder).nodes.first.expanded, isFalse);
+    expect((tester.widget<VirtualTreeView<dynamic>>(treeFinder).nodes.first as shad.TreeItemNode<dynamic>).children.first.expanded, isFalse);
     expect(selected, [0, 1, 2]);
 
     await tester.tap(videosExpand);
     await tester.pumpAndSettle();
-    expect(tester.widget<VirtualTreeView<dynamic>>(treeFinder).nodes.first.expanded, isTrue);
+    expect((tester.widget<VirtualTreeView<dynamic>>(treeFinder).nodes.first as shad.TreeItemNode<dynamic>).children.first.expanded, isTrue);
     expect(find.text('clip.mp4'), findsOneWidget);
 
     BoxDecoration sortDecoration(String key) {
@@ -3484,7 +3525,7 @@ void main() {
         materialTheme: AppTheme.materialLight(),
         home: Padding(
           padding: const EdgeInsets.all(24),
-          child: ResolveFileTree(
+          child: _singleResolveTree(
             files: [
               FileInfo(path: '', name: 'clip.mp4', size: 100),
               FileInfo(path: '', name: 'song.mp3', size: 200),
@@ -3533,7 +3574,7 @@ void main() {
         materialTheme: AppTheme.materialLight(),
         home: Padding(
           padding: const EdgeInsets.all(24),
-          child: ResolveFileTree(
+          child: _singleResolveTree(
             files: [FileInfo(name: longName, size: 1024)],
             initialSelection: const [0],
             onSelectionChanged: (_) {},
@@ -3544,7 +3585,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final horizontalScroll = find.byKey(const ValueKey('resolve-tree-horizontal-scroll'));
-    final trailing = find.byKey(const ValueKey('resolve-tree-trailing-file:0'));
+    final trailing = find.byKey(const ValueKey('resolve-tree-trailing-file:source:0'));
     expect(find.byKey(const ValueKey('resolve-tree-horizontal-scrollbar')), findsOneWidget);
     expect(horizontalScroll, findsOneWidget);
     expect(trailing, findsOneWidget);
@@ -3564,7 +3605,7 @@ void main() {
 
     position.jumpTo(0);
     await tester.pumpAndSettle();
-    final nameArea = find.byKey(const ValueKey('resolve-tree-name-scroll-file:0'));
+    final nameArea = find.byKey(const ValueKey('resolve-tree-name-scroll-file:source:0'));
     await tester.drag(nameArea, const Offset(-100, 0));
     await tester.pumpAndSettle();
     expect(position.pixels, greaterThan(0));
@@ -3586,7 +3627,7 @@ void main() {
         materialTheme: AppTheme.materialLight(),
         home: Padding(
           padding: const EdgeInsets.all(24),
-          child: ResolveFileTree(
+          child: _singleResolveTree(
             files: [FileInfo(name: shortName, size: 1024)],
             initialSelection: const [0],
             onSelectionChanged: (_) {},
@@ -3614,7 +3655,7 @@ void main() {
         materialTheme: AppTheme.materialLight(),
         home: Padding(
           padding: const EdgeInsets.all(24),
-          child: ResolveFileTree(files: files, initialSelection: const [], onSelectionChanged: (_) {}),
+          child: _singleResolveTree(files: files, initialSelection: const [], onSelectionChanged: (_) {}),
         ),
       ),
     );
@@ -5320,7 +5361,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('delete dialog returns keep-files switch value', (WidgetTester tester) async {
+  testWidgets('delete dialog only removes downloaded files when requested', (WidgetTester tester) async {
     await _setTestSize(tester, const Size(520, 620));
     bool? keepFiles;
     await tester.pumpWidget(
@@ -5343,11 +5384,14 @@ void main() {
     expect(find.text('Delete 2 tasks?'), findsOneWidget);
     expect(find.text('Only remove the task record from Gopeed'), findsNothing);
     expect(find.byKey(const ValueKey('task-delete-dialog-icon')), findsOneWidget);
-    expect(find.byKey(const ValueKey('task-delete-keep-files-option')), findsOneWidget);
-    final keepFilesSwitch = find.byKey(const ValueKey('task-delete-keep-files-switch'));
-    expect(tester.widget<shad.Switch>(keepFilesSwitch).value, isTrue);
+    expect(find.byKey(const ValueKey('task-delete-files-option')), findsOneWidget);
+    final deleteFilesSwitch = find.byKey(const ValueKey('task-delete-files-switch'));
+    expect(find.text('Delete downloaded files'), findsOneWidget);
+    expect(tester.widget<shad.Switch>(deleteFilesSwitch).value, isFalse);
 
-    await tester.tap(keepFilesSwitch);
+    await tester.tap(deleteFilesSwitch);
+    await tester.pumpAndSettle();
+    expect(tester.widget<shad.Switch>(deleteFilesSwitch).value, isTrue);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Delete'));
     await tester.pumpAndSettle();
@@ -6364,5 +6408,27 @@ api_task.Task _apiTransferTask({
     progress: api_task.Progress(used: 0, speed: speed, downloaded: 0, uploadSpeed: uploadSpeed, uploaded: 0),
     createdAt: DateTime.fromMillisecondsSinceEpoch(0),
     updatedAt: DateTime.fromMillisecondsSinceEpoch(0),
+  );
+}
+
+Widget _singleResolveTree({
+  required List<FileInfo> files,
+  required List<int> initialSelection,
+  required ValueChanged<List<int>> onSelectionChanged,
+}) {
+  final source =
+      PendingDownload(
+          id: 'source',
+          request: preview_request.Request(url: 'https://example.com'),
+          options: preview_options.Options(),
+        )
+        ..result = preview_resolve.ResolveResult(
+          res: Resource(name: 'source', files: files),
+        )
+        ..selected.addAll(initialSelection);
+  WidgetsBinding.instance.addPostFrameCallback((_) => onSelectionChanged(initialSelection));
+  return ResolveFileTree(
+    sources: [source],
+    onSelectionChanged: (keys) => onSelectionChanged(keys.map((key) => key.$2).toList()..sort()),
   );
 }

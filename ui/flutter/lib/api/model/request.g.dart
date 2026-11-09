@@ -41,6 +41,10 @@ ReqExtraBt _$ReqExtraBtFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$ReqExtraBtToJson(ReqExtraBt instance) => <String, dynamic>{'trackers': instance.trackers};
 
+ReqExtraFtp _$ReqExtraFtpFromJson(Map<String, dynamic> json) => ReqExtraFtp(tls: json['tls'] as String? ?? 'none');
+
+Map<String, dynamic> _$ReqExtraFtpToJson(ReqExtraFtp instance) => <String, dynamic>{'tls': instance.tls};
+
 RequestProxy _$RequestProxyFromJson(Map<String, dynamic> json) => RequestProxy(
   mode: $enumDecodeNullable(_$RequestProxyModeEnumMap, json['mode']) ?? RequestProxyMode.follow,
   scheme: json['scheme'] as String? ?? 'http',

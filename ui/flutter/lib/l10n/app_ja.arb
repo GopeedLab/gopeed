@@ -38,6 +38,10 @@
   "rememberLastDownloadDir": "デフォルトのダウンロード先として保存",
   "downloadDirValid": "ダウンロードディレクトリを選択してください",
   "connections": "接続",
+  "ftpTls": "FTP 暗号化",
+  "ftpTlsNone": "なし",
+  "ftpTlsExplicit": "明示的 TLS (FTPES)",
+  "ftpTlsImplicit": "暗黙的 TLS (FTPS)",
   "maxRetries": "最大リトライ回数",
   "useServerCtime": "ファイル作成時にサーバー時間を使用する",
   "maxRunning": "最大実行タスク",
@@ -94,7 +98,7 @@
   "startAll": "すべてを開始",
   "pauseAll": "すべてを一時停止",
   "deleteTask": "@count タスクを削除",
-  "deleteTaskTip": "ダウンロードしたファイルを保持",
+  "deleteTaskTip": "ダウンロードしたファイルを削除",
   "delete": "削除",
   "add": "追加",
   "edit": "編集",
@@ -368,7 +372,9 @@
   "torrentDataEmpty": "トレントファイルデータが空です",
   "torrentPathUnavailable": "トレントファイルパスにアクセスできない",
   "selectAtLeastOneFile": "少なくとも1つのファイルを選択します",
-  "resolvedFiles": "解決されたファイル",
+  "resolvedFiles": "ファイル一覧",
+  "waitingToResolve": "解析待ち",
+  "resolvingResource": "リソースを解析中",
   "resolvedFileCount": "{count} ファイルが解決しました",
   "resolvedCategoryDirectory": "{path} に保存されます",
   "resourceHasNoFiles": "リソースには、選択可能なファイルリストはありません",
@@ -473,5 +479,6 @@
   "trackerSubscriptionUpdateStatus": "更新状況",
   "trackerSubscriptionTrackerCount": "Tracker 数",
   "trackerSubscriptionNotUpdated": "未更新",
-  "actions": "操作"
+  "actions": "操作",
+  "taskGroupDeleteImpact": "{taskCount} 件のダウンロードと {fileCount} 個のファイルが対象です。"
 }

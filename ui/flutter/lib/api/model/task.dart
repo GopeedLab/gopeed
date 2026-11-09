@@ -6,7 +6,7 @@ part 'task.g.dart';
 
 enum Status { ready, running, pause, wait, error, done }
 
-enum Protocol { http, bt, ed2k, hls }
+enum Protocol { http, bt, ed2k, hls, ftp }
 
 // ExtractStatus enum matching Go backend
 enum ExtractStatus {
@@ -28,7 +28,10 @@ enum ExtractStatus {
 class Task {
   String id;
   String name;
+  @JsonKey(unknownEnumValue: JsonKey.nullForUndefinedEnumValue)
   Protocol? protocol;
+  TaskGroup? group;
+  String parentId;
   Meta meta;
   Status status;
   bool uploading;
@@ -47,11 +50,25 @@ class Task {
     required this.createdAt,
     required this.updatedAt,
     this.doneAt,
+    this.group,
+    this.parentId = '',
   });
 
   factory Task.fromJson(Map<String, dynamic> json) => _$TaskFromJson(json);
 
   Map<String, dynamic> toJson() => _$TaskToJson(this);
+}
+
+@JsonSerializable()
+class TaskGroup {
+  final String id;
+  final String name;
+  final String path;
+  final DateTime createdAt;
+
+  TaskGroup({required this.id, required this.name, required this.path, required this.createdAt});
+  factory TaskGroup.fromJson(Map<String, dynamic> json) => _$TaskGroupFromJson(json);
+  Map<String, dynamic> toJson() => _$TaskGroupToJson(this);
 }
 
 @JsonSerializable()

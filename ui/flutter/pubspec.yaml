@@ -47,6 +47,8 @@ dependencies:
   package_info_plus: ^10.2.1
   pub_semver: ^2.2.0
   device_info_plus: ^13.2.0
+  android_id: ^0.5.2+1
+  uuid: ^4.6.0
   win32_registry: ^3.0.3
   launch_at_startup:
     git:

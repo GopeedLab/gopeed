@@ -14,9 +14,7 @@ import '../../api/api.dart' as api;
 import '../../api/model/downloader_config.dart';
 import '../../core/libgopeed_boot.dart';
 import '../../core/capabilities/app_capabilities.dart';
-import '../../core/window/app_window_launcher.dart';
 import '../../core/window/window_capability_transport.dart';
-import '../../features/tasks/application/pending_create_task.dart';
 import '../../features/tasks/application/pending_update_task.dart';
 import '../../l10n/l10n.dart';
 import '../../util/package_info.dart';
@@ -211,11 +209,7 @@ class AppPlatformController extends AsyncNotifier<AppPlatformState> with WindowL
           await ref.read(gopeedServiceProvider).createTask(createTask);
           return;
         }
-        final opened = await AppWindowLauncher.openCreateTaskWindow(createTask: createTask);
-        if (!opened) {
-          ref.read(pendingCreateTaskProvider.notifier).set(createTask);
-          await _go('/create');
-        }
+        await AppRouter.openCreateTask(createTask: createTask);
       },
       onForward: ({required path, required method, data, query}) {
         return api.forward(path, method: method, data: data, queryParameters: query);
@@ -348,10 +342,7 @@ class AppPlatformController extends AsyncNotifier<AppPlatformState> with WindowL
 
   Future<void> _openCreateTask() async {
     await _showMainWindow();
-    final opened = await AppWindowLauncher.openCreateTaskWindow();
-    if (!opened) {
-      _go('/create');
-    }
+    await AppRouter.openCreateTask();
   }
 
   Future<void> _go(String route) async {

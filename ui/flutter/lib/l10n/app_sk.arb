@@ -38,6 +38,10 @@
   "rememberLastDownloadDir": "Uložiť ako predvolený priečinok na stiahnutie",
   "downloadDirValid": "Vyberte priečinok na stiahnutie",
   "connections": "Pripojenia",
+  "ftpTls": "Šifrovanie FTP",
+  "ftpTlsNone": "Žiadne",
+  "ftpTlsExplicit": "Explicitné TLS (FTPES)",
+  "ftpTlsImplicit": "Implicitné TLS (FTPS)",
   "maxRetries": "Maximálny počet pokusov",
   "useServerCtime": "Použiť čas servera na vytvorenie súboru",
   "maxRunning": "Súbežné sťahovania",
@@ -101,7 +105,7 @@
   "startAll": "Spustiť všetko",
   "pauseAll": "Pozastaviť všetko",
   "deleteTask": "Odstrániť @count úloh",
-  "deleteTaskTip": "Zachovať stiahnuté súbory",
+  "deleteTaskTip": "Odstrániť stiahnuté súbory",
   "delete": "Odstrániť",
   "add": "Pridať",
   "edit": "Upraviť",
@@ -391,7 +395,9 @@
   "torrentDataEmpty": "Údaje torrent súboru sú prázdne",
   "torrentPathUnavailable": "Nie je možné pristúpiť k ceste torrent súboru",
   "selectAtLeastOneFile": "Vyberte aspoň jeden súbor",
-  "resolvedFiles": "Vyriešené súbory",
+  "resolvedFiles": "Zoznam súborov",
+  "waitingToResolve": "Čaká na spracovanie",
+  "resolvingResource": "Spracovanie zdroja",
   "resolvedFileCount": "{count, plural, =1{vyriešený 1 súbor} other{vyriešených {count} súborov}}",
   "resolvedCategoryDirectory": "Uloží sa do {path}",
   "resourceHasNoFiles": "Zdroj nemá žiadny vyberateľný zoznam súborov",
@@ -674,5 +680,6 @@
   "trackerSubscriptionUpdateStatus": "Stav aktualizácie",
   "trackerSubscriptionTrackerCount": "Počet trackerov",
   "trackerSubscriptionNotUpdated": "Zatiaľ neaktualizované",
-  "actions": "Akcie"
+  "actions": "Akcie",
+  "taskGroupDeleteImpact": "Ovplyvní {taskCount} sťahovaní a {fileCount} súborov."
 }

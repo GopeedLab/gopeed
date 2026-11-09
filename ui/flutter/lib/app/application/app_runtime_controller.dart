@@ -255,9 +255,9 @@ class AppRuntimeController extends AsyncNotifier<AppRuntimeState> {
   Future<void> _initAnalytics(DownloaderConfig config) async {
     if (!AnalyticsConfig.isConfigured || !config.extra.analyticsEnabled) return;
     try {
-      await Analytics.instance.init(fallbackClientId: config.extra.analyticsClientId);
-      if (config.extra.analyticsClientId.isEmpty && Analytics.instance.clientId.isNotEmpty) {
-        config.extra.analyticsClientId = Analytics.instance.clientId;
+      final generatedClientId = await Analytics.instance.init(fallbackClientId: config.extra.deviceId);
+      if (generatedClientId != null) {
+        config.extra.deviceId = generatedClientId;
         await ref.read(gopeedServiceProvider).putConfig(config);
       }
       unawaited(Analytics.instance.logAppOpen());

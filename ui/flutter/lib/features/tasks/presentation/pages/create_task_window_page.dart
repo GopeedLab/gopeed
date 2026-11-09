@@ -19,8 +19,6 @@ import '../../../../api/model/create_task_batch.dart';
 import '../../../../api/model/downloader_config.dart';
 import '../../../../api/model/options.dart' as api_options;
 import '../../../../api/model/request.dart';
-import '../../../../api/model/resolve_result.dart';
-import '../../../../api/model/resolve_task.dart';
 import '../../../../core/capabilities/app_capabilities.dart';
 import '../../../../core/utils/breakpoints.dart';
 import '../../../../core/utils/text_wrap.dart';
@@ -39,16 +37,19 @@ import '../../../../shared/widgets/app_toast.dart';
 import '../../../../l10n/l10n.dart';
 import '../../../../util/util.dart';
 import '../../application/pending_create_task.dart';
+import '../../application/pending_download.dart';
 import '../../application/task_list_navigation.dart';
 import '../widgets/history_search_field.dart';
 import '../widgets/create_task_action_buttons.dart';
-import '../widgets/resolve_file_tree.dart';
+import '../widgets/resolve_download_dialog.dart';
 
 class CreateTaskWindowPage extends ConsumerStatefulWidget {
-  const CreateTaskWindowPage({super.key, this.windowController, this.initialTask});
+  const CreateTaskWindowPage({super.key, this.windowController, this.initialTask, this.onClose, this.modal = false});
 
   final multi_window.WindowController? windowController;
   final CreateTask? initialTask;
+  final ValueChanged<bool>? onClose;
+  final bool modal;
 
   @override
   ConsumerState<CreateTaskWindowPage> createState() => _CreateTaskWindowPageState();
@@ -82,6 +83,9 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   bool? _deleteTorrentAfterDownload;
   bool? _autoExtract;
   bool _deleteAfterExtract = false;
+  String _ftpTls = _ftpTlsNone;
+  bool _allLinksFtp = false;
+  bool _hasPlainFtpLink = false;
   List<DownloadCategory> _downloadCategories = const [];
 
   bool _showAdvanced = false;
@@ -89,6 +93,8 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   bool _directDownload = false;
   int _protocolTab = 0;
   bool _creating = false;
+  final Map<String, int> _completedSubmissionCounts = {};
+  int _createSession = 0;
   bool _draggingTorrent = false;
   bool _asDefaultPath = false;
   String _configuredDownloadDirectory = '';
@@ -129,7 +135,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
       if (widget.initialTask == null) {
         ref.read(pendingCreateTaskProvider.notifier).clear();
       }
-      if (widget.windowController == null && widget.initialTask == null) {
+      if (widget.windowController == null) {
         // Navigating to /create again reuses this page, so consume subsequent
         // browser/share requests as well as the initial pending task.
         ref.listenManual(pendingCreateTaskProvider, (_, next) {
@@ -220,12 +226,33 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
       }
     }
     _recognizeMagnetUri(urlText.trim());
+    _refreshFtpLinks();
+  }
+
+  /// Shows the FTP options (the 32-connection limit and the TLS select) only
+  /// while the input contains FTP links.
+  void _refreshFtpLinks() {
+    final links = Util.textToLines(_urlController.text).map((line) => line.trim()).where((line) => line.isNotEmpty);
+    final allFtp = links.isNotEmpty && links.every((link) => _parseProtocol(link) == _TaskProtocol.ftp);
+    final hasPlainFtp = links.any(_isPlainFtpUrl);
+    if (allFtp == _allLinksFtp && hasPlainFtp == _hasPlainFtpLink) return;
+    if (!mounted) {
+      _allLinksFtp = allFtp;
+      _hasPlainFtpLink = hasPlainFtp;
+      return;
+    }
+    setState(() {
+      _allLinksFtp = allFtp;
+      _hasPlainFtpLink = hasPlainFtp;
+    });
   }
 
   void _applyInitialTask(CreateTask? task) {
     if (task == null || !mounted) return;
     final req = task.req;
     final opts = task.opts ?? api_options.Options();
+    _createSession++;
+    _completedSubmissionCounts.clear();
     setState(() {
       _initialSize = 0;
       _checksumAlgorithm = 'md5';
@@ -237,6 +264,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
         _httpBody = '';
         _replaceHttpHeaders(const {'User-Agent': '', 'Cookie': '', 'Referer': ''});
         _trackersController.clear();
+        _ftpTls = _ftpTlsNone;
         _protocolTab = 0;
         _urlController.text = req!.url;
         _initialRawUrl = req.rawUrl;
@@ -259,6 +287,14 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
             if (req.extra is Map) {
               final extra = ReqExtraBt.fromJson(Map<String, dynamic>.from(req.extra! as Map));
               _trackersController.text = extra.trackers.join('\n');
+            }
+            break;
+          case _TaskProtocol.ftp:
+            if (req.extra is Map) {
+              final tls = ReqExtraFtp.fromJson(Map<String, dynamic>.from(req.extra! as Map)).tls;
+              if (_ftpTlsModes.contains(tls)) {
+                _ftpTls = tls;
+              }
             }
             break;
           case _TaskProtocol.ed2k:
@@ -337,7 +373,9 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
       child: Padding(
         key: const ValueKey('create-task-safe-content'),
         padding: EdgeInsets.only(
-          top: AppWindowChrome.reservesHeaderInset
+          top: widget.modal
+              ? 0
+              : AppWindowChrome.reservesHeaderInset
               ? AppDesignTokens.windowHeaderHeight
               : MediaQuery.paddingOf(context).top,
         ),
@@ -437,10 +475,22 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                         fieldKey: const ValueKey('create-task-connections-input'),
                         controller: _connectionsController,
                         min: 1,
-                        max: 256,
+                        max: _allLinksFtp ? _ftpMaxConnections : 256,
                         hintText: context.l10n.enterCount,
                       ),
                     ),
+                    if (_hasPlainFtpLink) ...[
+                      const SizedBox(height: 16),
+                      AppFormRow(
+                        direction: stacked ? Axis.vertical : Axis.horizontal,
+                        label: context.l10n.ftpTls,
+                        child: _FtpTlsSelect(
+                          key: const ValueKey('create-task-ftp-tls'),
+                          value: _ftpTls,
+                          onChanged: (value) => setState(() => _ftpTls = value),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 16),
                     AppFormRow(
                       direction: stacked ? Axis.vertical : Axis.horizontal,
@@ -729,7 +779,8 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                                   ),
                                 ),
                               ],
-                              if (_inputUrls().length <= 1) ...[
+                              // Checksum verification is HTTP only.
+                              if (_inputUrls().length <= 1 && !_allLinksFtp) ...[
                                 const SizedBox(height: 14),
                                 AppFormPair(
                                   direction: stacked ? Axis.vertical : Axis.horizontal,
@@ -820,6 +871,10 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   }
 
   Future<void> _closeWindow() async {
+    if (widget.onClose != null) {
+      widget.onClose!(false);
+      return;
+    }
     if (widget.windowController == null && mounted) {
       context.go('/');
       return;
@@ -827,7 +882,24 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
     await windowManager.close();
   }
 
-  Future<void> _finishCreation() async {
+  Future<void> _finishCreation(int session) async {
+    if (!mounted || session != _createSession) return;
+    if (_asDefaultPath && _directoryManuallySet && _directoryController.text.trim().isNotEmpty) {
+      try {
+        final service = ref.read(gopeedServiceProvider);
+        final config = await service.getConfig();
+        if (!mounted || session != _createSession) return;
+        config.downloadDir = _directoryController.text.trim();
+        await service.putConfig(config);
+      } catch (error) {
+        if (mounted && session == _createSession) _showToast(error.toString());
+      }
+    }
+    if (!mounted || session != _createSession) return;
+    if (widget.onClose != null) {
+      widget.onClose!(true);
+      return;
+    }
     if (widget.windowController != null) {
       // Navigation is best-effort after a successful submission. A navigation
       // failure must not leave a completed form available for resubmission.
@@ -839,6 +911,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
     } else {
       ref.read(taskListNavigationProvider.notifier).showDownloading();
     }
+    if (!mounted || session != _createSession) return;
     await _closeWindow();
   }
 
@@ -945,50 +1018,74 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
       _showToast(context.l10n.downloadLinkValid);
       return;
     }
-    if (!_validateAdvancedOptions()) {
+    final occurrences = <String, int>{};
+    final pendingUrls = <String>[];
+    for (final url in urls) {
+      final occurrence = (occurrences[url] ?? 0) + 1;
+      occurrences[url] = occurrence;
+      if (occurrence > (_completedSubmissionCounts[url] ?? 0)) {
+        pendingUrls.add(url);
+      }
+    }
+    if (pendingUrls.isNotEmpty && !_validateAdvancedOptions()) {
       return;
     }
+    final session = _createSession;
 
     setState(() {
       _creating = true;
       _draggingTorrent = false;
     });
     try {
-      await _saveCreateHistory(urls);
-      final isDirect = _directDownload || urls.length > 1;
-      if (isDirect) {
-        await Future.wait(
-          urls.map((url) {
-            return ref
-                .read(gopeedServiceProvider)
-                .createTask(
-                  CreateTask(
-                    req: _buildRequest(url, protocolUrl: _protocolUrlFor(url)),
-                    opts: _buildOptions(name: urls.length > 1 ? '' : _renameController.text.trim()),
-                  ),
-                );
-          }),
+      unawaited(
+        _saveCreateHistory(urls).catchError((Object error) {
+          if (mounted && session == _createSession) _showToast(error.toString());
+        }),
+      );
+      if (pendingUrls.isEmpty) {
+        await _finishCreation(session);
+        return;
+      }
+      final sources = [
+        for (final entry in pendingUrls.indexed)
+          PendingDownload(
+            id: 'source-${entry.$1}',
+            request: _buildRequest(entry.$2, protocolUrl: _protocolUrlFor(entry.$2)),
+            options: _buildOptions(
+              url: _protocolUrlFor(entry.$2),
+              name: urls.length == 1 ? _renameController.text.trim() : '',
+              omitChecksum: urls.length > 1,
+            ),
+          ),
+      ];
+      final service = ref.read(gopeedServiceProvider);
+      if (_directDownload) {
+        await service.createTaskBatch(
+          CreateTaskBatch(
+            reqs: [for (final source in sources) CreateTaskBatchItem(req: source.request, opts: source.options)],
+          ),
         );
-        await _finishCreation();
+        await _finishCreation(session);
         return;
       }
-
-      final request = _buildRequest(urls.first, protocolUrl: _protocolUrlFor(urls.first));
-      final result = await ref.read(gopeedServiceProvider).resolve(ResolveTask(req: request));
       if (!mounted) return;
-      final created = await _showResolveDialog(request, result);
-      if (!created) {
-        if (mounted) {
-          setState(() => _creating = false);
-        }
-        return;
-      }
-      await _finishCreation();
+      final created = await showResolveDownloadsDialog(
+        context,
+        sources: sources,
+        service: service,
+        onBatchCreated: (sources) {
+          if (!mounted || session != _createSession) return;
+          for (final source in sources) {
+            _completedSubmissionCounts.update(source.request.url, (count) => count + 1, ifAbsent: () => 1);
+          }
+        },
+      );
+      if (!mounted || session != _createSession || !created) return;
+      await _finishCreation(session);
     } catch (error) {
-      if (mounted) {
-        _showToast(error.toString());
-        setState(() => _creating = false);
-      }
+      if (mounted && session == _createSession) _showToast(error.toString());
+    } finally {
+      if (mounted) setState(() => _creating = false);
     }
   }
 
@@ -1024,6 +1121,12 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
           extra = ReqExtraBt(trackers: trackers).toJson();
         }
         break;
+      case _TaskProtocol.ftp:
+        // ftps:// and ftpes:// fix the TLS mode; only a plain ftp:// link carries one.
+        if (_isPlainFtpUrl(protocolUrl ?? url) && _ftpTls != _ftpTlsNone) {
+          extra = ReqExtraFtp(tls: _ftpTls).toJson();
+        }
+        break;
       case _TaskProtocol.ed2k:
       case null:
         break;
@@ -1039,7 +1142,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   }
 
   bool _validateAdvancedOptions() {
-    if (_protocolTab == 0 && _inputUrls().length <= 1) {
+    if (_protocolTab == 0 && _inputUrls().length <= 1 && !_allLinksFtp) {
       final checksumExpected = _checksumHashController.text.trim();
       if (checksumExpected.isNotEmpty) {
         final expectedLen = switch (_checksumAlgorithm.toLowerCase()) {
@@ -1099,6 +1202,10 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
     if (uppercaseUrl.startsWith('HTTP:') || uppercaseUrl.startsWith('HTTPS:')) {
       return _TaskProtocol.http;
     }
+    // Checked before BitTorrent, so ftp://host/file.torrent downloads the file over FTP.
+    if (uppercaseUrl.startsWith('FTP:') || uppercaseUrl.startsWith('FTPS:') || uppercaseUrl.startsWith('FTPES:')) {
+      return _TaskProtocol.ftp;
+    }
     if (uppercaseUrl.startsWith('MAGNET:') || uppercaseUrl.endsWith('.TORRENT')) {
       return _TaskProtocol.bt;
     }
@@ -1107,6 +1214,9 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
     }
     return null;
   }
+
+  /// Whether [url] is a plain `ftp://` link, the only FTP scheme whose TLS mode is chosen by the user.
+  bool _isPlainFtpUrl(String url) => url.trim().toUpperCase().startsWith('FTP:');
 
   String _normalizeTaskUrl(String url) {
     if (_isBtHash(url)) {
@@ -1130,7 +1240,10 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
     return text.length == 40 && RegExp(r'^[0-9a-fA-F]+$').hasMatch(text);
   }
 
+  /// Builds the task options for [url]. FTP links get the FTP options, with at
+  /// most [_ftpMaxConnections] connections; the checksum is HTTP only.
   api_options.Options _buildOptions({
+    required String url,
     String? name,
     List<int> selectFiles = const [],
     bool omitChecksum = false,
@@ -1138,18 +1251,22 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   }) {
     final urls = _inputUrls();
     final connections = int.tryParse(_connectionsController.text.trim()) ?? 0;
-    final checksumExpected = _checksumHashController.text.trim();
-    final checksum = (!omitChecksum && _inputUrls().length <= 1 && checksumExpected.isNotEmpty)
-        ? api_options.ChecksumOption(algorithm: _checksumAlgorithm, expected: checksumExpected)
-        : null;
-    return api_options.Options(
-      size: urls.length == 1 && _parseProtocol(_protocolUrlFor(urls.first)) == _TaskProtocol.http ? _initialSize : 0,
-      name: name ?? _renameController.text.trim(),
-      path: _directoryController.text.trim(),
-      asDefaultPath: _asDefaultPath,
-      skipAutoCategorize: skipAutoCategorize ?? _directoryManuallySet,
-      selectFiles: selectFiles,
-      extra: api_options.OptsExtraHttp(
+    final Map<String, dynamic> extra;
+    if (_parseProtocol(url) == _TaskProtocol.ftp) {
+      extra = api_options.OptsExtraFtp(
+        connections: connections.clamp(0, _ftpMaxConnections),
+        autoTorrent: _autoTorrent,
+        deleteTorrentAfterDownload: _deleteTorrentAfterDownload,
+        autoExtract: _autoExtract,
+        archivePassword: _archivePasswordController.text,
+        deleteAfterExtract: _deleteAfterExtract,
+      ).toJson();
+    } else {
+      final checksumExpected = _checksumHashController.text.trim();
+      final checksum = (!omitChecksum && urls.length <= 1 && checksumExpected.isNotEmpty)
+          ? api_options.ChecksumOption(algorithm: _checksumAlgorithm, expected: checksumExpected)
+          : null;
+      extra = api_options.OptsExtraHttp(
         connections: connections,
         autoTorrent: _autoTorrent,
         deleteTorrentAfterDownload: _deleteTorrentAfterDownload,
@@ -1157,7 +1274,16 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
         archivePassword: _archivePasswordController.text,
         deleteAfterExtract: _deleteAfterExtract,
         checksum: checksum,
-      ).toJson(),
+      ).toJson();
+    }
+    return api_options.Options(
+      size: urls.length == 1 && _parseProtocol(_protocolUrlFor(urls.first)) == _TaskProtocol.http ? _initialSize : 0,
+      name: name ?? _renameController.text.trim(),
+      path: _directoryController.text.trim(),
+      asDefaultPath: _asDefaultPath,
+      skipAutoCategorize: skipAutoCategorize ?? _directoryManuallySet,
+      selectFiles: selectFiles,
+      extra: extra,
     );
   }
 
@@ -1220,183 +1346,6 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
     _categoryHighlightTimer = null;
     if (!mounted) return;
     _applyCategoryHighlight();
-  }
-
-  Future<void> _submitResolved(Request request, ResolveResult result, List<int> selectedIndexes) async {
-    final selected = (selectedIndexes.isEmpty ? result.res.files.asMap().keys.toList() : selectedIndexes.toList())
-      ..sort();
-    final isMultiFile = selected.length > 1;
-    if (result.id.isNotEmpty) {
-      await ref
-          .read(gopeedServiceProvider)
-          .createTask(
-            CreateTask(
-              rid: result.id,
-              opts: _buildOptions(selectFiles: selected, omitChecksum: isMultiFile),
-            ),
-          );
-      return;
-    }
-
-    if (result.res.files.isNotEmpty) {
-      // The extension returned a file list, so the resource keeps a directory
-      // structure. The split tasks must not be classified into a category, the
-      // structure of the resolved resource is kept. The decision is based on
-      // the resolved resource, not on the number of selected files.
-      final keepStructure = _directoryManuallySet || result.res.name.isNotEmpty || result.res.files.length > 1;
-      final reqs = selected.map((index) {
-        final file = result.res.files[index];
-        final fileRequest = file.req ?? request;
-        return CreateTaskBatchItem(
-          req: fileRequest,
-          opts: api_options.Options(
-            size: _parseProtocol(fileRequest.url) == _TaskProtocol.http ? file.size : 0,
-            name: file.name,
-            path: path.join(_directoryController.text.trim(), result.res.name, file.path),
-            skipAutoCategorize: keepStructure,
-            extra: _buildOptions(omitChecksum: isMultiFile).extra,
-          ),
-        );
-      }).toList();
-      await ref
-          .read(gopeedServiceProvider)
-          .createTaskBatch(
-            CreateTaskBatch(
-              reqs: reqs,
-              opts: _buildOptions(omitChecksum: isMultiFile, skipAutoCategorize: keepStructure),
-            ),
-          );
-      return;
-    }
-
-    await ref.read(gopeedServiceProvider).createTask(CreateTask(req: request, opts: _buildOptions()));
-  }
-
-  Future<bool> _showResolveDialog(Request request, ResolveResult result) async {
-    final initialSelection = List<int>.generate(result.res.files.length, (index) => index);
-    var selectedIndexes = List<int>.of(initialSelection);
-    var submitting = false;
-    String? errorText;
-    // The directory the task will be saved to. A directory the user named
-    // wins over the category suggestion of the resolve response, the backend
-    // keeps it and does not classify the task.
-    final effectiveDownloadDir = _directoryManuallySet
-        ? _directoryController.text.trim()
-        : (result.suggestedDownloadDir.isNotEmpty ? result.suggestedDownloadDir : _directoryController.text.trim());
-
-    final dialog = const DialogOverlayHandler().show<bool>(
-      context: context,
-      alignment: Alignment.center,
-      barrierDismissable: !submitting,
-      builder: (dialogContext) {
-        final palette = AppPalette.of(dialogContext);
-        final screenSize = MediaQuery.sizeOf(dialogContext);
-        final dialogWidth = screenSize.width < 760 ? screenSize.width - 32 : 720.0;
-        final treeHeight = screenSize.height < 700 ? screenSize.height * 0.55 : 440.0;
-
-        return StatefulBuilder(
-          builder: (dialogContext, setDialogState) {
-            Future<void> submit() async {
-              if (result.res.files.isNotEmpty && selectedIndexes.isEmpty) {
-                setDialogState(() => errorText = dialogContext.l10n.selectAtLeastOneFile);
-                return;
-              }
-              setDialogState(() {
-                submitting = true;
-                errorText = null;
-              });
-              try {
-                await _submitResolved(request, result, selectedIndexes);
-                if (dialogContext.mounted) {
-                  await closeOverlay(dialogContext, true);
-                }
-              } catch (error) {
-                if (!dialogContext.mounted) return;
-                setDialogState(() {
-                  submitting = false;
-                  errorText = error.toString();
-                });
-              }
-            }
-
-            return AlertDialog(
-              padding: const EdgeInsets.all(18),
-              title: Text(
-                result.res.name.trim().isEmpty ? dialogContext.l10n.resolvedFiles : result.res.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              content: SizedBox(
-                width: dialogWidth,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      result.res.files.isEmpty
-                          ? dialogContext.l10n.resourceHasNoFiles
-                          : dialogContext.l10n.resolvedFileCount(result.res.files.length),
-                      style: TextStyle(color: palette.textSecondary, fontSize: 12),
-                    ),
-                    if (effectiveDownloadDir.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        dialogContext.l10n.resolvedCategoryDirectory(effectiveDownloadDir),
-                        key: const ValueKey('resolve-category-directory'),
-                        style: TextStyle(color: palette.textSecondary, fontSize: 12),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      height: treeHeight.clamp(260.0, 460.0),
-                      child: result.res.files.isEmpty
-                          ? Container(
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: palette.cardBg,
-                                border: Border.all(color: palette.border),
-                                borderRadius: BorderRadius.circular(AppDesignTokens.controlRadius),
-                              ),
-                              child: Text(
-                                dialogContext.l10n.noFiles,
-                                style: TextStyle(color: palette.textMuted, fontSize: 13),
-                              ),
-                            )
-                          : ResolveFileTree(
-                              files: result.res.files,
-                              initialSelection: initialSelection,
-                              onSelectionChanged: (values) => selectedIndexes = values,
-                            ),
-                    ),
-                    if (errorText != null) ...[
-                      const SizedBox(height: 10),
-                      Text(errorText!, style: TextStyle(color: palette.error, fontSize: 12)),
-                    ],
-                  ],
-                ),
-              ),
-              actions: [
-                flutter.Flexible(
-                  child: CreateTaskActionButtons(
-                    submitting: submitting,
-                    onCancel: () => closeOverlay(dialogContext, false),
-                    onSubmit: submit,
-                    cancelLabel: dialogContext.l10n.cancel,
-                    submitLabel: dialogContext.l10n.createAction,
-                    cancelButtonKey: const ValueKey('resolve-cancel-button'),
-                    submitButtonKey: const ValueKey('resolve-create-button'),
-                  ),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-    final created = await dialog.future;
-    return created == true;
   }
 
   Future<void> _showCreateHistory() async {
@@ -1595,7 +1544,48 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   }
 }
 
-enum _TaskProtocol { http, bt, ed2k }
+enum _TaskProtocol { http, bt, ed2k, ftp }
+
+/// Chooses how a plain `ftp://` link is encrypted. The values are the
+/// `tls` option of an FTP task.
+class _FtpTlsSelect extends StatelessWidget {
+  const _FtpTlsSelect({super.key, required this.value, required this.onChanged});
+
+  final String value;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final labels = {
+      _ftpTlsNone: context.l10n.ftpTlsNone,
+      _ftpTlsExplicit: context.l10n.ftpTlsExplicit,
+      _ftpTlsImplicit: context.l10n.ftpTlsImplicit,
+    };
+    return LayoutBuilder(
+      builder: (context, constraints) => Select<String>(
+        value: value,
+        constraints: BoxConstraints.tightFor(width: constraints.maxWidth),
+        itemBuilder: (context, selected) =>
+            Text(labels[selected] ?? selected, maxLines: 1, overflow: TextOverflow.ellipsis),
+        popup: (context) => SelectPopup<String>(
+          items: SelectItemList(
+            children: [
+              for (final entry in labels.entries)
+                SelectItemButton<String>(
+                  key: ValueKey('create-task-ftp-tls-${entry.key}'),
+                  value: entry.key,
+                  child: Text(entry.value),
+                ),
+            ],
+          ),
+        ),
+        onChanged: (selected) {
+          if (selected != null) onChanged(selected);
+        },
+      ),
+    );
+  }
+}
 
 class _DirectDownloadToggle extends StatelessWidget {
   const _DirectDownloadToggle({required this.value, required this.onChanged});
@@ -2007,3 +1997,11 @@ const _advancedScrollDuration = Duration(milliseconds: 260);
 const _advancedScrollExtentRetryDelay = Duration(milliseconds: 40);
 const _advancedScrollExtentChecks = 4;
 const _advancedScrollDistance = 112.0;
+
+/// The highest number of parallel logins offered for FTP links. FTP servers
+/// usually allow only a few logins per user.
+const _ftpMaxConnections = 32;
+const _ftpTlsNone = 'none';
+const _ftpTlsExplicit = 'explicit';
+const _ftpTlsImplicit = 'implicit';
+const _ftpTlsModes = {_ftpTlsNone, _ftpTlsExplicit, _ftpTlsImplicit};

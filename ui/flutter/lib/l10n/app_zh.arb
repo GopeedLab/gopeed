@@ -38,6 +38,10 @@
   "rememberLastDownloadDir": "保存为默认下载目录",
   "downloadDirValid": "请选择下载目录",
   "connections": "连接数",
+  "ftpTls": "FTP 加密",
+  "ftpTlsNone": "无",
+  "ftpTlsExplicit": "显式 TLS (FTPES)",
+  "ftpTlsImplicit": "隐式 TLS (FTPS)",
   "maxRetries": "最大重试次数",
   "useServerCtime": "创建文件使用服务器时间",
   "maxRunning": "最大下载数",
@@ -94,7 +98,7 @@
   "startAll": "全部开始",
   "pauseAll": "全部暂停",
   "deleteTask": "删除 @count 个任务",
-  "deleteTaskTip": "保留已下载的文件",
+  "deleteTaskTip": "删除已下载的文件",
   "delete": "删除",
   "add": "添加",
   "edit": "编辑",
@@ -368,7 +372,9 @@
   "torrentDataEmpty": "种子文件内容为空",
   "torrentPathUnavailable": "无法访问种子文件路径",
   "selectAtLeastOneFile": "请至少选择一个文件",
-  "resolvedFiles": "已解析文件",
+  "resolvedFiles": "文件列表",
+  "waitingToResolve": "等待解析",
+  "resolvingResource": "正在解析资源",
   "resolvedFileCount": "已解析 {count} 个文件",
   "resolvedCategoryDirectory": "将保存到 {path}",
   "resourceHasNoFiles": "该资源没有可选择的文件列表",
@@ -473,5 +479,6 @@
   "trackerSubscriptionUpdateStatus": "更新状态",
   "trackerSubscriptionTrackerCount": "Tracker 数量",
   "trackerSubscriptionNotUpdated": "未更新",
-  "actions": "操作"
+  "actions": "操作",
+  "taskGroupDeleteImpact": "将影响 {taskCount} 个下载任务和 {fileCount} 个文件。"
 }

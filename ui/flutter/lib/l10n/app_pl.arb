@@ -38,6 +38,10 @@
   "rememberLastDownloadDir": "Zapisz jako domyślny folder pobierania",
   "downloadDirValid": "Wskaż folder pobierania",
   "connections": "Połączenia",
+  "ftpTls": "Szyfrowanie FTP",
+  "ftpTlsNone": "Brak",
+  "ftpTlsExplicit": "Jawne TLS (FTPES)",
+  "ftpTlsImplicit": "Niejawne TLS (FTPS)",
   "maxRetries": "Maks. liczba ponownych prób",
   "useServerCtime": "Użyj czasu serwera do utworzenia pliku",
   "maxRunning": "Maksymalna liczba zadań",
@@ -94,7 +98,7 @@
   "startAll": "Zacznij wszystkie",
   "pauseAll": "Zatrzymaj wszystkie",
   "deleteTask": "Usuń @count zadania",
-  "deleteTaskTip": "Zachowaj pobrane pliki",
+  "deleteTaskTip": "Usuń pobrane pliki",
   "delete": "Usuń",
   "add": "Dodaj",
   "edit": "Edycja",
@@ -368,7 +372,9 @@
   "torrentDataEmpty": "Dane pliku torrenta są puste",
   "torrentPathUnavailable": "Nie można uzyskać dostępu do ścieżki pliku torrenta",
   "selectAtLeastOneFile": "Wybierz co najmniej jeden plik",
-  "resolvedFiles": "Rozwiązywane pliki",
+  "resolvedFiles": "Lista plików",
+  "waitingToResolve": "Oczekiwanie na analizę",
+  "resolvingResource": "Analizowanie zasobu",
   "resolvedFileCount": "{count} plików rozwiązanych",
   "resolvedCategoryDirectory": "Zostanie zapisane w {path}",
   "resourceHasNoFiles": "Zasób nie ma listy plików do wyboru",
@@ -473,5 +479,6 @@
   "trackerSubscriptionUpdateStatus": "Stan aktualizacji",
   "trackerSubscriptionTrackerCount": "Liczba trackerów",
   "trackerSubscriptionNotUpdated": "Jeszcze nie zaktualizowano",
-  "actions": "Działania"
+  "actions": "Działania",
+  "taskGroupDeleteImpact": "Dotyczy {taskCount} pobrań i {fileCount} plików."
 }

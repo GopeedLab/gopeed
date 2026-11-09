@@ -38,6 +38,10 @@
   "rememberLastDownloadDir": "Save as default download directory",
   "downloadDirValid": "Please select the download directory",
   "connections": "Connections",
+  "ftpTls": "FTP encryption",
+  "ftpTlsNone": "None",
+  "ftpTlsExplicit": "Explicit TLS (FTPES)",
+  "ftpTlsImplicit": "Implicit TLS (FTPS)",
   "maxRetries": "Max retries",
   "useServerCtime": "Use server time for file creation",
   "maxRunning": "Concurrent Downloads",
@@ -101,7 +105,7 @@
   "startAll": "Start All",
   "pauseAll": "Pause All",
   "deleteTask": "Delete @count tasks",
-  "deleteTaskTip": "Keep downloaded files",
+  "deleteTaskTip": "Delete downloaded files",
   "delete": "Delete",
   "add": "Add",
   "edit": "Edit",
@@ -402,7 +406,9 @@
   "torrentDataEmpty": "Torrent file data is empty",
   "torrentPathUnavailable": "Unable to access the torrent file path",
   "selectAtLeastOneFile": "Select at least one file",
-  "resolvedFiles": "Resolved Files",
+  "resolvedFiles": "File List",
+  "waitingToResolve": "Waiting to resolve",
+  "resolvingResource": "Resolving resource",
   "resolvedFileCount": "{count, plural, =1{1 file resolved} other{{count} files resolved}}",
   "resolvedCategoryDirectory": "Will be saved to {path}",
   "@resolvedCategoryDirectory": {
@@ -700,5 +706,16 @@
   "trackerSubscriptionUpdateStatus": "Update status",
   "trackerSubscriptionTrackerCount": "Tracker count",
   "trackerSubscriptionNotUpdated": "Not updated",
-  "actions": "Actions"
+  "actions": "Actions",
+  "taskGroupDeleteImpact": "Affects {taskCount} downloads and {fileCount} files.",
+  "@taskGroupDeleteImpact": {
+    "placeholders": {
+      "taskCount": {
+        "type": "int"
+      },
+      "fileCount": {
+        "type": "int"
+      }
+    }
+  }
 }

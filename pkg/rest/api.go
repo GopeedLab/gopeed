@@ -63,7 +63,7 @@ func CreateTaskBatch(w http.ResponseWriter, r *http.Request) {
 			WriteJson(w, model.NewErrorResult("param invalid: reqs", model.CodeInvalidParam))
 			return
 		}
-		taskIds, err := Downloader.CreateDirectBatch(&req)
+		taskIds, err := Downloader.CreateDirectBatchWithResult(&req)
 		if err != nil {
 			WriteJson(w, model.NewErrorResult(err.Error()))
 			return

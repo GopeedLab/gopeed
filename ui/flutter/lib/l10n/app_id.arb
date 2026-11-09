@@ -38,6 +38,10 @@
   "rememberLastDownloadDir": "Simpan sebagai folder unduhan default",
   "downloadDirValid": "Silahkan pilih direktori unduhan",
   "connections": "Koneksi",
+  "ftpTls": "Enkripsi FTP",
+  "ftpTlsNone": "Tidak ada",
+  "ftpTlsExplicit": "TLS eksplisit (FTPES)",
+  "ftpTlsImplicit": "TLS implisit (FTPS)",
   "maxRetries": "Percobaan ulang maks.",
   "useServerCtime": "Gunakan waktu server untuk pembuatan file",
   "maxRunning": "Tugas Maksimum yang Berjalan",
@@ -94,7 +98,7 @@
   "startAll": "Mulai Semua",
   "pauseAll": "Jeda Semua",
   "deleteTask": "Hapus @count Tugas",
-  "deleteTaskTip": "Simpan file yang terunduh",
+  "deleteTaskTip": "Hapus berkas yang diunduh",
   "delete": "Hapus",
   "add": "Tambah",
   "edit": "Sunting",
@@ -368,7 +372,9 @@
   "torrentDataEmpty": "Data berkas Torrent kosong",
   "torrentPathUnavailable": "Tak bisa mengakses path berkas torrent",
   "selectAtLeastOneFile": "Pilih paling tidak satu berkas",
-  "resolvedFiles": "Berkas Terpecahkan",
+  "resolvedFiles": "Daftar berkas",
+  "waitingToResolve": "Menunggu pemrosesan",
+  "resolvingResource": "Memproses sumber daya",
   "resolvedFileCount": "{count} terselesaikan",
   "resolvedCategoryDirectory": "Akan disimpan ke {path}",
   "resourceHasNoFiles": "Sumber daya tidak memiliki daftar berkas yang dapat dipilih",
@@ -473,5 +479,6 @@
   "trackerSubscriptionUpdateStatus": "Status pembaruan",
   "trackerSubscriptionTrackerCount": "Jumlah tracker",
   "trackerSubscriptionNotUpdated": "Belum diperbarui",
-  "actions": "Tindakan"
+  "actions": "Tindakan",
+  "taskGroupDeleteImpact": "Memengaruhi {taskCount} unduhan dan {fileCount} berkas."
 }

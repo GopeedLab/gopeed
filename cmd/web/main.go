@@ -62,7 +62,10 @@ func main() {
 		WebFS:             sub,
 		WebAuth:           webAuth,
 	}
-	cmd.Start(cfg)
+	if err := cmd.Start(cfg); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 }
 
 func isNotBlank(str *string) bool {

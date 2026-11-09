@@ -152,7 +152,7 @@ func TestExtensionOnErrorRequestWritesToOriginalTask(t *testing.T) {
    request.setHeaders({Keep:'new'});
    request.putHeader('Authorization','Bearer new');
    request.setMethod('POST');
-   if (typeof task.setUrl !== 'undefined' || typeof task.extra !== 'undefined') throw new Error('legacy task API');
+   if (typeof task.setUrl !== 'function' || typeof task.extra !== 'undefined') throw new Error('unexpected legacy task API');
    request.setUrl('https://example.com/new');
    request.setLabels({keep:'yes',remove:'yes'});
    request.putLabel('new','value');

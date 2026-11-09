@@ -20,7 +20,7 @@ Beyond core download management, Gopeed offers browser integration, JavaScript e
 
 Visit ✈ [Official Website](https://gopeed.com)
 
-![Application screenshot](_docs/img/ui-concept-en.png)
+![Application screenshot](_docs/img/ui-concept-en.webp)
 
 ## ✨ Features
 

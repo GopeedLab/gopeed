@@ -192,6 +192,36 @@ func TestStreamableHTTPTools(t *testing.T) {
 	if tasks, ok := structured["tasks"].([]any); !ok || len(tasks) != 0 {
 		t.Fatalf("tasks = %#v, want empty array", structured["tasks"])
 	}
+
+	result, err = session.CallTool(context.Background(), &mcp.CallToolParams{
+		Name: "create_task",
+		Arguments: map[string]any{
+			"req": map[string]any{
+				"url":   downloadServer.URL,
+				"extra": map[string]any{"header": map[string]any{"X-Gopeed-Test": "mcp-object"}},
+			},
+			"opts": map[string]any{"path": t.TempDir()},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.IsError {
+		t.Fatalf("create_task returned tool error: %+v", result.Content)
+	}
+	created := result.StructuredContent.(map[string]any)
+	for _, name := range []string{"get_task", "get_task_stats"} {
+		result, err := session.CallTool(context.Background(), &mcp.CallToolParams{
+			Name:      name,
+			Arguments: map[string]any{"id": created["id"]},
+		})
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if result.IsError {
+			t.Fatalf("%s returned tool error: %+v", name, result.Content)
+		}
+	}
 }
 
 func nestedSchemaProperty(t *testing.T, schema map[string]any, path ...string) map[string]any {

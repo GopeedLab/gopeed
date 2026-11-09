@@ -67,6 +67,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   final _maxRunningController = TextEditingController();
   final _httpUserAgentController = TextEditingController();
   final _httpConnectionsController = TextEditingController();
+  final _ftpConnectionsController = TextEditingController();
   final _hlsConnectionsController = TextEditingController();
   final _hlsMaxRetriesController = TextEditingController();
   final _btListenPortController = TextEditingController();
@@ -101,6 +102,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     _maxRunningController,
     _httpUserAgentController,
     _httpConnectionsController,
+    _ftpConnectionsController,
     _hlsConnectionsController,
     _hlsMaxRetriesController,
     _btListenPortController,
@@ -584,6 +586,23 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ),
             ),
             _SettingsBlock(
+              key: const ValueKey('settings-ftp-block'),
+              title: 'FTP',
+              child: _SettingsGroup(
+                children: [
+                  SettingsItem(
+                    title: context.l10n.connections,
+                    child: _NumberSettingControl(
+                      fieldKey: const ValueKey('ftp-connections-input'),
+                      controller: _ftpConnectionsController,
+                      min: 1,
+                      max: _ftpMaxConnections,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            _SettingsBlock(
               title: 'BitTorrent',
               child: _SettingsGroup(
                 children: [
@@ -1010,6 +1029,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     _maxRunningController.text = _config!.maxRunning.clamp(1, 256).toString();
     _httpUserAgentController.text = _config!.protocolConfig.http.userAgent;
     _httpConnectionsController.text = _config!.protocolConfig.http.connections.clamp(1, 256).toString();
+    _ftpConnectionsController.text = _config!.protocolConfig.ftp.connections.clamp(1, _ftpMaxConnections).toString();
     _hlsConnectionsController.text = _config!.protocolConfig.hls.segmentConnections.clamp(1, 256).toString();
     _hlsMaxRetriesController.text = _config!.protocolConfig.hls.maxRetries.clamp(0, 30).toString();
     _btListenPortController.text = _config!.protocolConfig.bt.listenPort.clamp(0, 65535).toString();
@@ -1112,6 +1132,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       fallback: config.protocolConfig.http.connections,
       min: 1,
       max: 256,
+    );
+    config.protocolConfig.ftp.connections = _boundedInt(
+      _ftpConnectionsController,
+      fallback: config.protocolConfig.ftp.connections,
+      min: 1,
+      max: _ftpMaxConnections,
     );
     config.protocolConfig.hls.segmentConnections = _boundedInt(
       _hlsConnectionsController,
@@ -2245,3 +2271,7 @@ class _ErrorState extends StatelessWidget {
     );
   }
 }
+
+/// The highest number of parallel FTP logins offered, the same limit as on the create task page. FTP servers
+/// usually allow only a few logins per user.
+const _ftpMaxConnections = 32;

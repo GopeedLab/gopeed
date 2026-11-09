@@ -17,7 +17,7 @@ abstract final class GopeedMethods {
   static const getMirrorCandidates = RpcMethod<Map<String, dynamic>, List<String>>('gopeed.mirrors.candidates');
   static const resolve = RpcMethod<ResolveTask, ResolveResult>('gopeed.resolve');
   static const createTask = RpcMethod<CreateTask, String>('gopeed.task.create');
-  static const createTaskBatch = RpcMethod<CreateTaskBatch, List<String>>('gopeed.task.createBatch');
+  static const createTaskBatch = RpcMethod<CreateTaskBatch, CreateTaskBatchResult>('gopeed.task.createBatch');
   static const patchTask = RpcMethod<Map<String, dynamic>, RpcUnit>('gopeed.task.patch');
   static const getTasks = RpcMethod<List<String>, List<Task>>('gopeed.task.list');
   static const getTaskStatus = RpcMethod<String, TaskRuntimeStatus>('gopeed.task.status');
@@ -53,7 +53,7 @@ class GopeedService {
 
   Future<String> createTask(CreateTask request) => _invoker.invoke(GopeedMethods.createTask, request);
 
-  Future<List<String>> createTaskBatch(CreateTaskBatch request) =>
+  Future<CreateTaskBatchResult> createTaskBatch(CreateTaskBatch request) =>
       _invoker.invoke(GopeedMethods.createTaskBatch, request);
 
   Future<void> patchTask(String id, PatchTask request) async {

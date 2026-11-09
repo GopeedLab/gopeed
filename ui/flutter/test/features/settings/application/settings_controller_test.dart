@@ -44,7 +44,7 @@ void main() {
     final backend = DownloaderConfig()
       ..extra.windowState = WindowStateConfig(isMaximized: true, width: 1200, height: 800)
       ..extra.createHistory = ['https://example.com/existing.zip']
-      ..extra.analyticsClientId = 'existing-client';
+      ..extra.deviceId = 'existing-client';
     DownloaderConfig? saved;
     final registry = CapabilityRegistry(createAppCapabilityCodecs())
       ..bind(GopeedMethods.getConfig, (_) => DownloaderConfig.fromJson(backend.toJson()))
@@ -67,7 +67,7 @@ void main() {
     expect(saved?.downloadDir, 'E:/New');
     expect(saved?.extra.windowState.isMaximized, isTrue);
     expect(saved?.extra.createHistory, ['https://example.com/existing.zip']);
-    expect(saved?.extra.analyticsClientId, 'existing-client');
+    expect(saved?.extra.deviceId, 'existing-client');
   });
 
   test('protocol edits use a single full PUT and reload backend-owned tracker results', () async {

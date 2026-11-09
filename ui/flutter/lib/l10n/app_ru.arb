@@ -38,6 +38,10 @@
   "rememberLastDownloadDir": "Сохранить как папку загрузок по умолчанию",
   "downloadDirValid": "Пожалуйста, выберите папку для загрузки",
   "connections": "Соединений",
+  "ftpTls": "Шифрование FTP",
+  "ftpTlsNone": "Нет",
+  "ftpTlsExplicit": "Явный TLS (FTPES)",
+  "ftpTlsImplicit": "Неявный TLS (FTPS)",
   "maxRetries": "Макс. число повторов",
   "useServerCtime": "Использовать время сервера для создания файла",
   "maxRunning": "Максимальное количество активных задач",
@@ -94,7 +98,7 @@
   "startAll": "Запустить все",
   "pauseAll": "Приостановить все",
   "deleteTask": "Удалить @count задач",
-  "deleteTaskTip": "Сохранить загруженные файлы",
+  "deleteTaskTip": "Удалить загруженные файлы",
   "delete": "Удалить",
   "add": "Добавить",
   "edit": "Редактировать",
@@ -368,7 +372,9 @@
   "torrentDataEmpty": "Данные торрент-файлов пусты",
   "torrentPathUnavailable": "Невозможность доступа к торрент-файлу",
   "selectAtLeastOneFile": "Выберите хотя бы один файл",
-  "resolvedFiles": "Решенные файлы",
+  "resolvedFiles": "Список файлов",
+  "waitingToResolve": "Ожидание анализа",
+  "resolvingResource": "Анализ ресурса",
   "resolvedFileCount": "{count} файлов, разрешенных",
   "resolvedCategoryDirectory": "Будет сохранено в {path}",
   "resourceHasNoFiles": "Ресурс не имеет выбираемого списка файлов",
@@ -473,5 +479,6 @@
   "trackerSubscriptionUpdateStatus": "Статус обновления",
   "trackerSubscriptionTrackerCount": "Число трекеров",
   "trackerSubscriptionNotUpdated": "Ещё не обновлено",
-  "actions": "Действия"
+  "actions": "Действия",
+  "taskGroupDeleteImpact": "Затронет {taskCount} загрузок и {fileCount} файлов."
 }

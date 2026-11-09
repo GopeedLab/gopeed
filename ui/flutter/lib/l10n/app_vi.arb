@@ -38,6 +38,10 @@
   "rememberLastDownloadDir": "Lưu làm thư mục tải xuống mặc định",
   "downloadDirValid": "Vui lòng chọn thư mục tải về",
   "connections": "Kết nối",
+  "ftpTls": "Mã hóa FTP",
+  "ftpTlsNone": "Không",
+  "ftpTlsExplicit": "TLS tường minh (FTPES)",
+  "ftpTlsImplicit": "TLS ngầm định (FTPS)",
   "maxRetries": "Số lần thử lại tối đa",
   "useServerCtime": "Sử dụng thời gian máy chủ cho việc tạo tệp",
   "maxRunning": "Số nhiệm vụ tối đa",
@@ -94,7 +98,7 @@
   "startAll": "Bắt đầu tất cả",
   "pauseAll": "Tạm dừng tất cả",
   "deleteTask": "Xóa @count nhiệm vụ",
-  "deleteTaskTip": "Giữ các tệp đã tải về",
+  "deleteTaskTip": "Xóa các tệp đã tải xuống",
   "delete": "Xóa",
   "add": "Thêm",
   "edit": "Sửa",
@@ -368,7 +372,9 @@
   "torrentDataEmpty": "Dữ liệu về tập tin đã rỗng",
   "torrentPathUnavailable": "Không thể truy cập đường dẫn tập tin lũ lụt",
   "selectAtLeastOneFile": "Chọn ít nhất một tập tin",
-  "resolvedFiles": "Các tập tin đã giải quyết",
+  "resolvedFiles": "Danh sách tệp",
+  "waitingToResolve": "Đang chờ phân tích",
+  "resolvingResource": "Đang phân tích tài nguyên",
   "resolvedFileCount": "{count} tập tin được giải quyết",
   "resolvedCategoryDirectory": "Sẽ được lưu vào {path}",
   "resourceHasNoFiles": "Không thể chọn danh sách tập tin",
@@ -473,5 +479,6 @@
   "trackerSubscriptionUpdateStatus": "Trạng thái cập nhật",
   "trackerSubscriptionTrackerCount": "Số tracker",
   "trackerSubscriptionNotUpdated": "Chưa cập nhật",
-  "actions": "Thao tác"
+  "actions": "Thao tác",
+  "taskGroupDeleteImpact": "Ảnh hưởng đến {taskCount} tác vụ tải và {fileCount} tệp."
 }

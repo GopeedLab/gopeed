@@ -234,6 +234,38 @@ func TestDecideDownloadDirWhiteList(t *testing.T) {
 	})
 }
 
+func TestDecideGroupDownloadDirWhiteList(t *testing.T) {
+	parent := t.TempDir()
+	root := filepath.Join(parent, "folder")
+	nested := filepath.Join(root, "nested")
+	for _, test := range []struct {
+		name    string
+		path    string
+		group   *TaskGroup
+		allowed string
+		wantErr bool
+	}{
+		{name: "group root", path: root, group: &TaskGroup{Path: root}, allowed: filepath.Join(parent, "*")},
+		{name: "nested member", path: nested, group: &TaskGroup{Path: root}, allowed: filepath.Join(parent, "*")},
+		{name: "ordinary nested task", path: nested, allowed: filepath.Join(parent, "*"), wantErr: true},
+		{name: "member outside group", path: filepath.Join(parent, "other"), group: &TaskGroup{Path: root}, allowed: filepath.Join(parent, "*"), wantErr: true},
+		{name: "group permission revoked", path: nested, group: &TaskGroup{Path: root}, allowed: nested, wantErr: true},
+		{name: "literal group name", path: filepath.Join(parent, "%year%", "nested"), group: &TaskGroup{Path: filepath.Join(parent, "%year%")}, allowed: filepath.Join(parent, "*")},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			d := newUnitCategoryDownloader(newTestCategoryConfig())
+			d.cfg.WhiteDownloadDirs = []string{test.allowed}
+			got, err := d.decideDownloadDirForTask(&base.Options{Path: test.path, SkipAutoCategorize: true}, singleFileResource("file.txt"), test.group)
+			if (err != nil) != test.wantErr {
+				t.Fatalf("decideDownloadDirForTask() = %q, %v; want error = %v", got, err, test.wantErr)
+			}
+			if err == nil && got != test.path {
+				t.Fatalf("path = %q, want %q", got, test.path)
+			}
+		})
+	}
+}
+
 func TestSuggestedDownloadDir(t *testing.T) {
 	programDir := filepath.Join("./downloads", "Program")
 

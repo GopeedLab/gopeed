@@ -64,6 +64,10 @@ class ProtocolConfig {
   Ed2kConfig ed2k = Ed2kConfig();
   HlsConfig hls = HlsConfig();
 
+  /// A server without FTP support sends no `ftp` key; the defaults keep the rest of the config readable.
+  @JsonKey(fromJson: _ftpConfigFromJson)
+  FtpConfig ftp = FtpConfig();
+
   ProtocolConfig();
 
   factory ProtocolConfig.fromJson(Map<String, dynamic>? json) =>
@@ -89,6 +93,20 @@ class HlsConfig {
   factory HlsConfig.fromJson(Map<String, dynamic> json) => _$HlsConfigFromJson(json);
 
   Map<String, dynamic> toJson() => _$HlsConfigToJson(this);
+}
+
+FtpConfig _ftpConfigFromJson(Map<String, dynamic>? json) => json == null ? FtpConfig() : FtpConfig.fromJson(json);
+
+/// Global FTP defaults. It mirrors the `ftp` protocol config of the server.
+@JsonSerializable()
+class FtpConfig {
+  int connections;
+
+  FtpConfig({this.connections = 0});
+
+  factory FtpConfig.fromJson(Map<String, dynamic> json) => _$FtpConfigFromJson(json);
+
+  Map<String, dynamic> toJson() => _$FtpConfigToJson(this);
 }
 
 @JsonSerializable()
@@ -196,13 +214,15 @@ class ExtraConfig {
   List<String> createHistory;
   bool runAsMenubarApp;
   bool analyticsEnabled;
-  String analyticsClientId;
+
+  /// Persisted UUID fallback; IDs returned by platform APIs are not stored here.
+  String deviceId;
 
   ExtraConfig({
     this.themeMode = '',
     this.themeColor = 'green',
     this.locale = '',
-    this.lastDeleteTaskKeep = false,
+    this.lastDeleteTaskKeep = true,
     this.defaultDirectDownload = false,
     this.defaultBtClient = true,
     this.notifyWhenNewVersion = true,
@@ -214,7 +234,7 @@ class ExtraConfig {
     this.createHistory = const [],
     this.runAsMenubarApp = false,
     this.analyticsEnabled = true,
-    this.analyticsClientId = '',
+    this.deviceId = '',
   }) : windowState = windowState ?? WindowStateConfig();
 
   factory ExtraConfig.fromJson(Map<String, dynamic>? json) =>

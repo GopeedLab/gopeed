@@ -38,6 +38,10 @@
   "rememberLastDownloadDir": "Mentés alapértelmezett letöltési mappaként",
   "downloadDirValid": "Kérjük, válassza ki a letöltési könyvtárat",
   "connections": "Kapcsolatok",
+  "ftpTls": "FTP-titkosítás",
+  "ftpTlsNone": "Nincs",
+  "ftpTlsExplicit": "Explicit TLS (FTPES)",
+  "ftpTlsImplicit": "Implicit TLS (FTPS)",
   "maxRetries": "Maximális újrapróbálkozások",
   "useServerCtime": "Használja a szerveridőt a fájl létrehozásához",
   "maxRunning": "Maximális futó feladatok",
@@ -94,7 +98,7 @@
   "startAll": "Összes indítása",
   "pauseAll": "Összes szüneteltetése",
   "deleteTask": "@count feladat törlése",
-  "deleteTaskTip": "Letöltött fájlok megőrzése",
+  "deleteTaskTip": "Letöltött fájlok törlése",
   "delete": "Törlés",
   "add": "Hozzáad",
   "edit": "Szerk",
@@ -368,7 +372,9 @@
   "torrentDataEmpty": "A torrent fájl adatai üresek",
   "torrentPathUnavailable": "Nem érhető el a torrent fájl elérési útja",
   "selectAtLeastOneFile": "Válasszon ki legalább egy fájlt",
-  "resolvedFiles": "Feloldott fájlok",
+  "resolvedFiles": "Fájllista",
+  "waitingToResolve": "Feldolgozásra vár",
+  "resolvingResource": "Erőforrás feldolgozása",
   "resolvedFileCount": "{count} fájlok megoldva",
   "resolvedCategoryDirectory": "Ide lesz mentve: {path}",
   "resourceHasNoFiles": "Az erőforrásnak nincs kiválasztható fájllistája",
@@ -473,5 +479,6 @@
   "trackerSubscriptionUpdateStatus": "Frissítés állapota",
   "trackerSubscriptionTrackerCount": "Trackerek száma",
   "trackerSubscriptionNotUpdated": "Még nem frissült",
-  "actions": "Műveletek"
+  "actions": "Műveletek",
+  "taskGroupDeleteImpact": "{taskCount} letöltést és {fileCount} fájlt érint."
 }

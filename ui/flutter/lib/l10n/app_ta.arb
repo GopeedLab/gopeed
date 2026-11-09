@@ -38,6 +38,10 @@
   "rememberLastDownloadDir": "இயல்புநிலை பதிவிறக்க கோப்புறையாக சேமி",
   "downloadDirValid": "பதிவிரக்குமிடத்தை தேர்வு செயுங்கள்",
   "connections": "தொடர்புகள்",
+  "ftpTls": "FTP குறியாக்கம்",
+  "ftpTlsNone": "இல்லை",
+  "ftpTlsExplicit": "வெளிப்படையான TLS (FTPES)",
+  "ftpTlsImplicit": "மறைமுக TLS (FTPS)",
   "maxRetries": "அதிகபட்ச மறுமுயற்சிகள்",
   "useServerCtime": "கோப்பு உருவாக்க சேவையக நேரத்தைப் பயன்படுத்தவும்",
   "maxRunning": "அதிகபட்ச இயங்கும் பணிகள்",
@@ -94,7 +98,7 @@
   "startAll": "அனைத்தையும் தொடங்கு",
   "pauseAll": "அனைத்தையும் நிறுத்திவை",
   "deleteTask": "பணிகளை நீக்கு @count",
-  "deleteTaskTip": "பதிவிறக்கம் செய்யப்பட்ட கோப்புகளை வைத்திரு",
+  "deleteTaskTip": "பதிவிறக்கிய கோப்புகளை நீக்கு",
   "delete": "நீக்கு",
   "add": "சேர்",
   "edit": "திருத்துக",
@@ -368,7 +372,9 @@
   "torrentDataEmpty": "டொரண்ட் கோப்பு தரவு காலியாக உள்ளது",
   "torrentPathUnavailable": "டொரண்ட் கோப்பு பாதையை அணுக முடியவில்லை",
   "selectAtLeastOneFile": "குறைந்தது ஒரு கோப்பையாவது தேர்ந்தெடுக்கவும்",
-  "resolvedFiles": "தீர்க்கப்பட்ட கோப்புகள்",
+  "resolvedFiles": "கோப்புப் பட்டியல்",
+  "waitingToResolve": "பகுப்பாய்விற்காகக் காத்திருக்கிறது",
+  "resolvingResource": "வளத்தைப் பகுப்பாய்வு செய்கிறது",
   "resolvedFileCount": "{count} கோப்புகள் தீர்க்கப்பட்டன",
   "resolvedCategoryDirectory": "{path} இல் சேமிக்கப்படும்",
   "resourceHasNoFiles": "வளத்தில் தேர்ந்தெடுக்கக்கூடிய கோப்பு பட்டியல் இல்லை",
@@ -473,5 +479,6 @@
   "trackerSubscriptionUpdateStatus": "புதுப்பிப்பு நிலை",
   "trackerSubscriptionTrackerCount": "டிராக்கர் எண்ணிக்கை",
   "trackerSubscriptionNotUpdated": "இன்னும் புதுப்பிக்கப்படவில்லை",
-  "actions": "செயல்கள்"
+  "actions": "செயல்கள்",
+  "taskGroupDeleteImpact": "{taskCount} பதிவிறக்கங்களையும் {fileCount} கோப்புகளையும் பாதிக்கும்."
 }

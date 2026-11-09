@@ -38,6 +38,10 @@
   "rememberLastDownloadDir": "기본 다운로드 폴더로 저장",
   "downloadDirValid": "다운로드 폴더를 선택해 주세요",
   "connections": "연결 수",
+  "ftpTls": "FTP 암호화",
+  "ftpTlsNone": "없음",
+  "ftpTlsExplicit": "명시적 TLS (FTPES)",
+  "ftpTlsImplicit": "암시적 TLS (FTPS)",
   "maxRetries": "최대 재시도 횟수",
   "useServerCtime": "파일 생성 시간에 서버 시간 사용",
   "maxRunning": "최대 동시 작업 수",
@@ -94,7 +98,7 @@
   "startAll": "전체 시작",
   "pauseAll": "전체 일시정지",
   "deleteTask": "작업 @count개 삭제",
-  "deleteTaskTip": "다운로드된 파일은 유지",
+  "deleteTaskTip": "다운로드한 파일 삭제",
   "delete": "삭제",
   "add": "추가",
   "edit": "편집",
@@ -368,7 +372,9 @@
   "torrentDataEmpty": "Torrent 파일 데이터가 비어 있습니다",
   "torrentPathUnavailable": "토렌트 파일 경로에 액세스 할 수 없습니다",
   "selectAtLeastOneFile": "최소 1개의 파일을 선택하십시오",
-  "resolvedFiles": "해결된 파일",
+  "resolvedFiles": "파일 목록",
+  "waitingToResolve": "분석 대기 중",
+  "resolvingResource": "리소스 분석 중",
   "resolvedFileCount": "{count} 파일 해결",
   "resolvedCategoryDirectory": "{path}에 저장됩니다",
   "resourceHasNoFiles": "리소스에는 선택 가능한 파일 목록이 없습니다",
@@ -473,5 +479,6 @@
   "trackerSubscriptionUpdateStatus": "업데이트 상태",
   "trackerSubscriptionTrackerCount": "트래커 수",
   "trackerSubscriptionNotUpdated": "아직 업데이트되지 않음",
-  "actions": "작업"
+  "actions": "작업",
+  "taskGroupDeleteImpact": "다운로드 {taskCount}개와 파일 {fileCount}개에 영향을 줍니다."
 }
