@@ -46,6 +46,8 @@
   "useServerCtime": "ファイル作成時にサーバー時間を使用する",
   "maxRetryDelay": "最大リトライ間隔（秒）",
   "unlimitedRetries": "無制限にリトライ",
+  "maxRetriesPerConnection": "接続ごとの最大リトライ回数",
+  "httpRetriesDescription": "各接続は個別にリトライします。他の接続がダウンロード中のリトライは数えられず、いずれかの成功した応答ですべての接続のリトライ回数が元に戻ります。",
   "maxRunning": "最大実行タスク",
   "defaultDirectDownload": "デフォルトで直接ダウンロードにチェックを入れる",
   "autoStartTasks": "起動時に未完了のタスクを自動的に開始",

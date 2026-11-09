@@ -46,6 +46,8 @@
   "useServerCtime": "创建文件使用服务器时间",
   "maxRetryDelay": "最大重试间隔（秒）",
   "unlimitedRetries": "无限重试",
+  "maxRetriesPerConnection": "每个连接的最大重试次数",
+  "httpRetriesDescription": "每个连接独立重试。其他连接正在下载时的重试不计入次数，任一成功响应都会恢复所有连接的重试次数。",
   "maxRunning": "最大下载数",
   "defaultDirectDownload": "默认启用直接下载",
   "autoStartTasks": "启动时自动开始未完成的任务",

@@ -46,6 +46,8 @@
   "useServerCtime": "파일 생성 시간에 서버 시간 사용",
   "maxRetryDelay": "최대 재시도 간격(초)",
   "unlimitedRetries": "무제한 재시도",
+  "maxRetriesPerConnection": "연결당 최대 재시도 횟수",
+  "httpRetriesDescription": "각 연결은 독립적으로 재시도합니다. 다른 연결이 다운로드하는 동안의 재시도는 계산되지 않으며, 성공한 응답이 하나라도 있으면 모든 연결의 재시도 횟수가 복원됩니다.",
   "maxRunning": "최대 동시 작업 수",
   "defaultDirectDownload": "기본으로 바로 다운로드 사용",
   "autoStartTasks": "시작 시 미완료 작업 자동 시작",

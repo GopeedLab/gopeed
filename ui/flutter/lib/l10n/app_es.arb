@@ -46,6 +46,8 @@
   "useServerCtime": "Usar tiempo del servidor para la creación de archivos",
   "maxRetryDelay": "Espera máxima entre reintentos (segundos)",
   "unlimitedRetries": "Reintentos ilimitados",
+  "maxRetriesPerConnection": "Máx. reintentos por conexión",
+  "httpRetriesDescription": "Cada conexión reintenta por su cuenta. Los reintentos mientras otra conexión descarga no cuentan, y cualquier respuesta correcta restablece los reintentos de todas las conexiones.",
   "maxRunning": "Máximo de Tareas en Ejecución",
   "defaultDirectDownload": "Ver descarga directa por defecto",
   "autoStartTasks": "Iniciar automáticamente tareas incompletas al arrancar",

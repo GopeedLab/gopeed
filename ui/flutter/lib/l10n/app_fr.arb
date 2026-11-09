@@ -46,6 +46,8 @@
   "useServerCtime": "Utiliser l'heure du serveur pour la création de fichier",
   "maxRetryDelay": "Délai maximal entre les tentatives (secondes)",
   "unlimitedRetries": "Tentatives illimitées",
+  "maxRetriesPerConnection": "Nombre max. de tentatives par connexion",
+  "httpRetriesDescription": "Chaque connexion réessaie de son côté. Les tentatives faites pendant qu'une autre connexion télécharge ne comptent pas, et toute réponse réussie rétablit les tentatives de toutes les connexions.",
   "maxRunning": "Tâches en cours maximum",
   "defaultDirectDownload": "Vérifiez le téléchargement direct par défaut",
   "autoStartTasks": "Démarrer automatiquement les tâches incomplètes au lancement",

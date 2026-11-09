@@ -46,6 +46,8 @@
   "useServerCtime": "Serverzeit für die Dateierstellung verwenden",
   "maxRetryDelay": "Maximale Wartezeit zwischen Wiederholungen (Sekunden)",
   "unlimitedRetries": "Unbegrenzte Wiederholungsversuche",
+  "maxRetriesPerConnection": "Max. Wiederholungen pro Verbindung",
+  "httpRetriesDescription": "Jede Verbindung wiederholt für sich. Wiederholungen, während eine andere Verbindung lädt, zählen nicht, und jede erfolgreiche Antwort stellt die Wiederholungen aller Verbindungen wieder her.",
   "maxRunning": "Maximale Anzahl ausgeführter Aufgaben",
   "defaultDirectDownload": "Direkten Download standardmäßig aktivieren",
   "autoStartTasks": "Unvollständige Aufgaben beim Start automatisch starten",

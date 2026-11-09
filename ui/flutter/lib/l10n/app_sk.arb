@@ -46,6 +46,8 @@
   "useServerCtime": "Použiť čas servera na vytvorenie súboru",
   "maxRetryDelay": "Maximálny odstup medzi pokusmi (sekundy)",
   "unlimitedRetries": "Neobmedzený počet pokusov",
+  "maxRetriesPerConnection": "Max. opakovaní na pripojenie",
+  "httpRetriesDescription": "Každé pripojenie opakuje pokusy samostatne. Opakovania, kým iné pripojenie sťahuje, sa nepočítajú a každá úspešná odpoveď obnoví opakovania všetkých pripojení.",
   "maxRunning": "Súbežné sťahovania",
   "defaultDirectDownload": "Predvolene priame sťahovanie",
   "autoStartTasks": "Automaticky spustiť nedokončené úlohy pri štarte",

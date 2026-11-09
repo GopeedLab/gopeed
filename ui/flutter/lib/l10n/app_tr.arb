@@ -46,6 +46,8 @@
   "useServerCtime": "Dosya oluşturma tarihi için sunucu zamanını kullan",
   "maxRetryDelay": "Denemeler arası en uzun bekleme (saniye)",
   "unlimitedRetries": "Sınırsız yeniden deneme",
+  "maxRetriesPerConnection": "Bağlantı başına en fazla yeniden deneme",
+  "httpRetriesDescription": "Her bağlantı kendi başına yeniden dener. Başka bir bağlantı indirirken yapılan denemeler sayılmaz; herhangi bir başarılı yanıt bütün bağlantıların deneme haklarını yeniler.",
   "maxRunning": "Maksimum Çalışan İşlem",
   "defaultDirectDownload": "Varsayılan olarak direkt indirmeyi işaretle",
   "autoStartTasks": "Başlangıçta tamamlanmamış işlemleri otomatik başlat",

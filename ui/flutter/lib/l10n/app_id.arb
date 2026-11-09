@@ -46,6 +46,8 @@
   "useServerCtime": "Gunakan waktu server untuk pembuatan file",
   "maxRetryDelay": "Jeda maks. antar percobaan ulang (detik)",
   "unlimitedRetries": "Percobaan ulang tanpa batas",
+  "maxRetriesPerConnection": "Maks. percobaan ulang per koneksi",
+  "httpRetriesDescription": "Setiap koneksi mencoba ulang sendiri. Percobaan ulang saat koneksi lain sedang mengunduh tidak dihitung, dan setiap respons yang berhasil memulihkan percobaan ulang semua koneksi.",
   "maxRunning": "Tugas Maksimum yang Berjalan",
   "defaultDirectDownload": "Pilih unduhan langsung sebagai opsi standar",
   "autoStartTasks": "Otomatis-mulai tugas yang tidak lengkap pada startup",

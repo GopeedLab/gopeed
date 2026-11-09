@@ -588,6 +588,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     ),
                   SettingsItem(
                     title: context.l10n.unlimitedRetries,
+                    subtitle: context.l10n.httpRetriesDescription,
                     child: shad.Switch(
                       key: const ValueKey('http-unlimited-retries-switch'),
                       value: config.protocolConfig.http.unlimitedRetries,
@@ -596,7 +597,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   ),
                   if (!config.protocolConfig.http.unlimitedRetries)
                     SettingsItem(
-                      title: context.l10n.maxRetries,
+                      title: context.l10n.maxRetriesPerConnection,
                       child: _NumberSettingControl(
                         fieldKey: const ValueKey('http-max-retries-input'),
                         controller: _httpMaxRetriesController,

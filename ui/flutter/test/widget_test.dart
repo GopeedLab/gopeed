@@ -1697,6 +1697,11 @@ void main() {
     final unlimited = find.byKey(const ValueKey('http-unlimited-retries-switch'));
     expect(find.descendant(of: httpBlock, matching: maxRetries), findsOneWidget);
     expect(find.descendant(of: httpBlock, matching: delay), findsOneWidget);
+    expect(find.descendant(of: httpBlock, matching: find.text('Max retries per connection')), findsOneWidget);
+    expect(
+      find.descendant(of: httpBlock, matching: find.textContaining('Each connection retries on its own.')),
+      findsOneWidget,
+    );
     expect(tester.widget<shad.TextField>(maxRetries).controller!.text, '5');
     expect(tester.widget<shad.TextField>(delay).controller!.text, '5');
 
