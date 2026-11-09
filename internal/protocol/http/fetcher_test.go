@@ -3261,16 +3261,17 @@ func downloadResume(listener net.Listener, connections int, t *testing.T) {
 }
 
 func downloadWithProxy(httpListener net.Listener, proxyListener net.Listener, t *testing.T) {
-	fetcher := downloadReady(httpListener, 4, t)
-	ctl := controller.NewController()
-	ctl.GetProxy = func(requestProxy *base.RequestProxy) func(*gohttp.Request) (*url.URL, error) {
+	// Setup must run before Resolve, as in the downloader, so the Resolve
+	// request also goes through the proxy.
+	f := buildFetcher()
+	f.ctl.GetProxy = func(requestProxy *base.RequestProxy) func(*gohttp.Request) (*url.URL, error) {
 		return (&base.DownloaderProxyConfig{
 			Enable: true,
 			Scheme: "socks5",
 			Host:   proxyListener.Addr().String(),
 		}).ToHandler()
 	}
-	fetcher.Setup(ctl)
+	fetcher := doDownloadReady(f, httpListener, 4, t)
 	err := fetcher.Start()
 	if err != nil {
 		t.Fatal(err)
