@@ -98,7 +98,7 @@
   "startAll": "Összes indítása",
   "pauseAll": "Összes szüneteltetése",
   "deleteTask": "@count feladat törlése",
-  "deleteTaskTip": "Letöltött fájlok megőrzése",
+  "deleteTaskTip": "Letöltött fájlok törlése",
   "delete": "Törlés",
   "add": "Hozzáad",
   "edit": "Szerk",

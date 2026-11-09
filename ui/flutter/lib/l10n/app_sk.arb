@@ -105,7 +105,7 @@
   "startAll": "Spustiť všetko",
   "pauseAll": "Pozastaviť všetko",
   "deleteTask": "Odstrániť @count úloh",
-  "deleteTaskTip": "Zachovať stiahnuté súbory",
+  "deleteTaskTip": "Odstrániť stiahnuté súbory",
   "delete": "Odstrániť",
   "add": "Pridať",
   "edit": "Upraviť",

@@ -98,7 +98,7 @@
   "startAll": "전체 시작",
   "pauseAll": "전체 일시정지",
   "deleteTask": "작업 @count개 삭제",
-  "deleteTaskTip": "다운로드된 파일은 유지",
+  "deleteTaskTip": "다운로드한 파일 삭제",
   "delete": "삭제",
   "add": "추가",
   "edit": "편집",

@@ -98,7 +98,7 @@
   "startAll": "Tümünü Başlat",
   "pauseAll": "Tümünü Duraklat",
   "deleteTask": "@count işlemi sil",
-  "deleteTaskTip": "İndirilen dosyaları sakla",
+  "deleteTaskTip": "İndirilen dosyaları sil",
   "delete": "Sil",
   "add": "Ekle",
   "edit": "Düzenle",

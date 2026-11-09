@@ -98,7 +98,7 @@
   "startAll": "Zacznij wszystkie",
   "pauseAll": "Zatrzymaj wszystkie",
   "deleteTask": "Usuń @count zadania",
-  "deleteTaskTip": "Zachowaj pobrane pliki",
+  "deleteTaskTip": "Usuń pobrane pliki",
   "delete": "Usuń",
   "add": "Dodaj",
   "edit": "Edycja",

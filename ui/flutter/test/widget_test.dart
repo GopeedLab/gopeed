@@ -5361,7 +5361,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('delete dialog returns keep-files switch value', (WidgetTester tester) async {
+  testWidgets('delete dialog only removes downloaded files when requested', (WidgetTester tester) async {
     await _setTestSize(tester, const Size(520, 620));
     bool? keepFiles;
     await tester.pumpWidget(
@@ -5384,11 +5384,14 @@ void main() {
     expect(find.text('Delete 2 tasks?'), findsOneWidget);
     expect(find.text('Only remove the task record from Gopeed'), findsNothing);
     expect(find.byKey(const ValueKey('task-delete-dialog-icon')), findsOneWidget);
-    expect(find.byKey(const ValueKey('task-delete-keep-files-option')), findsOneWidget);
-    final keepFilesSwitch = find.byKey(const ValueKey('task-delete-keep-files-switch'));
-    expect(tester.widget<shad.Switch>(keepFilesSwitch).value, isTrue);
+    expect(find.byKey(const ValueKey('task-delete-files-option')), findsOneWidget);
+    final deleteFilesSwitch = find.byKey(const ValueKey('task-delete-files-switch'));
+    expect(find.text('Delete downloaded files'), findsOneWidget);
+    expect(tester.widget<shad.Switch>(deleteFilesSwitch).value, isFalse);
 
-    await tester.tap(keepFilesSwitch);
+    await tester.tap(deleteFilesSwitch);
+    await tester.pumpAndSettle();
+    expect(tester.widget<shad.Switch>(deleteFilesSwitch).value, isTrue);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Delete'));
     await tester.pumpAndSettle();
