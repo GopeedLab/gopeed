@@ -73,7 +73,7 @@ func (w *slowResponseWriter) Write(p []byte) (int, error) {
 
 // restoredTwoChunks returns a fetcher resumed with two unstarted chunks of size/2 each, below
 // the size work stealing splits, so each chunk is fetched by its own connection. Its retry
-// delays use unit and it gets maxRetries retry rounds.
+// delays use unit and each connection gets maxRetries retries of its own.
 func restoredTwoChunks(t *testing.T, url string, size int64, unit time.Duration, maxRetries int) (*Fetcher, string) {
 	t.Helper()
 	dir := t.TempDir()
@@ -97,7 +97,7 @@ func restoredTwoChunks(t *testing.T, url string, size int64, unit time.Duration,
 	return f, filepath.Join(dir, "slot.bin")
 }
 
-// retryController serves the default HTTP configuration with maxRetries retry rounds.
+// retryController serves the default HTTP configuration with maxRetries retries per connection.
 func retryController(t *testing.T, maxRetries int) *controller.Controller {
 	cfg := new(FetcherManager).DefaultConfig().(*config)
 	cfg.MaxRetries = maxRetries
@@ -110,7 +110,7 @@ func retryController(t *testing.T, maxRetries int) *controller.Controller {
 	return ctl
 }
 
-// newRetryFetcher returns a fresh fetcher with maxRetries retry rounds of unit-based delays.
+// newRetryFetcher returns a fresh fetcher with maxRetries retries per connection and unit-based delays.
 func newRetryFetcher(t *testing.T, unit time.Duration, maxRetries int) *Fetcher {
 	f := new(FetcherManager).Build().(*Fetcher)
 	f.Setup(retryController(t, maxRetries))
@@ -225,7 +225,7 @@ func TestFetcher_ConnectionLimitForbidden(t *testing.T) {
 }
 
 // While one connection downloads, the other one's failures of any kind are
-// retried without using the retry budget: here one retry round is allowed,
+// retried without using its allowance: here one retry is allowed,
 // and the chunk fails with a mix of statuses and a dropped connection many
 // more times than that before the server lets it through.
 func TestFetcher_MixedFailuresWhilePeerHealthy(t *testing.T) {
@@ -405,11 +405,11 @@ func (s *oneSlotServer) ServeHTTP(w gohttp.ResponseWriter, r *gohttp.Request) {
 // Complete outages
 // ---------------------------------------------------------------------------
 
-// With every request failing, each retry round gives each unfinished chunk one
-// request and counts once for the task: two chunks and three rounds make
-// exactly eight requests, then the task fails.
+// With every request failing, each chunk's connection spends its own
+// allowance: two chunks with three retries each make exactly eight requests,
+// then the task fails.
 func TestFetcher_OutageRemainsFailed(t *testing.T) {
-	const size, rounds = 512 * 1024, 3
+	const size, retries = 512 * 1024, 3
 	var requests atomic.Int32
 	server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
 		requests.Add(1)
@@ -417,7 +417,7 @@ func TestFetcher_OutageRemainsFailed(t *testing.T) {
 	}))
 	defer server.Close()
 
-	f, _ := restoredTwoChunks(t, server.URL+"/slot.bin", size, fastRetryUnit, rounds)
+	f, _ := restoredTwoChunks(t, server.URL+"/slot.bin", size, fastRetryUnit, retries)
 	defer f.Close()
 	if err := f.Start(); err != nil {
 		t.Fatal(err)
@@ -426,17 +426,17 @@ func TestFetcher_OutageRemainsFailed(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "503") {
 		t.Fatalf("Wait() = %v, want a 503 failure", err)
 	}
-	if got, want := requests.Load(), int32(2*(1+rounds)); got != want {
-		t.Fatalf("server got %d requests, want %d (first try and %d rounds for 2 chunks)", got, want, rounds)
+	if got, want := requests.Load(), int32(2*(1+retries)); got != want {
+		t.Fatalf("server got %d requests, want %d (first try and %d retries for each of 2 chunks)", got, want, retries)
 	}
 	if f.getState() != stateError {
 		t.Fatalf("state = %v, want stateError", f.getState())
 	}
 }
 
-// The delays of the retry rounds grow 1, 2, 3... units after a complete
-// outage, and the task fails after the configured rounds.
-func TestFetcher_OutageRoundDelaysGrow(t *testing.T) {
+// The delays of a connection's retries grow 1, 2, 3... units during a
+// complete outage, and the task fails after the configured retries.
+func TestFetcher_OutageRetryDelaysGrow(t *testing.T) {
 	const unit = 40 * time.Millisecond
 	var mu sync.Mutex
 	var times []time.Time
@@ -464,23 +464,23 @@ func TestFetcher_OutageRoundDelaysGrow(t *testing.T) {
 	mu.Lock()
 	defer mu.Unlock()
 	if len(times) != 5 {
-		t.Fatalf("server got %d requests, want 5 (first try and 4 rounds)", len(times))
+		t.Fatalf("server got %d requests, want 5 (first try and 4 retries)", len(times))
 	}
 	for i := 1; i < len(times); i++ {
 		gap := times[i].Sub(times[i-1])
 		want := time.Duration(i) * unit
 		if gap < want || gap > want+400*time.Millisecond {
-			t.Fatalf("gap before round %d = %v, want about %v", i, gap, want)
+			t.Fatalf("gap before retry %d = %v, want about %v", i, gap, want)
 		}
 	}
 }
 
-// An outage that ends within the retry rounds: the download completes.
+// An outage that ends within the connections' allowances: the download completes.
 func TestFetcher_OutageRecovers(t *testing.T) {
 	payload := testPayload(512 * 1024)
 	var requests atomic.Int32
 	server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
-		// Both chunks fail their first try and the first two rounds.
+		// Both chunks fail their first try and their first two retries.
 		if n := requests.Add(1); n <= 6 {
 			writeFailure(w, failingStatuses[int(n-1)%len(failingStatuses)])
 			return
@@ -498,17 +498,17 @@ func TestFetcher_OutageRecovers(t *testing.T) {
 }
 
 // Every chunk fails until one of them gets through: that valid response resets
-// the budget of the whole task, not only of the chunk that recovered. Two
-// rounds are allowed. The first chunk recovers in the second round; the
-// second chunk keeps failing until after the first one has completed, and then
-// needs up to two more rounds, which only the reset gives it.
-func TestFetcher_OneRecoveryResetsTaskBudget(t *testing.T) {
+// the allowance of every unfinished connection, not only of the one that
+// recovered. Two retries are allowed. The first chunk recovers on its second
+// retry; the second chunk keeps failing until after the first one has
+// completed, and then needs two more retries, which only the reset gives it.
+func TestFetcher_OneRecoveryResetsEveryAllowance(t *testing.T) {
 	payload := testPayload(512 * 1024)
 	var aRequests, bFailuresAfterA atomic.Int32
 	var aDone atomic.Bool
 	server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
 		if rangeStart(r) == 0 {
-			// First try and first round fail, the second round gets through.
+			// The first try and the first retry fail, the second retry gets through.
 			if aRequests.Add(1) <= 2 {
 				w.WriteHeader(gohttp.StatusServiceUnavailable)
 				return
@@ -537,13 +537,182 @@ func TestFetcher_OneRecoveryResetsTaskBudget(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
+// Per-connection retries
+// ---------------------------------------------------------------------------
+
+// A connection that fails fast retries at its own pace while another one is
+// still waiting for its response headers: the slow request is answered only
+// after the fast connection has retried three times, so waiting for it would
+// stall the download.
+func TestFetcher_FastFailureRetriesBeforeSlowPeerResponds(t *testing.T) {
+	payload := testPayload(512 * 1024)
+	half := int64(len(payload) / 2)
+	const fastFailures = 3
+	var fastRequests atomic.Int32
+	retried := make(chan struct{})
+	var retriedOnce sync.Once
+	var slowTimedOut atomic.Bool
+	server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
+		if rangeStart(r) == half {
+			n := fastRequests.Add(1)
+			if n == fastFailures+1 {
+				retriedOnce.Do(func() { close(retried) })
+			}
+			if n <= fastFailures {
+				w.WriteHeader(gohttp.StatusServiceUnavailable)
+				return
+			}
+			serveRangeContent(w, r, payload)
+			return
+		}
+		// The slow request holds its headers until the fast connection has
+		// retried past its failures.
+		select {
+		case <-retried:
+		case <-time.After(10 * time.Second):
+			slowTimedOut.Store(true)
+		case <-r.Context().Done():
+			return
+		}
+		serveRangeContent(w, r, payload)
+	}))
+	defer server.Close()
+
+	f, file := restoredTwoChunks(t, server.URL+"/slot.bin", int64(len(payload)), fastRetryUnit, defaultMaxRetries)
+	defer f.Close()
+	if err := f.Start(); err != nil {
+		t.Fatal(err)
+	}
+	waitDownload(t, f, file, payload)
+	if slowTimedOut.Load() {
+		t.Fatal("the fast connection waited for the slow one's headers instead of retrying")
+	}
+}
+
+// Connections failing at the same time each spend only their own allowance.
+// Two retries are allowed; both chunks fail their first try and their first
+// retry while nothing is healthy, four failures in all, and are served on
+// their second retry. A shared task counter would have run out.
+func TestFetcher_SimultaneousFailuresChargeOwnAllowance(t *testing.T) {
+	payload := testPayload(512 * 1024)
+	half := int64(len(payload) / 2)
+	const failuresEach = 2
+	var mu sync.Mutex
+	requests := map[int64]int{}
+	bothFailed := make(chan struct{})
+	var bothFailedOnce sync.Once
+	server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
+		start := rangeStart(r)
+		mu.Lock()
+		requests[start]++
+		n := requests[start]
+		if requests[0] > failuresEach && requests[half] > failuresEach {
+			bothFailedOnce.Do(func() { close(bothFailed) })
+		}
+		mu.Unlock()
+		if n <= failuresEach {
+			w.WriteHeader(gohttp.StatusBadGateway)
+			return
+		}
+		// Hold the first success until the other chunk has failed as often,
+		// so that every failure happens with no healthy peer.
+		select {
+		case <-bothFailed:
+		case <-r.Context().Done():
+			return
+		}
+		serveRangeContent(w, r, payload)
+	}))
+	defer server.Close()
+
+	f, file := restoredTwoChunks(t, server.URL+"/slot.bin", int64(len(payload)), fastRetryUnit, failuresEach)
+	defer f.Close()
+	if err := f.Start(); err != nil {
+		t.Fatal(err)
+	}
+	waitDownload(t, f, file, payload)
+	mu.Lock()
+	defer mu.Unlock()
+	for start, n := range requests {
+		if n != failuresEach+1 {
+			t.Fatalf("chunk at %d was requested %d times, want %d", start, n, failuresEach+1)
+		}
+	}
+}
+
+// A chunk whose connection has used up its allowance is kept while a slower
+// request may still succeed. One retry is allowed: the second chunk fails its
+// first try and its retry and then waits, without further requests, until the
+// first chunk's request, held at its headers until then, succeeds. That
+// success gives the second chunk a new allowance, and it completes.
+func TestFetcher_LateSuccessRestoresExhaustedChunk(t *testing.T) {
+	payload := testPayload(512 * 1024)
+	half := int64(len(payload) / 2)
+	var spentRequests, requestsWhileParked atomic.Int32
+	spent := make(chan struct{})
+	release := make(chan struct{})
+	server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
+		if rangeStart(r) == half {
+			switch n := spentRequests.Add(1); {
+			case n <= 2:
+				if n == 2 {
+					close(spent)
+				}
+				w.WriteHeader(gohttp.StatusServiceUnavailable)
+				return
+			default:
+				select {
+				case <-release:
+				default:
+					requestsWhileParked.Add(1)
+				}
+				serveRangeContent(w, r, payload)
+				return
+			}
+		}
+		select {
+		case <-release:
+		case <-r.Context().Done():
+			return
+		}
+		serveRangeContent(w, r, payload)
+	}))
+	defer server.Close()
+
+	f, file := restoredTwoChunks(t, server.URL+"/slot.bin", int64(len(payload)), fastRetryUnit, 1)
+	defer f.Close()
+	if err := f.Start(); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-spent:
+	case <-time.After(10 * time.Second):
+		t.Fatal("the second chunk did not use up its allowance")
+	}
+	// Far longer than the retry delays: an exhausted chunk must not retry, nor
+	// fail the task, while its peer is still in flight.
+	time.Sleep(200 * time.Millisecond)
+	if f.getState() == stateError {
+		t.Fatal("the task failed while a request could still recover it")
+	}
+	close(release)
+	waitDownload(t, f, file, payload)
+	if n := requestsWhileParked.Load(); n != 0 {
+		t.Fatalf("the exhausted chunk sent %d requests before its peer succeeded, want 0", n)
+	}
+	if n := spentRequests.Load(); n != 3 {
+		t.Fatalf("the second chunk was requested %d times, want 3", n)
+	}
+}
+
+// ---------------------------------------------------------------------------
 // Resume and restart
 // ---------------------------------------------------------------------------
 
-// A restarted download gets a fresh retry budget: the first attempt used its
-// rounds up and failed, and the second attempt meets an outage that clears
-// well within its own rounds.
-func TestFetcher_RestartResetsRetryBudget(t *testing.T) {
+// A restarted download gets fresh allowances: the first attempt used its
+// retries up and failed, and the second attempt meets an outage that clears
+// well within its own retries.
+func TestFetcher_RestartResetsRetryAllowances(t *testing.T) {
 	payload := bytes.Repeat([]byte("0123456789abcdef"), 32*1024)
 	var recoverAt atomic.Int64
 	recoverAt.Store(1<<63 - 1)
@@ -563,7 +732,7 @@ func TestFetcher_RestartResetsRetryBudget(t *testing.T) {
 	if err := waitResult(t, f, 30*time.Second); err == nil || !strings.Contains(err.Error(), "403") {
 		t.Fatalf("first attempt = %v, want terminal 403", err)
 	}
-	// The origin refuses for a moment longer, well within the five rounds (300 ms).
+	// The origin refuses for a moment longer, well within the five retries (300 ms).
 	recoverAt.Store(time.Now().Add(100 * time.Millisecond).UnixNano())
 	if err := f.Start(); err != nil {
 		t.Fatal(err)
@@ -571,11 +740,11 @@ func TestFetcher_RestartResetsRetryBudget(t *testing.T) {
 	waitDownload(t, f, file, payload)
 }
 
-// A paused download resumes with a fresh retry budget. The first attempt uses
-// both of its rounds, and is paused while its last requests wait for response
-// headers; Pause stops them. After the resume, the outage needs both rounds
-// again.
-func TestFetcher_ResumeResetsRetryBudget(t *testing.T) {
+// A paused download resumes with fresh allowances. In the first attempt each
+// connection uses both of its retries, and is paused while its last requests
+// wait for response headers; Pause stops them. After the resume, the outage
+// needs both retries again.
+func TestFetcher_ResumeResetsRetryAllowances(t *testing.T) {
 	payload := testPayload(512 * 1024)
 	var resumed atomic.Bool
 	var requests atomic.Int32
@@ -583,7 +752,7 @@ func TestFetcher_ResumeResetsRetryBudget(t *testing.T) {
 	server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
 		n := requests.Add(1)
 		if !resumed.Load() && n > 4 {
-			// The second round's requests: wait for headers until cancelled.
+			// The second retries: wait for headers until cancelled.
 			held <- struct{}{}
 			<-r.Context().Done()
 			return
@@ -604,7 +773,7 @@ func TestFetcher_ResumeResetsRetryBudget(t *testing.T) {
 	select {
 	case <-held:
 	case <-time.After(10 * time.Second):
-		t.Fatal("the second round did not start")
+		t.Fatal("the second retries did not start")
 	}
 	pauseStart := time.Now()
 	if err := f.Pause(); err != nil {
@@ -779,8 +948,8 @@ func TestFetcher_WaitReturnsWhenAllWorkersExit(t *testing.T) {
 	}
 }
 
-// Resolve follows the same policy: it is retried with growing delays and
-// fails once the rounds are used up.
+// Resolve follows the same rules on its own request sequence: it is retried
+// with growing delays and fails once its allowance is used up.
 func TestFetcher_ResolveRetries(t *testing.T) {
 	t.Run("recovers", func(t *testing.T) {
 		var requests atomic.Int32
@@ -815,7 +984,7 @@ func TestFetcher_ResolveRetries(t *testing.T) {
 			t.Fatalf("Resolve() = %v, want 404", err)
 		}
 		if got := requests.Load(); got != 3 {
-			t.Fatalf("server got %d requests, want 3 (first try and 2 rounds)", got)
+			t.Fatalf("server got %d requests, want 3 (first try and 2 retries)", got)
 		}
 	})
 	t.Run("invalid request is not retried", func(t *testing.T) {
@@ -901,7 +1070,7 @@ func TestFetcher_SequentialFallbackRetries(t *testing.T) {
 			if err := waitResult(t, f, 30*time.Second); err == nil {
 				t.Fatal("Wait() succeeded during an outage")
 			}
-			// Resolve, then the first try and three rounds.
+			// Resolve, then the first try and three retries.
 			if got := requests.Load(); got != 5 {
 				t.Fatalf("server got %d requests, want 5", got)
 			}
@@ -989,7 +1158,7 @@ func hangUntilCancelled(r *gohttp.Request) {
 }
 
 // A request whose headers never arrive times out and, next to a healthy peer,
-// is retried for free: no retry round is allowed here.
+// is retried for free: no retry is allowed on the allowance here.
 func TestFetcher_HeaderTimeoutRetriedWhilePeerHealthy(t *testing.T) {
 	payload := testPayload(512 * 1024)
 	half := int64(len(payload) / 2)
@@ -1032,8 +1201,8 @@ func TestFetcher_HeaderTimeoutRetriedWhilePeerHealthy(t *testing.T) {
 	}
 }
 
-// When every request hangs, each one times out, the retry rounds run, and the
-// task fails with the timeout.
+// When every request hangs, each one times out, every connection spends its
+// allowance, and the task fails with the timeout.
 func TestFetcher_HeaderTimeoutOutageFails(t *testing.T) {
 	var requests atomic.Int32
 	server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
@@ -1052,7 +1221,7 @@ func TestFetcher_HeaderTimeoutOutageFails(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), errResponseHeaderTimeout.Error()) {
 		t.Fatalf("Wait() = %v, want a response header timeout", err)
 	}
-	// Two chunks: the first try and two rounds each.
+	// Two chunks: the first try and two retries each.
 	if got := requests.Load(); got != 6 {
 		t.Fatalf("server got %d requests, want 6", got)
 	}
@@ -1120,7 +1289,7 @@ func TestFetcher_HeaderTimeoutCoversImpersonationRetry(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 // The link expires during the download: the first requests are served, every
-// later one gets 403. The task must fail after its retry rounds, report the
+// later one gets 403. The task must fail after its retries, report the
 // 403, and keep what it has downloaded.
 func TestFetcher_ExpiredLinkFailsAndKeepsData(t *testing.T) {
 	payload := testPayload(4 * 1024 * 1024)
@@ -1248,7 +1417,7 @@ func TestFetcher_ResolveBodyCutRetriesFromStart(t *testing.T) {
 }
 
 // A one-time URL: the Resolve response breaks part way and every later
-// request is refused with 403. The download fails after its retry rounds with
+// request is refused with 403. The download fails after its retries with
 // the 403, without a special case for such URLs.
 func TestFetcher_OneTimeURLFailsAfterRetries(t *testing.T) {
 	payload := testPayload(256 * 1024)
@@ -1279,7 +1448,7 @@ func TestFetcher_OneTimeURLFailsAfterRetries(t *testing.T) {
 	if f.getState() != stateError {
 		t.Fatalf("state = %v, want stateError", f.getState())
 	}
-	// Resolve, then one request per retry round. The first 403 is repeated
+	// Resolve, then one request per retry. The first 403 is repeated
 	// once by the browser impersonation of internal/httpclient, which then
 	// stops trying it for this URL.
 	if got := requests.Load(); got != 4 {

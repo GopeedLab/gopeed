@@ -8,8 +8,8 @@ import (
 
 const testUnit = time.Second
 
-func newTestPolicy(maxRounds int) *retryPolicy {
-	return newRetryPolicy(maxRounds, testUnit, 5*testUnit, nil)
+func newTestPolicy(maxRetries int) *retryPolicy {
+	return newRetryPolicy(maxRetries, testUnit, 5*testUnit, nil)
 }
 
 func mustRetry(t *testing.T, p *retryPolicy, c *connection, want time.Duration) {
@@ -63,14 +63,24 @@ func assertBlocked(t *testing.T, ch <-chan time.Duration) {
 	}
 }
 
-// With nothing else running, every failure is a round of its own: five rounds
-// waiting 1 to 5 seconds, then the policy gives up.
-func TestRetryPolicy_RoundsThenGiveUp(t *testing.T) {
+// allowanceUsed returns how many retries c has charged since the last reset.
+func allowanceUsed(p *retryPolicy, c *connection) int {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if m, ok := p.members[c]; ok {
+		return m.used
+	}
+	return -1
+}
+
+// With nothing else running, a connection retries on its own allowance: five
+// retries waiting 1 to 5 seconds, then the policy gives up.
+func TestRetryPolicy_AllowanceThenGiveUp(t *testing.T) {
 	p := newTestPolicy(5)
 	c := &connection{}
 	p.join(c)
-	for round := 1; round <= 5; round++ {
-		mustRetry(t, p, c, time.Duration(round)*testUnit)
+	for retry := 1; retry <= 5; retry++ {
+		mustRetry(t, p, c, time.Duration(retry)*testUnit)
 	}
 	mustGiveUp(t, p, c)
 	// Exhaustion is final for the attempt.
@@ -88,7 +98,7 @@ func TestRetryPolicy_DelayCap(t *testing.T) {
 	mustGiveUp(t, p, c)
 }
 
-func TestRetryPolicy_ZeroRoundsFailsAtOnce(t *testing.T) {
+func TestRetryPolicy_ZeroRetriesFailsAtOnce(t *testing.T) {
 	p := newTestPolicy(0)
 	c := &connection{}
 	p.join(c)
@@ -105,7 +115,7 @@ func TestRetryPolicy_Unlimited(t *testing.T) {
 }
 
 // While another request downloads, failures of any status are retried without
-// using the budget, with a delay growing per request.
+// using the allowance, with a delay growing per connection.
 func TestRetryPolicy_HealthyPeerKeepsRetrying(t *testing.T) {
 	p := newTestPolicy(1)
 	healthy, failing := &connection{}, &connection{}
@@ -115,118 +125,152 @@ func TestRetryPolicy_HealthyPeerKeepsRetrying(t *testing.T) {
 	for i := 1; i <= 20; i++ {
 		mustRetry(t, p, failing, min(time.Duration(i), 5)*testUnit)
 	}
-	if p.rounds != 0 {
-		t.Fatalf("rounds = %d while a peer is healthy, want 0", p.rounds)
+	if used := allowanceUsed(p, failing); used != 0 {
+		t.Fatalf("allowance used = %d while a peer is healthy, want 0", used)
 	}
 
-	// A completed request no longer counts: the failing one is on its own.
+	// A completed request no longer counts: the failing one is on its own,
+	// with its allowance intact and its backoff kept.
 	p.leave(healthy)
-	mustRetry(t, p, failing, testUnit)
+	mustRetry(t, p, failing, 5*testUnit)
 	mustGiveUp(t, p, failing)
 }
 
-// A request that fails while another one still waits for its response waits
-// too, instead of starting a round or retrying freely: two failing requests
-// must not keep each other going.
-func TestRetryPolicy_WaitsForPendingRequest(t *testing.T) {
+// A connection that fails while another one still waits for its response
+// headers retries at its own pace: it does not wait for the slow one.
+func TestRetryPolicy_FastFailureDoesNotWaitForPending(t *testing.T) {
 	p := newTestPolicy(5)
-	a, b := &connection{}, &connection{}
-	p.join(a)
-	p.join(b)
-
-	aNext := nextAsync(p, a)
-	assertBlocked(t, aNext)
-
-	// b gets a valid response: a is retried freely.
-	p.success(b)
-	if d := waitDelay(t, aNext); d != testUnit {
-		t.Fatalf("delay after the peer recovered = %v, want %v", d, testUnit)
+	fast, slow := &connection{}, &connection{}
+	p.join(fast)
+	p.join(slow) // waits for its headers throughout
+	for retry := 1; retry <= 3; retry++ {
+		mustRetry(t, p, fast, time.Duration(retry)*testUnit)
 	}
-
-	// b fails while a is pending (sleeping before its retry): b waits.
-	bNext := nextAsync(p, b)
-	assertBlocked(t, bNext)
-	// a fails too: every request has failed, one round starts for both.
-	aNext = nextAsync(p, a)
-	if d := waitDelay(t, aNext); d != testUnit {
-		t.Fatalf("a: first round delay = %v, want %v", d, testUnit)
+	if used := allowanceUsed(p, fast); used != 3 {
+		t.Fatalf("fast connection used %d retries, want 3", used)
 	}
-	if d := waitDelay(t, bNext); d != testUnit {
-		t.Fatalf("b: first round delay = %v, want %v", d, testUnit)
-	}
-	if p.rounds != 1 {
-		t.Fatalf("rounds = %d, want one round for two failures", p.rounds)
+	if used := allowanceUsed(p, slow); used != 0 {
+		t.Fatalf("pending connection was charged %d retries, want 0", used)
 	}
 }
 
-// Rounds count once for the task, however many requests fail in them, and
-// each round lets every failed request try once.
-func TestRetryPolicy_RoundsCountedPerTask(t *testing.T) {
-	const members = 4
-	p := newTestPolicy(3)
+// Connections failing at the same time each pay from their own allowance; no
+// shared counter runs down faster because more connections fail.
+func TestRetryPolicy_SimultaneousFailuresChargeOwnAllowance(t *testing.T) {
+	const members = 8
+	p := newTestPolicy(2)
 	conns := make([]*connection, members)
 	for i := range conns {
 		conns[i] = &connection{}
 		p.join(conns[i])
 	}
-	for round := 1; round <= 3; round++ {
+	for retry := 1; retry <= 2; retry++ {
 		results := make([]<-chan time.Duration, members)
 		for i, c := range conns {
 			results[i] = nextAsync(p, c)
 		}
 		for i := range conns {
-			if d := waitDelay(t, results[i]); d != time.Duration(round)*testUnit {
-				t.Fatalf("round %d, conn %d: delay = %v, want %v", round, i, d, time.Duration(round)*testUnit)
+			if d := waitDelay(t, results[i]); d != time.Duration(retry)*testUnit {
+				t.Fatalf("retry %d, conn %d: delay = %v, want %v", retry, i, d, time.Duration(retry)*testUnit)
 			}
 		}
-		if p.rounds != round {
-			t.Fatalf("rounds = %d after round %d", p.rounds, round)
+	}
+	for i, c := range conns {
+		if used := allowanceUsed(p, c); used != 2 {
+			t.Fatalf("conn %d used %d retries after two simultaneous failures, want 2", i, used)
 		}
 	}
+	// All allowances are used up and nothing can recover: everyone gives up.
 	results := make([]<-chan time.Duration, members)
 	for i, c := range conns {
 		results[i] = nextAsync(p, c)
 	}
 	for i := range conns {
 		if d := waitDelay(t, results[i]); d != -1 {
-			t.Fatalf("conn %d retried after %v with the rounds used up", i, d)
+			t.Fatalf("conn %d retried after %v with every allowance used up", i, d)
 		}
 	}
 }
 
-// A valid response from any request resets the whole task: the rounds and
-// their delays start over for every request, not only the one that recovered.
-func TestRetryPolicy_SuccessResetsTask(t *testing.T) {
+// A connection that used up its allowance keeps its chunk while a slower
+// request may still succeed; that success gives it a fresh allowance.
+func TestRetryPolicy_LateSuccessRestoresSpentConnection(t *testing.T) {
+	p := newTestPolicy(1)
+	spent, slow := &connection{}, &connection{}
+	p.join(spent)
+	p.join(slow)
+	mustRetry(t, p, spent, testUnit)
+	spentNext := nextAsync(p, spent)
+	assertBlocked(t, spentNext)
+
+	p.success(slow)
+	if d := waitDelay(t, spentNext); d != 2*testUnit {
+		t.Fatalf("restored connection's delay = %v, want its own backoff %v", d, 2*testUnit)
+	}
+
+	// The peer completes; the restored connection has its whole allowance again.
+	p.leave(slow)
+	if used := allowanceUsed(p, spent); used != 0 {
+		t.Fatalf("allowance used after the reset = %d, want 0", used)
+	}
+	mustRetry(t, p, spent, 3*testUnit)
+	mustGiveUp(t, p, spent)
+}
+
+// Any valid response resets the allowance of every unfinished connection, not
+// only the one that recovered.
+func TestRetryPolicy_SuccessResetsEveryAllowance(t *testing.T) {
 	p := newTestPolicy(3)
+	a, b, c := &connection{}, &connection{}, &connection{}
+	for _, conn := range []*connection{a, b, c} {
+		p.join(conn)
+	}
+	mustRetry(t, p, a, testUnit)
+	mustRetry(t, p, a, 2*testUnit)
+	mustRetry(t, p, b, testUnit)
+	p.success(c)
+	for _, conn := range []*connection{a, b} {
+		if used := allowanceUsed(p, conn); used != 0 {
+			t.Fatalf("allowance used after a peer's success = %d, want 0", used)
+		}
+	}
+}
+
+// The task fails only when every remaining connection has used up its
+// allowance and no request is healthy or in flight.
+func TestRetryPolicy_FailsWhenNothingCanRecover(t *testing.T) {
+	p := newTestPolicy(1)
 	a, b := &connection{}, &connection{}
 	p.join(a)
 	p.join(b)
-	for round := 1; round <= 2; round++ {
-		aNext, bNext := nextAsync(p, a), nextAsync(p, b)
-		waitDelay(t, aNext)
-		waitDelay(t, bNext)
-	}
-	if p.rounds != 2 {
-		t.Fatalf("rounds = %d, want 2", p.rounds)
-	}
+	mustRetry(t, p, a, testUnit)
+	aNext := nextAsync(p, a)
+	assertBlocked(t, aNext) // b is still in flight
 
-	// a recovers in the third round; b failed in it.
-	bNext := nextAsync(p, b)
-	assertBlocked(t, bNext)
-	p.success(a)
-	if d := waitDelay(t, bNext); d != testUnit {
-		t.Fatalf("b's delay next to a healthy peer = %v, want the reset %v", d, testUnit)
+	mustRetry(t, p, b, testUnit) // b's own allowance
+	assertBlocked(t, aNext)
+	bNext := nextAsync(p, b) // b is spent too: nothing can recover
+	if d := waitDelay(t, bNext); d != -1 {
+		t.Fatalf("b retried after %v with nothing left to recover", d)
 	}
-	if p.rounds != 0 {
-		t.Fatalf("rounds = %d after a valid response, want 0", p.rounds)
+	if d := waitDelay(t, aNext); d != -1 {
+		t.Fatalf("a retried after %v with nothing left to recover", d)
 	}
+}
 
-	// a completes, b keeps failing: it gets a fresh allowance of three rounds.
-	p.leave(a)
-	for round := 1; round <= 3; round++ {
-		mustRetry(t, p, b, time.Duration(round)*testUnit)
+// A spent connection also gives up when the last request that could have
+// recovered it leaves without succeeding.
+func TestRetryPolicy_LastHopeLeaves(t *testing.T) {
+	p := newTestPolicy(0)
+	a, b := &connection{}, &connection{}
+	p.join(a)
+	p.join(b)
+	aNext := nextAsync(p, a)
+	assertBlocked(t, aNext)
+	p.leave(b)
+	if d := waitDelay(t, aNext); d != -1 {
+		t.Fatalf("a retried after %v once nothing could recover it", d)
 	}
-	mustGiveUp(t, p, b)
 }
 
 func TestRetryPolicy_StreamingCountsAsHealthy(t *testing.T) {
@@ -238,12 +282,12 @@ func TestRetryPolicy_StreamingCountsAsHealthy(t *testing.T) {
 		mustRetry(t, p, c, min(time.Duration(i), 5)*testUnit)
 	}
 	streaming = false
-	mustRetry(t, p, c, testUnit)
+	mustRetry(t, p, c, 5*testUnit)
 	mustGiveUp(t, p, c)
 }
 
 func TestRetryPolicy_CancelWhileWaiting(t *testing.T) {
-	p := newTestPolicy(5)
+	p := newTestPolicy(0)
 	a, b := &connection{}, &connection{}
 	p.join(a)
 	p.join(b)
@@ -255,7 +299,7 @@ func TestRetryPolicy_CancelWhileWaiting(t *testing.T) {
 	}()
 	select {
 	case <-done:
-		t.Fatal("next() returned while the peer was pending")
+		t.Fatal("next() returned while the peer could still recover it")
 	case <-time.After(50 * time.Millisecond):
 	}
 	cancel()
@@ -267,6 +311,56 @@ func TestRetryPolicy_CancelWhileWaiting(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("next() did not return after cancellation")
 	}
+}
+
+// Failures charging allowances race with successes resetting them; run under
+// -race. While successes keep coming, no connection may give up.
+func TestRetryPolicy_ConcurrentFailuresAndSuccesses(t *testing.T) {
+	const members, rounds = 8, 200
+	p := newTestPolicy(2)
+	conns := make([]*connection, members)
+	for i := range conns {
+		conns[i] = &connection{}
+		p.join(conns[i])
+	}
+	healthy := &connection{}
+	p.join(healthy)
+	stop := make(chan struct{})
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for {
+			select {
+			case <-stop:
+				return
+			default:
+				p.success(healthy)
+				p.attempt(healthy)
+			}
+		}
+	}()
+	errs := make(chan string, members)
+	for _, c := range conns {
+		go func(c *connection) {
+			for i := 0; i < rounds; i++ {
+				if _, ok := p.next(context.Background(), c); !ok {
+					errs <- "a connection gave up while a peer kept succeeding"
+					return
+				}
+				if i%3 == 0 {
+					p.success(c)
+				}
+			}
+			errs <- ""
+		}(c)
+	}
+	for range conns {
+		if msg := <-errs; msg != "" {
+			t.Fatal(msg)
+		}
+	}
+	close(stop)
+	<-done
 }
 
 func TestSleepContext(t *testing.T) {
@@ -301,8 +395,8 @@ func TestFetcher_NewRetryPolicyFromConfig(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := (&Fetcher{config: tt.cfg}).newRetryPolicy(nil)
-			if p.maxRounds != tt.wantMax || p.maxDelay != tt.wantDelay || p.unit != time.Second {
-				t.Fatalf("policy = {rounds %d, max delay %v, unit %v}, want {%d, %v, 1s}", p.maxRounds, p.maxDelay, p.unit, tt.wantMax, tt.wantDelay)
+			if p.maxRetries != tt.wantMax || p.maxDelay != tt.wantDelay || p.unit != time.Second {
+				t.Fatalf("policy = {retries %d, max delay %v, unit %v}, want {%d, %v, 1s}", p.maxRetries, p.maxDelay, p.unit, tt.wantMax, tt.wantDelay)
 			}
 		})
 	}

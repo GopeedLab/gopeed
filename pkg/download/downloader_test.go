@@ -402,7 +402,7 @@ func TestDownloader_InternalBlobBypassesGlobalProxy(t *testing.T) {
 	}
 }
 
-// limitHTTPRetries gives HTTP downloads a single retry round, for tests that
+// limitHTTPRetries gives HTTP connections a single retry each, for tests that
 // wait for a failing request to become a task error.
 func limitHTTPRetries(t *testing.T, d *Downloader) {
 	t.Helper()

@@ -110,7 +110,7 @@ func TestFetcher_SizeHintPreservesHTTPIntegrity(t *testing.T) {
 				var requests atomic.Int64
 				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 					// Only the first (Resolve) response is broken: one that is
-					// always valid but short would reset the retry budget for good.
+					// always valid but short would reset the retry allowances for good.
 					if broken && requests.Add(1) > 1 {
 						w.WriteHeader(http.StatusServiceUnavailable)
 						return

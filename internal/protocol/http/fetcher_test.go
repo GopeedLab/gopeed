@@ -1646,7 +1646,7 @@ func TestFetcher_UnknownSizeRangeRemainsOpenEndedAfterPause(t *testing.T) {
 
 // An unknown-size Resolve response that ends unexpectedly is not taken as
 // complete. The download requests the resource again under the retry policy
-// and, as the origin keeps failing, fails after its retry rounds.
+// and, as the origin keeps failing, fails after its retries.
 func TestFetcher_UnknownSizeResolveReadErrorFailsAfterRetries(t *testing.T) {
 	var requests atomic.Int32
 	server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, _ *gohttp.Request) {
@@ -1693,7 +1693,7 @@ func TestFetcher_UnknownSizeResolveReadErrorFailsAfterRetries(t *testing.T) {
 	if got := f.getState(); got != stateError {
 		t.Fatalf("fetcher state = %v, want %v", got, stateError)
 	}
-	// Resolve, then one request per retry round.
+	// Resolve, then one request per retry.
 	if got := requests.Load(); got != 3 {
 		t.Fatalf("server got %d requests, want 3", got)
 	}
@@ -2757,8 +2757,8 @@ func TestFetcher_RetryAfterError(t *testing.T) {
 	os.Remove(test.DownloadFile)
 
 	// Server fails first 3 requests (after resolve), then recovers
-	// With 1 connection and 2 retry rounds:
-	// - First Start(): requests 2, 3, 4 → all fail (first try and 2 rounds) → returns error
+	// With 1 connection and 2 retries:
+	// - First Start(): requests 2, 3, 4 → all fail (first try and 2 retries) → returns error
 	// - Second Start(): request 5 → succeeds (server recovered after 3 failures)
 	listener := test.StartTestFailThenRecoverServer(3)
 	defer listener.Close()
@@ -3384,7 +3384,7 @@ func downloadWithProxy(httpListener net.Listener, proxyListener net.Listener, t 
 
 // buildFetcher returns a fetcher with the default configuration. Its retry
 // delays are scaled down from seconds to 10 ms, so that tests meeting failing
-// requests do not wait for real retry rounds.
+// requests do not wait for real retry delays.
 func buildFetcher() *Fetcher {
 	fm := new(FetcherManager)
 	fetcher := fm.Build()
