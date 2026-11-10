@@ -174,6 +174,15 @@ func (e *Engine) Close() {
 	e.closeOnce.Do(func() {
 		close(e.done)
 		e.Runtime.Interrupt(ErrClosed)
+		// Wait for interrupted JS to leave the loop, then allow cleanup hooks
+		// to execute their JS cancellation callbacks before terminating it.
+		cleared := make(chan struct{})
+		if e.loop.RunOnLoop(func(runtime *goja.Runtime) {
+			runtime.ClearInterrupt()
+			close(cleared)
+		}) {
+			<-cleared
+		}
 		e.cleanupMu.Lock()
 		cleanups := e.cleanups
 		e.cleanups = nil
