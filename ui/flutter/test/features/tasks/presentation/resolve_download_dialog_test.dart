@@ -64,6 +64,38 @@ Future<void> open(
 }
 
 void main() {
+  testWidgets('cancel releases a ready preview resource', (tester) async {
+    final released = <String>[];
+    final registry = CapabilityRegistry(createAppCapabilityCodecs())
+      ..bind(GopeedMethods.resolve, (_) => resolved('ready-rid'))
+      ..bind(const RpcMethod<String, RpcUnit>('gopeed.releaseResolve'), (id) {
+        released.add(id);
+        return const RpcUnit();
+      });
+    await open(tester, [pending('torrent')], registry);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('resolve-cancel-button')));
+    await tester.pumpAndSettle();
+    expect(released, contains('ready-rid'));
+  });
+
+  testWidgets('cancel releases a late preview result', (tester) async {
+    final response = Completer<ResolveResult>();
+    final released = <String>[];
+    final registry = CapabilityRegistry(createAppCapabilityCodecs())
+      ..bind(GopeedMethods.resolve, (_) => response.future)
+      ..bind(const RpcMethod<String, RpcUnit>('gopeed.releaseResolve'), (id) {
+        released.add(id);
+        return const RpcUnit();
+      });
+    await open(tester, [pending('torrent')], registry);
+    await tester.tap(find.byKey(const ValueKey('resolve-close-button')));
+    await tester.pumpAndSettle();
+    response.complete(resolved('late-rid'));
+    await tester.pumpAndSettle();
+    expect(released, contains('late-rid'));
+  });
+
   for (final width in [390.0, 700.0, 1024.0]) {
     testWidgets('file list fits and exposes ready selections at width $width', (tester) async {
       final registry = CapabilityRegistry(createAppCapabilityCodecs())
