@@ -3,6 +3,7 @@ package download
 import (
 	"encoding/json"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/GopeedLab/gopeed/internal/controller"
@@ -46,6 +47,14 @@ type CreateTaskBatchResult struct {
 // Task represents a download unit.
 // Options flow path:
 // REST Request (model.CreateTask/ResolveTask) -> pkg/download Downloader -> Task.Meta.Opts (base.Options) -> Fetcher.Resolve/Start (e.g. internal/protocol/http/fetcher.go)
+// taskLifetime is shared with preparation candidates. Its mutex serializes
+// physical starts and persistence with deletion; the tombstone also invalidates
+// work that is currently outside that mutex (for example Resolve).
+type taskLifetime struct {
+	mu      sync.Mutex
+	deleted atomic.Bool
+}
+
 type Task struct {
 	ID       string               `json:"id"`
 	Protocol string               `json:"protocol"`
@@ -87,6 +96,7 @@ type Task struct {
 	blobRefLock    *sync.Mutex
 	blobURL        string
 	runGeneration  uint64
+	lifetime       *taskLifetime
 	speedArr       []int64
 	uploadSpeedArr []int64
 }
@@ -123,6 +133,7 @@ func NewTask() *Task {
 	}
 	return &Task{
 		ID:        id,
+		lifetime:  &taskLifetime{},
 		Status:    base.DownloadStatusReady,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
