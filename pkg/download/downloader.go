@@ -2405,7 +2405,9 @@ func (d *Downloader) doStart(task *Task) (err error) {
 				return err
 			}
 		}
-		d.triggerOnStart(task)
+		if err := d.triggerOnStart(task); err != nil {
+			return err
+		}
 		if !d.taskIsRunningGeneration(task, generation) {
 			return nil
 		}

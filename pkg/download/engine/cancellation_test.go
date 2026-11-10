@@ -1,6 +1,8 @@
 package engine
 
 import (
+	"context"
+	"errors"
 	"github.com/dop251/goja"
 	"testing"
 	"time"
@@ -30,5 +32,16 @@ func TestCloseUnblocksPendingPromise(t *testing.T) {
 		}
 	case <-time.After(300 * time.Millisecond):
 		t.Fatal("Engine.Close left the Promise waiter blocked")
+	}
+}
+
+func TestExecutionDeadlineInterruptsSynchronousScript(t *testing.T) {
+	e := NewEngine(nil)
+	defer e.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
+	defer cancel()
+	_, err := e.RunStringContext(ctx, `while (true) {}`)
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("got %v, want deadline exceeded", err)
 	}
 }

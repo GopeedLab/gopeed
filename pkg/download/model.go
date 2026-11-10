@@ -232,12 +232,15 @@ type DownloaderConfig struct {
 	Controller    *controller.Controller
 	FetchManagers []fetcher.FetcherManager
 
-	RefreshInterval   int // RefreshInterval time duration to refresh task progress(ms)
-	Storage           Storage
-	StorageDir        string
-	TempDir           string
-	WhiteDownloadDirs []string
-	WebViewProvider   enginewebview.Provider
+	// ExtensionEventTimeout bounds one script load and its awaited event handler.
+	// Zero uses one minute. Embedders may increase it for long-running handlers.
+	ExtensionEventTimeout time.Duration
+	RefreshInterval       int // RefreshInterval time duration to refresh task progress(ms)
+	Storage               Storage
+	StorageDir            string
+	TempDir               string
+	WhiteDownloadDirs     []string
+	WebViewProvider       enginewebview.Provider
 
 	ProductionMode bool
 
@@ -259,6 +262,9 @@ func (cfg *DownloaderConfig) Init() *DownloaderConfig {
 			new(bt.FetcherManager),
 			new(ed2k.FetcherManager),
 		}
+	}
+	if cfg.ExtensionEventTimeout <= 0 {
+		cfg.ExtensionEventTimeout = time.Minute
 	}
 	if cfg.RefreshInterval == 0 {
 		cfg.RefreshInterval = 350

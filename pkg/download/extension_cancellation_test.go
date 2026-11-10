@@ -122,3 +122,28 @@ func TestOnErrorCancellationReleasesTaskAPIs(t *testing.T) {
 		}
 	}
 }
+
+func TestExtensionEventDeadlineRejectsUnsettledResolve(t *testing.T) {
+	d := newCancellationDownloader(t)
+	defer d.Close()
+	d.cfg.ExtensionEventTimeout = 30 * time.Millisecond
+	installCancellationExtension(t, d, "onResolve", `gopeed.events.onResolve(async ctx=>{await new Promise(()=>{});});`)
+	_, err := d.Resolve(&base.Request{URL: "https://example.com/timeout"})
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("got %v, want event deadline exceeded", err)
+	}
+}
+func TestExtensionStartDeadlinePreventsFetcherStart(t *testing.T) {
+	d := newCancellationDownloader(t)
+	defer d.Close()
+	d.cfg.ExtensionEventTimeout = 30 * time.Millisecond
+	installCancellationExtension(t, d, "onStart", `gopeed.events.onStart(async ctx=>{await new Promise(()=>{});});`)
+	id, err := d.CreateDirect(&base.Request{URL: "generation://example.com/timeout"}, &base.Options{Path: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitForTaskStatus(t, d, id, base.DownloadStatusError, 2*time.Second)
+	if starts := d.cfg.FetchManagers[0].(*generationTestManager).starts.Load(); starts != 0 {
+		t.Fatalf("timed out onStart still started fetcher %d times", starts)
+	}
+}

@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	_ "embed"
 	"errors"
 	"fmt"
@@ -26,6 +27,7 @@ var polyfillScript string
 
 type Engine struct {
 	loop *eventloop.EventLoop
+	done chan struct{}
 
 	closeOnce sync.Once
 	cleanupMu sync.Mutex
@@ -39,7 +41,13 @@ type JSFunction func(goja.FunctionCall) goja.Value
 // RunString executes the script and returns the go type value
 // if script result is promise, it will be resolved
 func (e *Engine) RunString(script string) (value any, err error) {
-	return e.runOnLoop(func(runtime *goja.Runtime) (goja.Value, error) {
+	return e.RunStringContext(context.Background(), script)
+}
+
+// RunStringContext bounds an execution, including awaited promises. Cancelling
+// an execution closes its engine so outstanding operations cannot outlive it.
+func (e *Engine) RunStringContext(ctx context.Context, script string) (any, error) {
+	return e.runOnLoopContext(ctx, func(runtime *goja.Runtime) (goja.Value, error) {
 		return runtime.RunString(script)
 	})
 }
@@ -47,7 +55,11 @@ func (e *Engine) RunString(script string) (value any, err error) {
 // CallFunction calls the function and returns the go type value
 // if function result is promise, it will be resolved
 func (e *Engine) CallFunction(fn any, args ...any) (value any, err error) {
-	return e.runOnLoop(func(runtime *goja.Runtime) (goja.Value, error) {
+	return e.CallFunctionContext(context.Background(), fn, args...)
+}
+
+func (e *Engine) CallFunctionContext(ctx context.Context, fn any, args ...any) (value any, err error) {
+	return e.runOnLoopContext(ctx, func(runtime *goja.Runtime) (goja.Value, error) {
 		var jsArgs []goja.Value
 		for _, arg := range args {
 			jsArgs = append(jsArgs, runtime.ToValue(arg))
@@ -69,6 +81,20 @@ func (e *Engine) CallFunction(fn any, args ...any) (value any, err error) {
 }
 
 func (e *Engine) runOnLoop(fn func(runtime *goja.Runtime) (goja.Value, error)) (any, error) {
+	return e.runOnLoopContext(context.Background(), fn)
+}
+
+var ErrClosed = errors.New("engine closed")
+
+func (e *Engine) runOnLoopContext(ctx context.Context, fn func(runtime *goja.Runtime) (goja.Value, error)) (any, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	select {
+	case <-e.done:
+		return nil, ErrClosed
+	default:
+	}
 	type result struct {
 		value any
 		err   error
@@ -132,15 +158,22 @@ func (e *Engine) runOnLoop(fn func(runtime *goja.Runtime) (goja.Value, error)) (
 	if !ok {
 		return nil, errors.New("engine loop terminated")
 	}
-	res := <-ch
-	if res.err != nil {
-		return nil, res.err
+	select {
+	case res := <-ch:
+		return res.value, res.err
+	case <-ctx.Done():
+		// Interrupt synchronous JS too; a select alone only stops Promise waiting.
+		e.Close()
+		return nil, ctx.Err()
+	case <-e.done:
+		return nil, ErrClosed
 	}
-	return res.value, nil
 }
 
 func (e *Engine) Close() {
 	e.closeOnce.Do(func() {
+		close(e.done)
+		e.Runtime.Interrupt(ErrClosed)
 		e.cleanupMu.Lock()
 		cleanups := e.cleanups
 		e.cleanups = nil
@@ -177,6 +210,7 @@ func NewEngine(cfg *Config) *Engine {
 	loop := eventloop.NewEventLoop()
 	engine := &Engine{
 		loop: loop,
+		done: make(chan struct{}),
 	}
 	loop.Start()
 	done := make(chan struct{})
