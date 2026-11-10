@@ -46,6 +46,10 @@ class AppDeepLinkController extends AsyncNotifier<AppDeepLinkState> {
     await ref.read(appRuntimeControllerProvider.future);
     _started = true;
     final appLinks = AppLinks();
+    // The stream delivers the cold-start link to its first listener as well
+    // as later links, so the initial link must not be read again through
+    // getInitialLink(), that would handle it twice (for example two create
+    // task windows and duplicate tasks for one magnet link).
     _subscription = appLinks.uriLinkStream.listen((uri) {
       unawaited(_handleUri(uri));
     });
@@ -65,12 +69,6 @@ class AppDeepLinkController extends AsyncNotifier<AppDeepLinkState> {
       _subscription?.cancel();
       _sharedMediaSubscription?.cancel();
     });
-    try {
-      final initial = await appLinks.getInitialLink();
-      if (initial != null) {
-        await _handleUri(initial);
-      }
-    } catch (_) {}
     return const AppDeepLinkState(started: true);
   }
 
