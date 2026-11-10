@@ -1550,12 +1550,7 @@ func (d *Downloader) doDelete(task *Task, force bool) (err error) {
 	defer task.lifetime.mu.Unlock()
 	defer func() {
 		if err != nil {
-			// Keep failed deletions recoverable, but never revive the invalidated run.
-			task.statusLock.Lock()
-			if task.Status == base.DownloadStatusRunning {
-				task.updateStatus(base.DownloadStatusPause)
-			}
-			task.statusLock.Unlock()
+			// Keep failed deletions recoverable without validating the old run.
 			task.lifetime.deleted.Store(false)
 		}
 	}()
