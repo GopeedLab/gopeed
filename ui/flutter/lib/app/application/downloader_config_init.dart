@@ -19,7 +19,7 @@ Future<DownloaderConfig> loadDownloaderConfig({
     config = await load();
   } catch (error, stackTrace) {
     onLoadError?.call(error, stackTrace);
-    config = DownloaderConfig();
+    config = DownloaderConfig()..extra.analyticsEnabled = false;
     loaded = false;
   }
   final changed = await initDownloaderConfig(config, defaultDownloadDir: defaultDownloadDir);
