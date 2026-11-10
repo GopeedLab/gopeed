@@ -208,7 +208,7 @@
   "categoryName": "Nombre de categoría",
   "categoryPath": "Ruta de categoría",
   "autoCategorizeByExtension": "Categorizar automáticamente por tipo de archivo",
-  "autoCategorizeByExtensionDescription": "Las descargas se guardan automáticamente en la carpeta de categoría según la extensión del archivo al usar la carpeta de descargas predeterminada.",
+  "autoCategorizeByExtensionDescription": "Las descargas se guardan automáticamente en la carpeta de categoría según la extensión del archivo al usar la carpeta de descargas predeterminada",
   "categoryExtensions": "Extensiones de archivo",
   "categoryExtensionsUsageHint": "Separa las extensiones con comas o espacios y pulsa Intro.",
   "categoryExtensionsEmptyHint": "Sin extensiones, los archivos no se guardarán automáticamente en esta categoría.",

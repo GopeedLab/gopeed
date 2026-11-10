@@ -208,7 +208,7 @@
   "categoryName": "分類名稱",
   "categoryPath": "分類路徑",
   "autoCategorizeByExtension": "按檔案類型自動分類",
-  "autoCategorizeByExtensionDescription": "儲存至預設下載目錄時，根據檔案副檔名自動歸入對應分類資料夾。",
+  "autoCategorizeByExtensionDescription": "儲存至預設下載目錄時，根據檔案副檔名自動歸入對應分類資料夾",
   "categoryExtensions": "檔案副檔名",
   "categoryExtensionsUsageHint": "支援逗號/空白分隔後綴，按回車新增。",
   "categoryExtensionsEmptyHint": "未設定後綴，檔案不會自動歸入此分類。",

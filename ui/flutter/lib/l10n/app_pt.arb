@@ -208,7 +208,7 @@
   "categoryName": "Nome da Categoria",
   "categoryPath": "Caminho da Categoria",
   "autoCategorizeByExtension": "Categorizar automaticamente por tipo de arquivo",
-  "autoCategorizeByExtensionDescription": "Envia os downloads para a pasta da categoria com base na extensão ao salvar na pasta de download padrão.",
+  "autoCategorizeByExtensionDescription": "Envia os downloads para a pasta da categoria com base na extensão ao salvar na pasta de download padrão",
   "categoryExtensions": "Extensões de arquivo",
   "categoryExtensionsUsageHint": "Separe as extensões com vírgulas ou espaços e prima Enter.",
   "categoryExtensionsEmptyHint": "Sem extensões, os ficheiros não serão guardados aqui automaticamente.",
