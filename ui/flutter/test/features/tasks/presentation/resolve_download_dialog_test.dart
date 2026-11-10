@@ -96,6 +96,49 @@ void main() {
     expect(released, contains('late-rid'));
   });
 
+  testWidgets('cancel sends the request ID before a preview completes', (tester) async {
+    final response = Completer<ResolveResult>();
+    final released = <String>[];
+    String? requestedID;
+    final registry = CapabilityRegistry(createAppCapabilityCodecs())
+      ..bind(GopeedMethods.resolve, (request) {
+        requestedID = request.id;
+        return response.future;
+      })
+      ..bind(GopeedMethods.releaseResolve, (id) {
+        released.add(id);
+        return const RpcUnit();
+      });
+    await open(tester, [pending('torrent')], registry);
+    await tester.tap(find.byKey(const ValueKey('resolve-close-button')));
+    await tester.pumpAndSettle();
+    expect(requestedID, isNotEmpty);
+    expect(released, contains(requestedID));
+    response.complete(
+      ResolveResult(
+        id: requestedID!,
+        res: Resource(files: [FileInfo(name: 'late.txt')]),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(released.where((id) => id == requestedID), hasLength(2));
+  });
+
+  testWidgets('successful creation keeps task-owned resources', (tester) async {
+    final released = <String>[];
+    final registry = CapabilityRegistry(createAppCapabilityCodecs())
+      ..bind(GopeedMethods.resolve, (_) => resolved('task-owned'))
+      ..bind(GopeedMethods.createTaskBatch, (_) => CreateTaskBatchResult(taskIds: ['task']))
+      ..bind(GopeedMethods.releaseResolve, (id) {
+        released.add(id);
+        return const RpcUnit();
+      });
+    await open(tester, [pending('torrent')], registry);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('resolve-create-button')));
+    await tester.pumpAndSettle();
+    expect(released, isEmpty);
+  });
   for (final width in [390.0, 700.0, 1024.0]) {
     testWidgets('file list fits and exposes ready selections at width $width', (tester) async {
       final registry = CapabilityRegistry(createAppCapabilityCodecs())

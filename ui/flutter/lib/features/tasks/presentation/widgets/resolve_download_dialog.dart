@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:flutter/widgets.dart' as flutter show Flexible;
 
@@ -49,6 +51,7 @@ class _ResolveDownloadsDialogState extends State<_ResolveDownloadsDialog> {
   @override
   void dispose() {
     _cancelled = true;
+    _releasePreviews();
     super.dispose();
   }
 
@@ -64,8 +67,15 @@ class _ResolveDownloadsDialogState extends State<_ResolveDownloadsDialog> {
     }
   }
 
+  void _releasePreviews() {
+    for (final source in widget.sources) {
+      unawaited(source.cancel(widget.service));
+    }
+  }
+
   void _cancel() {
     _cancelled = true;
+    _releasePreviews();
     closeOverlay(context, false);
   }
 
