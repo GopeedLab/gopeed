@@ -1,4 +1,6 @@
 {
+  "downloadProgressWindow": "İndirme ilerleme penceresi",
+  "downloadProgressWindowDescription": "Yalnızca tarayıcıdan yakalanan indirmeler için otomatik olarak bir ilerleme penceresi aç. Pencereyi kapatmak indirmeyi durdurmaz.",
   "@@locale": "tr",
   "label": "Türkçe",
   "error": "Hata",
@@ -480,5 +482,10 @@
   "trackerSubscriptionTrackerCount": "Tracker sayısı",
   "trackerSubscriptionNotUpdated": "Henüz güncellenmedi",
   "actions": "İşlemler",
-  "taskGroupDeleteImpact": "{taskCount} indirmeyi ve {fileCount} dosyayı etkiler."
+  "taskGroupDeleteImpact": "{taskCount} indirmeyi ve {fileCount} dosyayı etkiler.",
+  "downloadSpeedHistory": "İndirme hızı",
+  "downloadRecentMinute": "Son 60 saniye",
+  "averageSpeed": "Ortalama hız",
+  "runInBackground": "Arka plan",
+  "downloadBackgroundHint": "Bu pencere kapatıldığında indirme devam eder."
 }

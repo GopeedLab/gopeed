@@ -1,4 +1,6 @@
 {
+  "downloadProgressWindow": "பதிவிறக்க முன்னேற்றச் சாளரம்",
+  "downloadProgressWindowDescription": "உலாவியிலிருந்து பெறப்பட்ட பதிவிறக்கங்களுக்கு மட்டும் முன்னேற்றச் சாளரத்தைத் தானாகத் திறக்கவும். அதை மூடுவது பதிவிறக்கத்தை நிறுத்தாது.",
   "@@locale": "ta",
   "label": "தமிழ்",
   "error": "பிழை",
@@ -480,5 +482,10 @@
   "trackerSubscriptionTrackerCount": "டிராக்கர் எண்ணிக்கை",
   "trackerSubscriptionNotUpdated": "இன்னும் புதுப்பிக்கப்படவில்லை",
   "actions": "செயல்கள்",
-  "taskGroupDeleteImpact": "{taskCount} பதிவிறக்கங்களையும் {fileCount} கோப்புகளையும் பாதிக்கும்."
+  "taskGroupDeleteImpact": "{taskCount} பதிவிறக்கங்களையும் {fileCount} கோப்புகளையும் பாதிக்கும்.",
+  "downloadSpeedHistory": "பதிவிறக்க வேகம்",
+  "downloadRecentMinute": "கடந்த 60 விநாடிகள்",
+  "averageSpeed": "சராசரி வேகம்",
+  "runInBackground": "பின்னணியில்",
+  "downloadBackgroundHint": "இந்தச் சாளரத்தை மூடிய பிறகும் பதிவிறக்கம் தொடரும்."
 }

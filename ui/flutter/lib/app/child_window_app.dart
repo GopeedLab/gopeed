@@ -81,7 +81,10 @@ class _ChildWindowAppState extends State<ChildWindowApp> with WidgetsBindingObse
 
   Widget _buildPage(BuildContext context) {
     return switch (widget.payload.type) {
-      AppWindowType.createTask => AppWindowContent.build(widget.payload, windowController: widget.session.controller),
+      AppWindowType.createTask || AppWindowType.downloadProgress => AppWindowContent.build(
+        widget.payload,
+        windowController: widget.session.controller,
+      ),
       _ => shad.Scaffold(child: Center(child: Text(context.l10n.unsupportedWindowPayload))),
     };
   }

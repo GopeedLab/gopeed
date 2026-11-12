@@ -395,6 +395,23 @@ func TestBTPauseAndResume(t *testing.T) {
 	fixture.AssertFiles(t, dir)
 }
 
+func TestBTCloseReleasesDownloadFiles(t *testing.T) {
+	fixture := newBTFixture(t, map[string][]byte{"": btPayload(512*1024, "delete")}, 64*1024)
+	f := btDownloadFetcher(t, nil)
+	dir := t.TempDir()
+	btResolve(t, f, fixture.Magnet)
+	f.Meta().Opts = &base.Options{Path: dir}
+	btStart(t, f)
+	btAwaitPartial(t, f)
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
+	// Deleting a task must release its files without closing the shared client.
+	if err := os.RemoveAll(dir); err != nil {
+		t.Fatal(err)
+	}
+}
+
 type btFetcherCheckpoint struct {
 	Meta *fetcher.FetcherMeta `json:"meta"`
 	Data json.RawMessage      `json:"data"`

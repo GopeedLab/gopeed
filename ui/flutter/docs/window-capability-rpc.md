@@ -169,3 +169,28 @@ Create-task content reports cancellation or completion through `onClose` when
 hosted in-app. Cancellation pops only the child surface. Completion selects the
 downloading list and returns home. The route payload uses a serializable string
 so browser history can restore a modal and its initial request.
+
+Download progress uses `AppWindowPayload.downloadProgress(taskId)` through the
+same destination registry, native window launcher and routed fallback. Its
+payload contains only the task ID. The page reuses `TasksController` and
+`TaskStatisticsTab`; polling, pause/resume and confirmed cancellation use the
+existing Gopeed capabilities in either window. Closing or backgrounding the
+window does not change the task. Completed tasks expose native file actions.
+The task context menu can open or reopen a status window independently of the
+automatic-opening setting, including for multiple different tasks.
+
+Each status window observes successful task snapshots to collect a timestamped
+speed history, beginning when the window opens. The full observed time range
+fills the chart width and compresses as samples arrive. Completion freezes the
+history; subsequent polling never appends zero-speed samples. API outages leave
+gaps, and paused/waiting/completed tasks report
+zero instantaneous download speed. Average speed uses downloaded bytes and
+backend active download duration, not the chart samples. No additional backend
+poller, simulated data, or child-owned runtime is introduced.
+
+The main shell owns `DownloadProgressWindowController`. On desktop it observes
+successful task-list snapshots and opens one window per new top-level task
+(one per group). The first snapshot establishes a baseline; existing tasks and
+subsequent status changes do not open windows. The persisted
+`extra.showDownloadProgressWindow` preference defaults to false and controls
+future automatic openings without closing windows already in use.

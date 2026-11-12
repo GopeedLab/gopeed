@@ -1,4 +1,6 @@
 {
+  "downloadProgressWindow": "Окно хода загрузки",
+  "downloadProgressWindowDescription": "Автоматически открывать окно прогресса только для загрузок, перехваченных из браузера. Закрытие окна не останавливает загрузку.",
   "@@locale": "ru",
   "label": "Русский",
   "error": "Ошибка",
@@ -480,5 +482,10 @@
   "trackerSubscriptionTrackerCount": "Число трекеров",
   "trackerSubscriptionNotUpdated": "Ещё не обновлено",
   "actions": "Действия",
-  "taskGroupDeleteImpact": "Затронет {taskCount} загрузок и {fileCount} файлов."
+  "taskGroupDeleteImpact": "Затронет {taskCount} загрузок и {fileCount} файлов.",
+  "downloadSpeedHistory": "Скорость загрузки",
+  "downloadRecentMinute": "Последние 60 секунд",
+  "averageSpeed": "Средняя скорость",
+  "runInBackground": "В фоне",
+  "downloadBackgroundHint": "Загрузка продолжится после закрытия окна."
 }

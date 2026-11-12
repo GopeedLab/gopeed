@@ -371,6 +371,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     ),
                   if (Util.isDesktop())
                     SettingsItem(
+                      title: context.l10n.downloadProgressWindow,
+                      subtitle: context.l10n.downloadProgressWindowDescription,
+                      child: shad.Switch(
+                        key: const ValueKey('download-progress-window-switch'),
+                        value: config.extra.showDownloadProgressWindow,
+                        onChanged: (value) => _mutateConfig((next) => next.extra.showDownloadProgressWindow = value),
+                      ),
+                    ),
+                  if (Util.isDesktop())
+                    SettingsItem(
                       title: context.l10n.desktopNotification,
                       subtitle: context.l10n.desktopNotificationDescription,
                       child: shad.Switch(

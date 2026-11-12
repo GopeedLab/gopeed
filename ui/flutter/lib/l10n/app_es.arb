@@ -1,4 +1,6 @@
 {
+  "downloadProgressWindow": "Ventana de progreso de descarga",
+  "downloadProgressWindowDescription": "Abrir automáticamente una ventana de progreso solo para las descargas capturadas del navegador. Cerrarla no detiene la descarga.",
   "@@locale": "es",
   "label": "Español",
   "error": "Error",
@@ -480,5 +482,10 @@
   "trackerSubscriptionTrackerCount": "Número de trackers",
   "trackerSubscriptionNotUpdated": "Sin actualizar",
   "actions": "Acciones",
-  "taskGroupDeleteImpact": "Afecta a {taskCount} descargas y {fileCount} archivos."
+  "taskGroupDeleteImpact": "Afecta a {taskCount} descargas y {fileCount} archivos.",
+  "downloadSpeedHistory": "Velocidad de descarga",
+  "downloadRecentMinute": "Últimos 60 segundos",
+  "averageSpeed": "Velocidad media",
+  "runInBackground": "Segundo plano",
+  "downloadBackgroundHint": "La descarga continúa al cerrar esta ventana."
 }

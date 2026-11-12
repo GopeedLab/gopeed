@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gopeed/api/model/task.dart' as api;
+import 'package:gopeed/api/model/request.dart';
 import 'package:gopeed/core/icons/gopeed_icons.dart';
 import 'package:gopeed/features/tasks/domain/task_record.dart';
 
@@ -27,6 +28,14 @@ void main() {
       },
     },
     'progress': {'used': 0, 'speed': 0, 'downloaded': 10, 'uploadSpeed': 0, 'uploaded': 0},
+  });
+
+  test('browser capture label survives API and grouped task mapping', () {
+    final task = groupTestTask('browser', parentId: 'group');
+    expect(TaskRecord.fromApi(task).browserCaptured, isFalse);
+    task.meta.req.labels = {Request.browserCaptureLabel: 'true'};
+    expect(TaskRecord.fromApi(task).browserCaptured, isTrue);
+    expect(taskRecordsFromApi([task]).single.browserCaptured, isTrue);
   });
 
   test('members aggregate through parentId without a parent task', () {
