@@ -25,7 +25,6 @@ const defaultAvailabilityTimeout = time.Minute
 type ContractOptions struct {
 	AvailabilityTimeout time.Duration
 	CookieDomainMode    CookieDomainMode
-	CookieTestURL       string
 }
 
 type CookieDomainMode int
@@ -44,7 +43,7 @@ func RunProviderContract(t *testing.T, provider enginewebview.Provider, opts Con
 	}
 	waitForProviderAvailable(t, provider, timeout)
 
-	page, server, testURL := openTestPage(t, provider, enginewebview.OpenOptions{
+	page, _, testURL := openTestPage(t, provider, enginewebview.OpenOptions{
 		Headless:  true,
 		Title:     "Gopeed WebView Integration",
 		Width:     640,
@@ -155,11 +154,9 @@ func RunProviderContract(t *testing.T, provider enginewebview.Provider, opts Con
 		t.Fatal("expected missing selector wait to time out")
 	}
 
-	cookieTestURL := opts.CookieTestURL
-	if cookieTestURL == "" {
-		cookieTestURL = testURL
-	}
-	runCookieLifecycleAssertions(t, page, server, cookieTestURL, opts.CookieDomainMode)
+	// Keep cookie navigation on the same local fixture as the DOM assertions:
+	// this contract must not depend on public DNS, TLS, or site availability.
+	runCookieLifecycleAssertions(t, page, testURL, opts.CookieDomainMode)
 }
 
 func waitForProviderAvailable(t *testing.T, provider enginewebview.Provider, timeout time.Duration) {
@@ -270,7 +267,7 @@ func openTestPage(t *testing.T, provider enginewebview.Provider, opts enginewebv
 	return page, server, server.URL
 }
 
-func runCookieLifecycleAssertions(t *testing.T, page *enginewebview.PageHandle, _ *httptest.Server, testURL string, domainMode CookieDomainMode) {
+func runCookieLifecycleAssertions(t *testing.T, page *enginewebview.PageHandle, testURL string, domainMode CookieDomainMode) {
 	t.Helper()
 
 	parsedURL, err := url.Parse(testURL)
