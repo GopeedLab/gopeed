@@ -50,6 +50,8 @@
   "autoTorrentEnable": "Auto create BT tasks from .torrent files",
   "autoTorrentDeleteAfterDownload": "Delete .torrent file after BT task creation",
   "autoDeleteMissingFileTasks": "Auto delete missing file tasks",
+  "autoCloseWhenAllTasksDone": "Quit app when all tasks finish",
+  "autoCloseWhenAllTasksDoneDescription": "Quits Gopeed after every download task has finished. Paused tasks stay queued for the next launch.",
   "items": "{count} items",
   "@items": {
     "placeholders": {

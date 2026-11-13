@@ -113,6 +113,14 @@ void main() {
     expect(decoded.deviceId, 'client-id');
   });
 
+  test('the auto close switch round-trips through the extra config', () {
+    final config = DownloaderConfig()..extra.autoCloseWhenAllTasksDone = true;
+
+    expect(DownloaderConfig.fromJson(config.toJson()).extra.autoCloseWhenAllTasksDone, isTrue);
+    expect(DownloaderConfig().extra.autoCloseWhenAllTasksDone, isFalse);
+    expect(ExtraConfig.fromJson({'desktopNotification': false}).autoCloseWhenAllTasksDone, isFalse);
+  });
+
   test('legacy analytics client IDs are ignored without migration', () {
     final config = ExtraConfig.fromJson({'analyticsClientId': 'AP3A.241105.008'});
 
