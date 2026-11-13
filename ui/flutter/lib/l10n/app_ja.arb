@@ -50,6 +50,8 @@
   "autoTorrentEnable": ".torrentファイルからBTタスクを自動作成",
   "autoTorrentDeleteAfterDownload": "BTタスク作成後に.torrentファイルを削除",
   "autoDeleteMissingFileTasks": "欠落ファイルタスクを自動削除",
+  "autoCloseWhenAllTasksDone": "すべてのタスク完了後にアプリを終了",
+  "autoCloseWhenAllTasksDoneDescription": "すべてのダウンロードタスクが終了すると Gopeed を終了します。一時停止中のタスクは次回起動時まで保持されます。",
   "items": "{count} アイテム",
   "subscribeTracker": "トラッカーを購読",
   "subscribeFail": "登録に失敗しました。ネットワークを確認するか、後でもう一度お試しください",

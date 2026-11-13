@@ -50,6 +50,8 @@
   "autoTorrentEnable": "自動從 .torrent 檔案建立 BT 任務",
   "autoTorrentDeleteAfterDownload": "建立 BT 任務後刪除 .torrent 檔案",
   "autoDeleteMissingFileTasks": "自動刪除缺失檔案任務",
+  "autoCloseWhenAllTasksDone": "全部下載完成後結束應用程式",
+  "autoCloseWhenAllTasksDoneDescription": "所有下載任務結束後自動結束應用程式，暫停的任務會保留到下次啟動",
   "items": "{count} 個項目",
   "subscribeTracker": "訂閱 Tracker",
   "subscribeFail": "訂閱失敗，請檢查網路或稍後再試",

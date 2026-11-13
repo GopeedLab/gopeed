@@ -50,6 +50,8 @@
   "autoTorrentEnable": "Crea automaticamente attività BT da file .torrent",
   "autoTorrentDeleteAfterDownload": "Elimina file .torrent dopo creazione attività BT",
   "autoDeleteMissingFileTasks": "Elimina automaticamente le attività con file mancanti",
+  "autoCloseWhenAllTasksDone": "Chiudi l'app al termine di tutte le attività",
+  "autoCloseWhenAllTasksDoneDescription": "Chiude Gopeed quando tutte le attività di download sono terminate. Le attività in pausa restano per il prossimo avvio.",
   "items": "{count} elementi",
   "subscribeTracker": "Iscriviti al tracker",
   "subscribeFail": "Iscrizione non riuscita, controlla la rete o riprova più tardir",

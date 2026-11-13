@@ -50,6 +50,8 @@
   "autoTorrentEnable": "ایجاد خودکار وظایف BT از فایل‌های .torrent",
   "autoTorrentDeleteAfterDownload": "حذف فایل .torrent پس از ایجاد وظیفه BT",
   "autoDeleteMissingFileTasks": "حذف خودکار وظایف با فایل‌های گم شده",
+  "autoCloseWhenAllTasksDone": "خروج از برنامه پس از پایان همه وظایف",
+  "autoCloseWhenAllTasksDoneDescription": "پس از پایان همه وظایف دانلود، Gopeed بسته می‌شود. وظایف متوقف‌شده برای اجرای بعدی باقی می‌مانند.",
   "items": "{count} آیتم",
   "subscribeTracker": "پشتیبانی مشترک",
   "subscribeFail": "شکست خورده، لطفا شبکه را چک کنید یا دوباره امتحان کنید",

@@ -50,6 +50,8 @@
   "autoTorrentEnable": ".torrent fayllarından avtomatik BT tapşırığı yarat",
   "autoTorrentDeleteAfterDownload": "BT tapşırığı yaradıldıqdan sonra .torrent faylını sil",
   "autoDeleteMissingFileTasks": "Faylı tapılmayan tapşırıqları avtomatik sil",
+  "autoCloseWhenAllTasksDone": "Bütün tapşırıqlar bitdikdə proqramdan çıx",
+  "autoCloseWhenAllTasksDoneDescription": "Bütün yükləmə tapşırıqları bitdikdən sonra Gopeed bağlanır. Dayandırılmış tapşırıqlar növbəti açılışa qalır.",
   "items": "{count} element",
   "@items": {
     "placeholders": {
