@@ -26,7 +26,6 @@ func TestProviderContract(t *testing.T) {
 	})
 	integrationtest.RunProviderContract(t, provider, integrationtest.ContractOptions{
 		CookieDomainMode: integrationtest.CookieDomainModeRequired,
-		CookieTestURL:    "https://example.com/",
 	})
 }
 
