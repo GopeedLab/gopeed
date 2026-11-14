@@ -408,24 +408,21 @@ func decodeFilenameParam(filename string) string {
 	return decoded
 }
 
+// htmlEntityReplacer replaces every entity in a single left-to-right pass, so an
+// escaped ampersand such as "&amp;lt;" becomes "&lt;" and is not decoded twice.
+var htmlEntityReplacer = strings.NewReplacer(
+	"&amp;", "&",
+	"&lt;", "<",
+	"&gt;", ">",
+	"&quot;", "\"",
+	"&#39;", "'",
+	"&apos;", "'",
+)
+
 // unescapeHTMLEntities unescapes common HTML entities in filenames
 // This handles cases where servers HTML-encode special characters like & to &amp;
 func unescapeHTMLEntities(s string) string {
-	// Common HTML entities that might appear in filenames
-	replacements := map[string]string{
-		"&amp;":  "&",
-		"&lt;":   "<",
-		"&gt;":   ">",
-		"&quot;": "\"",
-		"&#39;":  "'",
-		"&apos;": "'",
-	}
-
-	result := s
-	for entity, char := range replacements {
-		result = strings.ReplaceAll(result, entity, char)
-	}
-	return result
+	return htmlEntityReplacer.Replace(s)
 }
 
 // tryDecodeGBK attempts to decode string as GBK encoding

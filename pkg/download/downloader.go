@@ -345,7 +345,12 @@ func (d *Downloader) Setup() error {
 						}
 
 						current := task.fetcher.Progress().TotalDownloaded()
-						delta := current - task.Progress.Downloaded
+						delta := max(0, current-task.Progress.Downloaded)
+						if counter, ok := task.fetcher.(fetcher.DownloadCounter); ok && task.Status == base.DownloadStatusRunning {
+							received := counter.ReceivedBytes()
+							delta = received - task.receivedBytes
+							task.receivedBytes = received
+						}
 						if task.Meta != nil && task.Meta.Req != nil {
 							if producer := d.blob.Production(task.Meta.Req.URL); producer != nil {
 								downloaded, received := producer.Progress()
@@ -353,19 +358,20 @@ func (d *Downloader) Setup() error {
 									task.producer = producer
 									task.producerReceived = 0
 									task.speedArr = nil
+									task.downloadSampledAt = time.Time{}
 								}
 								current = downloaded
 								delta = max(0, received-task.producerReceived)
 								task.producerReceived = received
 							}
 						}
-						tick := float64(d.cfg.RefreshInterval) / 1000
 						downloadDataChanged := false
 						uploading := task.Uploading
 						if task.Status == base.DownloadStatusRunning {
 							downloadDataChanged = current != task.Progress.Downloaded
 							task.Progress.Used = task.timer.Used()
-							task.Progress.Speed = task.updateSpeed(max(0, delta), tick)
+							elapsed := sampleSeconds(&task.downloadSampledAt, time.Now())
+							task.Progress.Speed = task.updateSpeed(delta, elapsed)
 							task.Progress.Downloaded = current
 						}
 
@@ -374,7 +380,8 @@ func (d *Downloader) Setup() error {
 							uploader := task.fetcher.(fetcher.Uploader)
 							currentUploaded := uploader.UploadedBytes()
 							uploadDataChanged = currentUploaded != task.Progress.Uploaded
-							task.Progress.UploadSpeed = task.updateUploadSpeed(currentUploaded-task.Progress.Uploaded, tick)
+							elapsed := sampleSeconds(&task.uploadSampledAt, time.Now())
+							task.Progress.UploadSpeed = task.updateUploadSpeed(currentUploaded-task.Progress.Uploaded, elapsed)
 							task.Progress.Uploaded = currentUploaded
 						}
 						task.statusLock.Unlock()
@@ -2441,7 +2448,9 @@ func (d *Downloader) doStart(task *Task) (err error) {
 				return err
 			}
 		}
-		d.triggerOnStart(task)
+		if err := d.triggerOnStart(task); err != nil {
+			return err
+		}
 		if !d.taskIsRunningGeneration(task, generation) {
 			return nil
 		}
@@ -2498,6 +2507,8 @@ func (d *Downloader) doStart(task *Task) (err error) {
 			return nil
 		}
 		task.Progress.Speed = 0
+		task.speedArr = nil
+		task.downloadSampledAt = time.Time{}
 		task.timer.Start()
 		task.statusLock.Unlock()
 		startErr := task.fetcher.Start()
@@ -2697,11 +2708,12 @@ func logPanic(logDir string) {
 	if err := util.CreateDirIfNotExist(logDir); err != nil {
 		return
 	}
-	f, err := os.Create(filepath.Join(logDir, "crash.log"))
+	f, err := os.OpenFile(filepath.Join(logDir, "crash.log"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 	if err != nil {
 		return
 	}
-	debug.SetCrashOutput(f, debug.CrashOptions{})
+	defer f.Close() // SetCrashOutput duplicates the descriptor.
+	_ = debug.SetCrashOutput(f, debug.CrashOptions{})
 }
 
 func (d *Downloader) assignFetcherManager(task *Task) error {
@@ -3111,8 +3123,10 @@ func initTask(task *Task) {
 	task.lock = &sync.Mutex{}
 	task.statsLock = &sync.Mutex{}
 	task.blobRefLock = &sync.Mutex{}
-	task.speedArr = make([]int64, 0)
-	task.uploadSpeedArr = make([]int64, 0)
+	task.speedArr = nil
+	task.uploadSpeedArr = nil
+	task.downloadSampledAt = time.Time{}
+	task.uploadSampledAt = time.Time{}
 }
 
 func (d *Downloader) releaseBlobTask(task *Task) {

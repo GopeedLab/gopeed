@@ -3,6 +3,7 @@ package download
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/url"
@@ -327,8 +328,8 @@ func (d *Downloader) triggerOnResolve(req *base.Request) (res *base.Resource, er
 	return
 }
 
-func (d *Downloader) triggerOnStart(task *Task) {
-	doTrigger(d,
+func (d *Downloader) triggerOnStart(task *Task) error {
+	return doTrigger(d,
 		EventOnStart,
 		task.Meta.Req,
 		&OnStartContext{
@@ -413,6 +414,13 @@ func doTrigger[T any](d *Downloader, event ActivationEvent, req *base.Request, c
 					}
 					engine, session := d.newExtensionEngine()
 					defer session.CloseIfIdle()
+					eventCtx, cancelEvent := context.WithTimeout(d.backgroundCtx, d.cfg.ExtensionEventTimeout)
+					defer cancelEvent()
+					defer func() {
+						if eventCtx.Err() != nil {
+							session.Close()
+						}
+					}()
 					gopeed.Runtime = &InstanceRuntime{
 						WebView: d.newExtensionWebViewRuntime(session, ext.buildIdentity()),
 					}
@@ -421,13 +429,13 @@ func doTrigger[T any](d *Downloader, event ActivationEvent, req *base.Request, c
 						gopeed.Logger.logger.Error().Err(err).Msgf("[%s] engine inject failed", ext.buildIdentity())
 						return
 					}
-					_, err = engine.RunString(string(scriptBuf))
+					_, err = engine.RunStringContext(eventCtx, string(scriptBuf))
 					if err != nil {
 						gopeed.Logger.logger.Error().Err(err).Msgf("[%s] run script failed", ext.buildIdentity())
 						return
 					}
 					if fn, ok := gopeed.Events[event]; ok {
-						_, err = engine.CallFunction(fn, ctx)
+						_, err = engine.CallFunctionContext(eventCtx, fn, ctx)
 						if err != nil {
 							gopeed.Logger.logger.Error().Err(err).Msgf("[%s] call function failed: %s", ext.buildIdentity(), event)
 							return
@@ -437,6 +445,9 @@ func doTrigger[T any](d *Downloader, event ActivationEvent, req *base.Request, c
 						}
 					}
 				}()
+				if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+					return err
+				}
 			}
 		}
 	}

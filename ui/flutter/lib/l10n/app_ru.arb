@@ -208,7 +208,7 @@
   "categoryName": "Название категории",
   "categoryPath": "Путь категории",
   "autoCategorizeByExtension": "Автокатегоризация по типу файла",
-  "autoCategorizeByExtensionDescription": "Загрузки автоматически сохраняются в папку категории по расширению файла, если выбрана папка загрузки по умолчанию.",
+  "autoCategorizeByExtensionDescription": "Загрузки автоматически сохраняются в папку категории по расширению файла, если выбрана папка загрузки по умолчанию",
   "categoryExtensions": "Расширения файлов",
   "categoryExtensionsUsageHint": "Разделяйте расширения запятыми или пробелами и нажимайте Enter.",
   "categoryExtensionsEmptyHint": "Без расширений файлы не будут автоматически сохранены в эту категорию.",

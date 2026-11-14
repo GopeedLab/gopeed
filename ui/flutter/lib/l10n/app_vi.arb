@@ -208,7 +208,7 @@
   "categoryName": "Tên danh mục",
   "categoryPath": "Đường dẫn danh mục",
   "autoCategorizeByExtension": "Tự động phân loại theo loại tệp",
-  "autoCategorizeByExtensionDescription": "Tải xuống sẽ được chuyển vào thư mục danh mục dựa trên phần mở rộng tệp khi lưu vào thư mục tải xuống mặc định.",
+  "autoCategorizeByExtensionDescription": "Tải xuống sẽ được chuyển vào thư mục danh mục dựa trên phần mở rộng tệp khi lưu vào thư mục tải xuống mặc định",
   "categoryExtensions": "Phần mở rộng tệp",
   "categoryExtensionsUsageHint": "Phân tách phần mở rộng bằng dấu phẩy hoặc khoảng trắng rồi nhấn Enter.",
   "categoryExtensionsEmptyHint": "Không có phần mở rộng, tệp sẽ không tự động được lưu vào danh mục này.",

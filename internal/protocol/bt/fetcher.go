@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -20,7 +21,7 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/protocol/bt"
 	"github.com/GopeedLab/gopeed/pkg/util"
-	"github.com/RoaringBitmap/roaring"
+	"github.com/RoaringBitmap/roaring/v2"
 	"github.com/anacrolix/torrent"
 	"github.com/anacrolix/torrent/metainfo"
 	"github.com/anacrolix/torrent/storage"
@@ -42,9 +43,10 @@ type Fetcher struct {
 	ctl    *controller.Controller
 	config *config
 
-	torrent *torrent.Torrent
-	meta    *fetcher.FetcherMeta
-	data    *fetcherData
+	torrent       *torrent.Torrent
+	meta          *fetcher.FetcherMeta
+	data          *fetcherData
+	seedBaseBytes int64
 
 	torrentReady    atomic.Bool
 	torrentUpload   atomic.Bool
@@ -463,12 +465,44 @@ func (f *Fetcher) Progress() fetcher.Progress {
 	if !f.torrentReady.Load() {
 		return append(fetcher.Progress(nil), f.data.Progress...)
 	}
+	pieceSize := f.torrent.Info().PieceLength
+	var offset int64
+	var verified []verifiedByteRange
+	for _, run := range f.torrent.PieceStateRuns() {
+		end := offset + int64(run.Length)*pieceSize
+		if pieceVerified(run.PieceState) {
+			verified = append(verified, verifiedByteRange{start: offset, end: end})
+		}
+		offset = end
+	}
+	files := f.torrent.Files()
 	for i := range f.data.Progress {
 		selectIndex := f.meta.Opts.SelectFiles[i]
-		file := f.torrent.Files()[selectIndex]
-		f.data.Progress[i] = file.BytesCompleted()
+		file := files[selectIndex]
+		f.data.Progress[i] = verifiedFileBytes(verified, file.Offset(), file.Length())
 	}
 	return append(fetcher.Progress(nil), f.data.Progress...)
+}
+
+type verifiedByteRange struct {
+	start, end int64
+}
+
+func verifiedFileBytes(verified []verifiedByteRange, offset, length int64) int64 {
+	first := sort.Search(len(verified), func(i int) bool { return verified[i].end > offset })
+	fileEnd := offset + length
+	var completed int64
+	for _, run := range verified[first:] {
+		if run.start >= fileEnd {
+			break
+		}
+		completed += min(fileEnd, run.end) - max(offset, run.start)
+	}
+	return completed
+}
+
+func pieceVerified(state torrent.PieceState) bool {
+	return state.Ok && state.Complete && !state.Hashing && !state.QueuedForHash
 }
 
 func (f *Fetcher) Wait() error {
@@ -587,7 +621,7 @@ func (f *Fetcher) isDoneLocked() bool {
 		file := f.torrent.Files()[index]
 		for i := file.BeginPieceIndex(); i < file.EndPieceIndex(); i++ {
 			state := f.torrent.Piece(i).State()
-			if !state.Ok || !state.Complete || state.Hashing || state.QueuedForHash {
+			if !pieceVerified(state) {
 				return false
 			}
 		}
@@ -685,11 +719,13 @@ func (f *Fetcher) Upload() (err error) {
 }
 
 func (f *Fetcher) doUpload(fromUpload bool) {
+	f.mu.Lock()
 	if !f.torrentUpload.CompareAndSwap(false, true) {
+		f.mu.Unlock()
 		return
 	}
-	f.mu.Lock()
-	initialBytes, initialTime := f.data.SeedBytes, f.data.SeedTime
+	f.seedBaseBytes = f.data.SeedBytes
+	initialTime := f.data.SeedTime
 	torrentClosed := f.torrent.Closed()
 	f.mu.Unlock()
 	var doneTime int64
@@ -707,8 +743,7 @@ func (f *Fetcher) doUpload(fromUpload bool) {
 				f.mu.Unlock()
 				continue
 			}
-			stats := f.torrentStats()
-			f.data.SeedBytes = initialBytes + stats.BytesWrittenData.Int64()
+			f.refreshSeedBytesLocked()
 			if !fromUpload && !f.isDoneLocked() {
 				f.mu.Unlock()
 				continue
@@ -741,7 +776,25 @@ func (f *Fetcher) torrentStats() torrent.TorrentStats {
 func (f *Fetcher) UploadedBytes() int64 {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.torrentReady.Load() && f.torrentUpload.Load() {
+		f.refreshSeedBytesLocked()
+	}
 	return f.data.SeedBytes
+}
+
+func (f *Fetcher) refreshSeedBytesLocked() {
+	stats := f.torrentStats()
+	f.data.SeedBytes = max(f.data.SeedBytes, f.seedBaseBytes+stats.BytesWrittenData.Int64())
+}
+
+func (f *Fetcher) ReceivedBytes() int64 {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if !f.torrentReady.Load() {
+		return 0
+	}
+	stats := f.torrentStats()
+	return stats.BytesReadUsefulData.Int64()
 }
 
 func (f *Fetcher) WaitUpload() (err error) {

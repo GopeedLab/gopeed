@@ -41,6 +41,7 @@ import '../../application/pending_download.dart';
 import '../../application/task_list_navigation.dart';
 import '../widgets/history_search_field.dart';
 import '../widgets/create_task_action_buttons.dart';
+import '../widgets/create_task_advanced_toggle.dart';
 import '../widgets/resolve_download_dialog.dart';
 
 class CreateTaskWindowPage extends ConsumerStatefulWidget {
@@ -560,20 +561,11 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                     ),
                     const SizedBox(height: 20),
                     Align(
-                      alignment: Alignment.centerLeft,
-                      child: GestureDetector(
-                        onTap: _toggleAdvanced,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              context.l10n.advanced,
-                              style: TextStyle(color: palette.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
-                            ),
-                            const SizedBox(width: 8),
-                            _TripleChevronIcon(expanded: _showAdvanced, color: palette.textSecondary),
-                          ],
-                        ),
+                      alignment: AlignmentDirectional.centerStart,
+                      child: CreateTaskAdvancedToggle(
+                        key: const ValueKey('create-task-advanced-toggle'),
+                        expanded: _showAdvanced,
+                        onPressed: _toggleAdvanced,
                       ),
                     ),
                     AnimatedCrossFade(
@@ -1929,30 +1921,6 @@ class _MiniInputAction extends StatelessWidget {
       density: ButtonDensity.icon,
       onPressed: onPressed,
       child: Icon(icon, size: 14, color: palette.textSecondary),
-    );
-  }
-}
-
-class _TripleChevronIcon extends StatelessWidget {
-  const _TripleChevronIcon({required this.expanded, required this.color});
-
-  final bool expanded;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    final icon = expanded ? Icons.expand_less : Icons.expand_more;
-    return SizedBox(
-      width: 14,
-      height: 18,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned(top: 0, left: 0, child: Icon(icon, size: 14, color: color)),
-          Positioned(top: 4, left: 0, child: Icon(icon, size: 14, color: color)),
-          Positioned(top: 8, left: 0, child: Icon(icon, size: 14, color: color)),
-        ],
-      ),
     );
   }
 }

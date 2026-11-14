@@ -19,6 +19,12 @@ class SettingsState {
   }
 }
 
+class SettingsSaveResult {
+  const SettingsSaveResult({required this.btRestartRequired});
+
+  final bool btRestartRequired;
+}
+
 class SettingsController extends AsyncNotifier<SettingsState> {
   Future<void> _saveTail = Future<void>.value();
   int _saveRevision = 0;
@@ -36,7 +42,7 @@ class SettingsController extends AsyncNotifier<SettingsState> {
     state = AsyncValue.data(SettingsState(config: config));
   }
 
-  Future<void> save(DownloaderConfig config) {
+  Future<SettingsSaveResult> save(DownloaderConfig config) {
     final snapshot = DownloaderConfig.fromJson(config.toJson());
     final revision = ++_saveRevision;
     state = AsyncValue.data(SettingsState(config: config, saving: true));
@@ -47,10 +53,15 @@ class SettingsController extends AsyncNotifier<SettingsState> {
     return result;
   }
 
-  Future<void> _save(DownloaderConfig config, int revision) async {
+  Future<SettingsSaveResult> _save(DownloaderConfig config, int revision) async {
     try {
       final service = ref.read(gopeedServiceProvider);
       final latest = await service.getConfig();
+      final previousBt = (
+        latest.protocolConfig.bt.listenPort,
+        latest.protocolConfig.bt.disableDht,
+        latest.protocolConfig.bt.disablePex,
+      );
       config.extra
         ..windowState = latest.extra.windowState
         ..bookmarks = latest.extra.bookmarks
@@ -64,6 +75,12 @@ class SettingsController extends AsyncNotifier<SettingsState> {
         ref.read(appRuntimeControllerProvider.notifier).replaceDownloaderConfig(saved);
         if (revision == _saveRevision) state = AsyncValue.data(SettingsState(config: saved));
       }
+      final savedBt = (
+        saved.protocolConfig.bt.listenPort,
+        saved.protocolConfig.bt.disableDht,
+        saved.protocolConfig.bt.disablePex,
+      );
+      return SettingsSaveResult(btRestartRequired: previousBt != savedBt);
     } finally {
       if (ref.mounted && revision == _saveRevision && state.value?.saving == true) {
         state = AsyncValue.data(state.requireValue.copyWith(saving: false));
