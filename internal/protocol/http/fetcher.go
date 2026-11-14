@@ -418,6 +418,16 @@ func (f *Fetcher) updateMaxConnTime(d time.Duration) {
 }
 
 func (f *Fetcher) Resolve(req *base.Request) error {
+	return f.ResolveContext(context.Background(), req)
+}
+
+// ResolveContext cancels the initial request while waiting for headers. Once
+// Resolve has returned, the retained response belongs to the fetcher and its
+// existing Pause/Close lifecycle controls the body and prefetch.
+func (f *Fetcher) ResolveContext(ctx context.Context, req *base.Request) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if err := base.ParseReqExtra[fhttp.ReqExtra](req); err != nil {
 		return err
 	}
@@ -429,6 +439,8 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 	// This allows the response to be reused for downloading (important for one-time URLs)
 	// The body outlives Resolve, so the read timeout gets its own cancel func.
 	reqCtx, reqCancel := context.WithCancel(context.Background())
+	stopCancel := context.AfterFunc(ctx, reqCancel)
+	defer stopCancel()
 	httpReq, err := f.buildRequest(reqCtx, req)
 	if err != nil {
 		reqCancel()

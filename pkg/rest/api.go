@@ -24,7 +24,7 @@ func Info(w http.ResponseWriter, r *http.Request) {
 func Resolve(w http.ResponseWriter, r *http.Request) {
 	var req model.ResolveTask
 	if ReadJson(r, w, &req) {
-		rr, err := Downloader.Resolve(req.Req)
+		rr, err := Downloader.ResolveWithID(req.ID, req.Req)
 		if err != nil {
 			WriteJson(w, model.NewErrorResult(err.Error()))
 			return

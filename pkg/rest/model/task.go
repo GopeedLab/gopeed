@@ -3,6 +3,7 @@ package model
 import "github.com/GopeedLab/gopeed/pkg/base"
 
 type ResolveTask struct {
+	ID  string        `json:"id,omitempty"`
 	Req *base.Request `json:"req"`
 }
 
