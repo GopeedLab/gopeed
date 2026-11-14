@@ -44,17 +44,19 @@ type CreateTaskBatchResult struct {
 	ParentID string   `json:"parentId,omitempty"`
 }
 
-// Task represents a download unit.
-// Options flow path:
-// REST Request (model.CreateTask/ResolveTask) -> pkg/download Downloader -> Task.Meta.Opts (base.Options) -> Fetcher.Resolve/Start (e.g. internal/protocol/http/fetcher.go)
 // taskLifetime is shared with preparation candidates. Its mutex serializes
 // physical starts and persistence with deletion; the tombstone also invalidates
 // work that is currently outside that mutex (for example Resolve).
 type taskLifetime struct {
 	mu      sync.Mutex
 	deleted atomic.Bool
+	// Close can make a fetcher unusable even when a later deletion step fails.
+	restoreFetcher atomic.Bool
 }
 
+// Task represents a download unit.
+// Options flow path:
+// REST Request (model.CreateTask/ResolveTask) -> pkg/download Downloader -> Task.Meta.Opts (base.Options) -> Fetcher.Resolve/Start (e.g. internal/protocol/http/fetcher.go)
 type Task struct {
 	ID       string               `json:"id"`
 	Protocol string               `json:"protocol"`
