@@ -99,6 +99,43 @@ void main() {
     expect(saved.saving, isFalse);
   });
 
+  for (final field in ['port', 'DHT', 'PEX']) {
+    test('$field restart notice follows successful persisted changes only', () async {
+      var backend = DownloaderConfig();
+      var failNextSave = false;
+      final registry = CapabilityRegistry(createAppCapabilityCodecs())
+        ..bind(GopeedMethods.getConfig, (_) => DownloaderConfig.fromJson(backend.toJson()))
+        ..bind(GopeedMethods.putConfig, (config) {
+          if (failNextSave) {
+            failNextSave = false;
+            throw StateError('offline');
+          }
+          backend = DownloaderConfig.fromJson(config.toJson());
+          return const RpcUnit();
+        });
+      final container = _settingsContainer(registry);
+      addTearDown(container.dispose);
+      final initial = await container.read(settingsControllerProvider.future);
+      final controller = container.read(settingsControllerProvider.notifier);
+      final draft = DownloaderConfig.fromJson(initial.config.toJson());
+      switch (field) {
+        case 'port':
+          draft.protocolConfig.bt.listenPort = 6881;
+        case 'DHT':
+          draft.protocolConfig.bt.disableDht = true;
+        case 'PEX':
+          draft.protocolConfig.bt.disablePex = true;
+      }
+      failNextSave = true;
+      await expectLater(controller.save(draft), throwsStateError);
+      expect((await controller.save(draft)).btRestartRequired, isTrue);
+      expect((await controller.save(draft)).btRestartRequired, isFalse);
+      draft.protocolConfig.bt.seedRatio = 2;
+      expect((await controller.save(draft)).btRestartRequired, isFalse);
+      expect((await controller.save(initial.config)).btRestartRequired, isTrue);
+    });
+  }
+
   test('rapid full config saves run in order and keep the latest user edits', () async {
     final backend = DownloaderConfig();
     final entered = Completer<void>();
@@ -127,7 +164,8 @@ void main() {
     final savingSecond = controller.save(second);
     expect(puts.length, 1);
     release.complete();
-    await Future.wait([savingFirst, savingSecond]);
+    final results = await Future.wait([savingFirst, savingSecond]);
+    expect(results.map((result) => result.btRestartRequired), [true, false]);
     expect(puts, hasLength(2));
     expect(puts[0].protocolConfig.bt.listenPort, 6881);
     expect(puts[1].protocolConfig.bt.listenPort, 6881);

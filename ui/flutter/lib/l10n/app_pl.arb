@@ -208,7 +208,7 @@
   "categoryName": "Nazwa kategorii",
   "categoryPath": "Ścieżka kategorii",
   "autoCategorizeByExtension": "Automatyczna kategorizacja według typu pliku",
-  "autoCategorizeByExtensionDescription": "Pobierane pliki są automatycznie zapisywane w folderze kategorii na podstawie rozszerzenia, gdy używany jest domyślny folder pobierania.",
+  "autoCategorizeByExtensionDescription": "Pobierane pliki są automatycznie zapisywane w folderze kategorii na podstawie rozszerzenia, gdy używany jest domyślny folder pobierania",
   "categoryExtensions": "Rozszerzenia plików",
   "categoryExtensionsUsageHint": "Rozdzielaj rozszerzenia przecinkami lub spacjami i naciskaj Enter.",
   "categoryExtensionsEmptyHint": "Bez rozszerzeń pliki nie będą automatycznie zapisywane w tej kategorii.",
