@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/widgets.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gopeed/api/model/create_task_batch.dart';
 import 'package:gopeed/api/model/options.dart';
@@ -16,6 +17,7 @@ import 'package:gopeed/features/tasks/presentation/widgets/resolve_file_tree.dar
 import 'package:gopeed/shared/theme/app_theme.dart';
 import 'package:gopeed/shared/widgets/app_loading_button.dart';
 import 'package:gopeed/shared/widgets/app_tooltip.dart';
+import 'package:gopeed/shared/widgets/file_tree_horizontal_viewport.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
 PendingDownload pending(String id) => PendingDownload(
@@ -75,6 +77,50 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+
+  testWidgets('long pending links scroll with the tree before and after resolving on narrow screens', (tester) async {
+    final response = Completer<ResolveResult>();
+    final url = 'https://pan.quark.cn/s/${List.filled(8, 'long-resource-link').join('-')}';
+    final source = PendingDownload(
+      id: 'long',
+      request: Request(url: url),
+      options: Options(),
+    );
+    final registry = CapabilityRegistry(createAppCapabilityCodecs())
+      ..bind(GopeedMethods.resolve, (_) => response.future);
+    await open(tester, [source], registry, width: 320);
+    expect(find.byType(FileTreeHorizontalViewport), findsOneWidget);
+    final paragraph = tester.renderObject<RenderParagraph>(find.text(url));
+    expect(paragraph.didExceedMaxLines, isTrue);
+    expect(paragraph.overflow, TextOverflow.ellipsis);
+    expect(paragraph.text.toPlainText(), url);
+    expect(find.byWidgetPredicate((widget) => widget is AppTooltip && widget.message == url), findsOneWidget);
+    final label = find.byKey(const ValueKey('resolve-tree-name-scroll-folder:long'));
+    final before = tester.getTopLeft(find.text(url));
+    final expand = find.byKey(const ValueKey('resolve-tree-node-expand-folder:long'));
+    final expandBefore = tester.getTopLeft(expand);
+    await tester.dragFrom(tester.getTopLeft(label) + const Offset(20, 8), const Offset(-100, 0));
+    // The pending indicator animates continuously, so do not wait for settling.
+    await tester.pump(const Duration(seconds: 1));
+    final delta = tester.getTopLeft(find.text(url)).dx - before.dx;
+    expect(delta, lessThan(0));
+    expect(tester.getTopLeft(expand).dx - expandBefore.dx, closeTo(delta, 0.01));
+    final horizontal = tester.widget<SingleChildScrollView>(
+      find.byKey(const ValueKey('resolve-tree-horizontal-scroll')),
+    );
+    horizontal.controller!.jumpTo(horizontal.controller!.position.maxScrollExtent);
+    await tester.pump();
+    expect(
+      paragraph.getBoxesForSelection(TextSelection(baseOffset: url.length - 4, extentOffset: url.length)),
+      isNotEmpty,
+    );
+    response.complete(resolved('resolved-file.txt'));
+    await tester.pumpAndSettle();
+    expect(find.text('resolved-file.txt'), findsOneWidget);
+    expect(find.byType(FileTreeHorizontalViewport), findsOneWidget);
+    expect(source.selected, {0});
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('shows all roots immediately and resolves sequentially while preserving choices', (tester) async {
     final calls = <String>[];
