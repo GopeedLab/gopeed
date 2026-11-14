@@ -1,0 +1,112 @@
+=== RUN   TestMoeResolveWriteback
+    bridge_test.go:44: Go Resource.Validate passed, name=BV1BJ4m1e7g8.真实扩展 Replay 测试(P2).1080p.mp4
+--- PASS: TestMoeResolveWriteback (0.09s)
+=== RUN   TestBufferedReplay
+=== RUN   TestBufferedReplay/bilibili
+=== RUN   TestBufferedReplay/bilibili/goja
+=== RUN   TestBufferedReplay/bilibili/moejs
+=== RUN   TestBufferedReplay/youtube
+=== RUN   TestBufferedReplay/youtube/goja
+=== RUN   TestBufferedReplay/youtube/moejs
+=== RUN   TestBufferedReplay/twitter
+=== RUN   TestBufferedReplay/twitter/goja
+=== RUN   TestBufferedReplay/twitter/moejs
+--- PASS: TestBufferedReplay (0.60s)
+    --- PASS: TestBufferedReplay/bilibili (0.18s)
+        --- PASS: TestBufferedReplay/bilibili/goja (0.09s)
+        --- PASS: TestBufferedReplay/bilibili/moejs (0.09s)
+    --- PASS: TestBufferedReplay/youtube (0.40s)
+        --- PASS: TestBufferedReplay/youtube/goja (0.21s)
+        --- PASS: TestBufferedReplay/youtube/moejs (0.19s)
+    --- PASS: TestBufferedReplay/twitter (0.02s)
+        --- PASS: TestBufferedReplay/twitter/goja (0.01s)
+        --- PASS: TestBufferedReplay/twitter/moejs (0.01s)
+=== RUN   TestExtensionReplay
+=== RUN   TestExtensionReplay/bilibili
+=== RUN   TestExtensionReplay/bilibili/goja
+    evaluation_test.go:46: {"res":{"name":"真实扩展 Replay 测试","range":false,"files":[{"name":"BV1BJ4m1e7g8.真实扩展 Replay 测试(P1).1080p.mp4","req":{"url":"blob:replay/1","rawUrl":"https://www.bilibili.com/video/BV1BJ4m1e7g8?p=1-3","labels":{"monkeyWie@bilibili":"1","bvid":"BV1BJ4m1e7g8","cid":100,"p":0,"type":"merged","quality":80,"selectedQuality":80,"resolution":"1080p"}}},{"name":"BV1BJ4m1e7g8.真实扩展 Replay 测试(P2).1080p.mp4","req":{"url":"blob:replay/2","rawUrl":"https://www.bilibili.com/video/BV1BJ4m1e7g8?p=1-3","labels":{"monkeyWie@bilibili":"1","bvid":"BV1BJ4m1e7g8","cid":101,"p":1,"type":"merged","quality":80,"selectedQuality":80,"resolution":"1080p"}}},{"name":"BV1BJ4m1e7g8.真实扩展 Replay 测试(P3).1080p.mp4","req":{"url":"blob:replay/3","rawUrl":"https://www.bilibili.com/video/BV1BJ4m1e7g8?p=1-3","labels":{"monkeyWie@bilibili":"1","bvid":"BV1BJ4m1e7g8","cid":102,"p":2,"type":"merged","quality":80,"selectedQuality":80,"resolution":"1080p"}}}]},"requests":["/x/web-interface/view","/x/web-interface/nav","/x/player/wbi/playurl","/x/web-interface/nav","/x/player/wbi/playurl","/x/web-interface/nav","/x/player/wbi/playurl"]}
+=== RUN   TestExtensionReplay/bilibili/moejs
+    evaluation_test.go:46: {"res":{"name":"真实扩展 Replay 测试","range":false,"files":[{"name":"BV1BJ4m1e7g8.真实扩展 Replay 测试(P1).1080p.mp4","req":{"url":"blob:replay/1","rawUrl":"https://www.bilibili.com/video/BV1BJ4m1e7g8?p=1-3","labels":{"monkeyWie@bilibili":"1","bvid":"BV1BJ4m1e7g8","cid":100,"p":0,"type":"merged","quality":80,"selectedQuality":80,"resolution":"1080p"}}},{"name":"BV1BJ4m1e7g8.真实扩展 Replay 测试(P2).1080p.mp4","req":{"url":"blob:replay/2","rawUrl":"https://www.bilibili.com/video/BV1BJ4m1e7g8?p=1-3","labels":{"monkeyWie@bilibili":"1","bvid":"BV1BJ4m1e7g8","cid":101,"p":1,"type":"merged","quality":80,"selectedQuality":80,"resolution":"1080p"}}},{"name":"BV1BJ4m1e7g8.真实扩展 Replay 测试(P3).1080p.mp4","req":{"url":"blob:replay/3","rawUrl":"https://www.bilibili.com/video/BV1BJ4m1e7g8?p=1-3","labels":{"monkeyWie@bilibili":"1","bvid":"BV1BJ4m1e7g8","cid":102,"p":2,"type":"merged","quality":80,"selectedQuality":80,"resolution":"1080p"}}}]},"requests":["/x/web-interface/view","/x/web-interface/nav","/x/player/wbi/playurl","/x/web-interface/nav","/x/player/wbi/playurl","/x/web-interface/nav","/x/player/wbi/playurl"]}
+=== RUN   TestExtensionReplay/youtube
+=== RUN   TestExtensionReplay/youtube/goja
+    evaluation_test.go:46: {"res":{"range":false,"files":[{"name":"YouTube Replay 测试.mp4","req":{"url":"https://www.youtube.com/watch?v=dQw4w9WgXcQ","rawUrl":"https://www.youtube.com/watch?v=dQw4w9WgXcQ","labels":{"monkeyWie@youtube":"1","input":"https://www.youtube.com/watch?v=dQw4w9WgXcQ","quality":"1080p","fallbackToBest":"true","type":"merged"}}}]},"requests":["/sw.js_data","/youtubei/v1/config","/youtubei/v1/player"]}
+=== RUN   TestExtensionReplay/youtube/moejs
+    evaluation_test.go:46: {"res":{"range":false,"files":[{"name":"YouTube Replay 测试.mp4","req":{"url":"https://www.youtube.com/watch?v=dQw4w9WgXcQ","rawUrl":"https://www.youtube.com/watch?v=dQw4w9WgXcQ","labels":{"monkeyWie@youtube":"1","input":"https://www.youtube.com/watch?v=dQw4w9WgXcQ","quality":"1080p","fallbackToBest":"true","type":"merged"}}}]},"requests":["/sw.js_data","/youtubei/v1/config","/youtubei/v1/player"]}
+=== RUN   TestExtensionReplay/twitter
+=== RUN   TestExtensionReplay/twitter/goja
+    evaluation_test.go:46: {"res":{"name":"twitter-status-1734145541599383880","files":[{"name":"twitter-status-1734145541599383880-1.jpg","req":{"url":"https://pbs.twimg.com/media/replay.jpg"}},{"name":"twitter-status-1734145541599383880-2.mp4","req":{"url":"https://video.twimg.com/1920x1080/high.mp4"}}]},"requests":["/raw/nz3ApKQM","/1.1/guest/activate.json","/raw/nz3ApKQM","/i/api/graphql/DJS3BdhUhcaEpZ7B7irJDg/TweetResultByRestId"]}
+=== RUN   TestExtensionReplay/twitter/moejs
+    evaluation_test.go:46: {"res":{"name":"twitter-status-1734145541599383880","files":[{"name":"twitter-status-1734145541599383880-1.jpg","req":{"url":"https://pbs.twimg.com/media/replay.jpg"}},{"name":"twitter-status-1734145541599383880-2.mp4","req":{"url":"https://video.twimg.com/1920x1080/high.mp4"}}]},"requests":["/raw/nz3ApKQM","/1.1/guest/activate.json","/raw/nz3ApKQM","/i/api/graphql/DJS3BdhUhcaEpZ7B7irJDg/TweetResultByRestId"]}
+--- PASS: TestExtensionReplay (0.59s)
+    --- PASS: TestExtensionReplay/bilibili (0.17s)
+        --- PASS: TestExtensionReplay/bilibili/goja (0.09s)
+        --- PASS: TestExtensionReplay/bilibili/moejs (0.09s)
+    --- PASS: TestExtensionReplay/youtube (0.39s)
+        --- PASS: TestExtensionReplay/youtube/goja (0.21s)
+        --- PASS: TestExtensionReplay/youtube/moejs (0.19s)
+    --- PASS: TestExtensionReplay/twitter (0.02s)
+        --- PASS: TestExtensionReplay/twitter/goja (0.01s)
+        --- PASS: TestExtensionReplay/twitter/moejs (0.01s)
+=== RUN   TestExtensionLifecycle
+=== RUN   TestExtensionLifecycle/bilibili
+=== RUN   TestExtensionLifecycle/bilibili/goja
+    evaluation_test.go:110: {"res":{"name":"真实扩展 Replay 测试","range":false,"files":[{"name":"BV1BJ4m1e7g8.真实扩展 Replay 测试(P1).1080p.mp4","req":{"url":"blob:replay/5","rawUrl":"https://www.bilibili.com/video/BV1BJ4m1e7g8?p=1-3","labels":{"monkeyWie@bilibili":"1","bvid":"BV1BJ4m1e7g8","cid":100,"p":0,"type":"merged","quality":80,"selectedQuality":80,"resolution":"1080p","mergeCdnState":"{\"failed\":[{\"video\":\"https://upos-test.bilivideo.com\",\"audio\":\"https://upos-test.bilivideo.com\"}],\"retries\":1,\"current\":{\"video\":\"https://backup.example.com\",\"audio\":\"https://upos-test.bilivideo.com\"}}"}}},{"name":"BV1BJ4m1e7g8.真实扩展 Replay 测试(P2).1080p.mp4","req":{"url":"blob:replay/7","rawUrl":"https://www.bilibili.com/video/BV1BJ4m1e7g8?p=1-3","labels":{"monkeyWie@bilibili":"1","bvid":"BV1BJ4m1e7g8","cid":101,"p":1,"type":"merged","quality":80,"selectedQuality":80,"resolution":"1080p","mergeCdnState":"{\"failed\":[{\"video\":\"https://upos-test.bilivideo.com\",\"audio\":\"https://upos-test.bilivideo.com\"}],\"retries\":1,\"current\":{\"video\":\"https://backup.example.com\",\"audio\":\"https://upos-test.bilivideo.com\"}}"}}},{"name":"BV1BJ4m1e7g8.真实扩展 Replay 测试(P3).1080p.mp4","req":{"url":"blob:replay/9","rawUrl":"https://www.bilibili.com/video/BV1BJ4m1e7g8?p=1-3","labels":{"monkeyWie@bilibili":"1","bvid":"BV1BJ4m1e7g8","cid":102,"p":2,"type":"merged","quality":80,"selectedQuality":80,"resolution":"1080p","mergeCdnState":"{\"failed\":[{\"video\":\"https://upos-test.bilivideo.com\",\"audio\":\"https://upos-test.bilivideo.com\"}],\"retries\":1,\"current\":{\"video\":\"https://backup.example.com\",\"audio\":\"https://upos-test.bilivideo.com\"}}"}}}]},"continued":3,"requests":["/x/web-interface/view","/x/web-interface/nav","/x/player/wbi/playurl","/x/web-interface/nav","/x/player/wbi/playurl","/x/web-interface/nav","/x/player/wbi/playurl","/x/web-interface/nav","/x/player/wbi/playurl","/x/web-interface/nav","/x/player/wbi/playurl","/x/web-interface/nav","/x/player/wbi/playurl","/x/web-interface/nav","/x/player/wbi/playurl","/x/web-interface/nav","/x/player/wbi/playurl","/x/web-interface/nav","/x/player/wbi/playurl"]}
+=== RUN   TestExtensionLifecycle/bilibili/moejs
+    evaluation_test.go:110: {"res":{"name":"真实扩展 Replay 测试","range":false,"files":[{"name":"BV1BJ4m1e7g8.真实扩展 Replay 测试(P1).1080p.mp4","req":{"url":"blob:replay/5","rawUrl":"https://www.bilibili.com/video/BV1BJ4m1e7g8?p=1-3","labels":{"monkeyWie@bilibili":"1","bvid":"BV1BJ4m1e7g8","cid":100,"p":0,"type":"merged","quality":80,"selectedQuality":80,"resolution":"1080p","mergeCdnState":"{\"failed\":[{\"video\":\"https://upos-test.bilivideo.com\",\"audio\":\"https://upos-test.bilivideo.com\"}],\"retries\":1,\"current\":{\"video\":\"https://backup.example.com\",\"audio\":\"https://upos-test.bilivideo.com\"}}"}}},{"name":"BV1BJ4m1e7g8.真实扩展 Replay 测试(P2).1080p.mp4","req":{"url":"blob:replay/7","rawUrl":"https://www.bilibili.com/video/BV1BJ4m1e7g8?p=1-3","labels":{"monkeyWie@bilibili":"1","bvid":"BV1BJ4m1e7g8","cid":101,"p":1,"type":"merged","quality":80,"selectedQuality":80,"resolution":"1080p","mergeCdnState":"{\"failed\":[{\"video\":\"https://upos-test.bilivideo.com\",\"audio\":\"https://upos-test.bilivideo.com\"}],\"retries\":1,\"current\":{\"video\":\"https://backup.example.com\",\"audio\":\"https://upos-test.bilivideo.com\"}}"}}},{"name":"BV1BJ4m1e7g8.真实扩展 Replay 测试(P3).1080p.mp4","req":{"url":"blob:replay/9","rawUrl":"https://www.bilibili.com/video/BV1BJ4m1e7g8?p=1-3","labels":{"monkeyWie@bilibili":"1","bvid":"BV1BJ4m1e7g8","cid":102,"p":2,"type":"merged","quality":80,"selectedQuality":80,"resolution":"1080p","mergeCdnState":"{\"failed\":[{\"video\":\"https://upos-test.bilivideo.com\",\"audio\":\"https://upos-test.bilivideo.com\"}],\"retries\":1,\"current\":{\"video\":\"https://backup.example.com\",\"audio\":\"https://upos-test.bilivideo.com\"}}"}}}]},"continued":3,"requests":["/x/web-interface/view","/x/web-interface/nav","/x/player/wbi/playurl","/x/web-interface/nav","/x/player/wbi/playurl","/x/web-interface/nav","/x/player/wbi/playurl","/x/web-interface/nav","/x/player/wbi/playurl","/x/web-interface/nav","/x/player/wbi/playurl","/x/web-interface/nav","/x/player/wbi/playurl","/x/web-interface/nav","/x/player/wbi/playurl","/x/web-interface/nav","/x/player/wbi/playurl","/x/web-interface/nav","/x/player/wbi/playurl"]}
+=== RUN   TestExtensionLifecycle/youtube
+=== RUN   TestExtensionLifecycle/youtube/goja
+    evaluation_test.go:110: {"res":{"range":false,"files":[{"name":"YouTube Replay 测试.mp4","req":{"url":"blob:replay/1","rawUrl":"https://www.youtube.com/watch?v=dQw4w9WgXcQ","labels":{"monkeyWie@youtube":"1","input":"https://www.youtube.com/watch?v=dQw4w9WgXcQ","quality":"1080p","fallbackToBest":"true","type":"merged","retried":"1"}}}]},"continued":1,"requests":["/sw.js_data","/youtubei/v1/config","/youtubei/v1/player"]}
+=== RUN   TestExtensionLifecycle/youtube/moejs
+    evaluation_test.go:110: {"res":{"range":false,"files":[{"name":"YouTube Replay 测试.mp4","req":{"url":"blob:replay/1","rawUrl":"https://www.youtube.com/watch?v=dQw4w9WgXcQ","labels":{"monkeyWie@youtube":"1","input":"https://www.youtube.com/watch?v=dQw4w9WgXcQ","quality":"1080p","fallbackToBest":"true","type":"merged","retried":"1"}}}]},"continued":1,"requests":["/sw.js_data","/youtubei/v1/config","/youtubei/v1/player"]}
+=== RUN   TestExtensionLifecycle/twitter
+=== RUN   TestExtensionLifecycle/twitter/goja
+    evaluation_test.go:110: {"res":{"name":"twitter-status-1734145541599383880","files":[{"name":"twitter-status-1734145541599383880-1.jpg","req":{"url":"https://pbs.twimg.com/media/replay.jpg"}},{"name":"twitter-status-1734145541599383880-2.mp4","req":{"url":"https://video.twimg.com/1920x1080/high.mp4"}}]},"continued":0,"requests":["/raw/nz3ApKQM","/1.1/guest/activate.json","/raw/nz3ApKQM","/i/api/graphql/DJS3BdhUhcaEpZ7B7irJDg/TweetResultByRestId"]}
+=== RUN   TestExtensionLifecycle/twitter/moejs
+    evaluation_test.go:110: {"res":{"name":"twitter-status-1734145541599383880","files":[{"name":"twitter-status-1734145541599383880-1.jpg","req":{"url":"https://pbs.twimg.com/media/replay.jpg"}},{"name":"twitter-status-1734145541599383880-2.mp4","req":{"url":"https://video.twimg.com/1920x1080/high.mp4"}}]},"continued":0,"requests":["/raw/nz3ApKQM","/1.1/guest/activate.json","/raw/nz3ApKQM","/i/api/graphql/DJS3BdhUhcaEpZ7B7irJDg/TweetResultByRestId"]}
+--- PASS: TestExtensionLifecycle (0.63s)
+    --- PASS: TestExtensionLifecycle/bilibili (0.20s)
+        --- PASS: TestExtensionLifecycle/bilibili/goja (0.11s)
+        --- PASS: TestExtensionLifecycle/bilibili/moejs (0.09s)
+    --- PASS: TestExtensionLifecycle/youtube (0.40s)
+        --- PASS: TestExtensionLifecycle/youtube/goja (0.21s)
+        --- PASS: TestExtensionLifecycle/youtube/moejs (0.19s)
+    --- PASS: TestExtensionLifecycle/twitter (0.02s)
+        --- PASS: TestExtensionLifecycle/twitter/goja (0.01s)
+        --- PASS: TestExtensionLifecycle/twitter/moejs (0.01s)
+=== RUN   TestFrozenExtensionReplay
+=== RUN   TestFrozenExtensionReplay/bilibili
+    frozen_test.go:13: {"res":{"name":"真实扩展 Replay 测试","range":false,"files":[{"name":"BV1BJ4m1e7g8.真实扩展 Replay 测试(P1).1080p.mp4","req":{"url":"blob:replay/1","rawUrl":"https://www.bilibili.com/video/BV1BJ4m1e7g8?p=1-3","labels":{"monkeyWie@bilibili":"1","bvid":"BV1BJ4m1e7g8","cid":100,"p":0,"type":"merged","quality":80,"selectedQuality":80,"resolution":"1080p"}}},{"name":"BV1BJ4m1e7g8.真实扩展 Replay 测试(P2).1080p.mp4","req":{"url":"blob:replay/2","rawUrl":"https://www.bilibili.com/video/BV1BJ4m1e7g8?p=1-3","labels":{"monkeyWie@bilibili":"1","bvid":"BV1BJ4m1e7g8","cid":101,"p":1,"type":"merged","quality":80,"selectedQuality":80,"resolution":"1080p"}}},{"name":"BV1BJ4m1e7g8.真实扩展 Replay 测试(P3).1080p.mp4","req":{"url":"blob:replay/3","rawUrl":"https://www.bilibili.com/video/BV1BJ4m1e7g8?p=1-3","labels":{"monkeyWie@bilibili":"1","bvid":"BV1BJ4m1e7g8","cid":102,"p":2,"type":"merged","quality":80,"selectedQuality":80,"resolution":"1080p"}}}]},"requests":["/x/web-interface/view","/x/web-interface/nav","/x/player/wbi/playurl","/x/web-interface/nav","/x/player/wbi/playurl","/x/web-interface/nav","/x/player/wbi/playurl"]}
+=== RUN   TestFrozenExtensionReplay/youtube
+    frozen_test.go:13: {"res":{"range":false,"files":[{"name":"YouTube Replay 测试.mp4","req":{"url":"https://www.youtube.com/watch?v=dQw4w9WgXcQ","rawUrl":"https://www.youtube.com/watch?v=dQw4w9WgXcQ","labels":{"monkeyWie@youtube":"1","input":"https://www.youtube.com/watch?v=dQw4w9WgXcQ","quality":"1080p","fallbackToBest":"true","type":"merged"}}}]},"requests":["/sw.js_data","/youtubei/v1/config","/youtubei/v1/player"]}
+=== RUN   TestFrozenExtensionReplay/twitter
+    frozen_test.go:13: {"res":{"name":"twitter-status-1734145541599383880","files":[{"name":"twitter-status-1734145541599383880-1.jpg","req":{"url":"https://pbs.twimg.com/media/replay.jpg"}},{"name":"twitter-status-1734145541599383880-2.mp4","req":{"url":"https://video.twimg.com/1920x1080/high.mp4"}}]},"requests":["/raw/nz3ApKQM","/1.1/guest/activate.json","/raw/nz3ApKQM","/i/api/graphql/DJS3BdhUhcaEpZ7B7irJDg/TweetResultByRestId"]}
+--- PASS: TestFrozenExtensionReplay (0.28s)
+    --- PASS: TestFrozenExtensionReplay/bilibili (0.08s)
+    --- PASS: TestFrozenExtensionReplay/youtube (0.19s)
+    --- PASS: TestFrozenExtensionReplay/twitter (0.01s)
+=== RUN   TestAsyncHTTP
+=== RUN   TestAsyncHTTP/goja
+    http_test.go:46: abort rejection: ReferenceError: DOMException is not defined
+    http_test.go:56: default abort probe: AbortError
+=== RUN   TestAsyncHTTP/moejs
+    http_test.go:46: abort rejection: Error: evaluation cancel
+    http_test.go:56: default abort probe: AbortError
+--- PASS: TestAsyncHTTP (0.04s)
+    --- PASS: TestAsyncHTTP/goja (0.02s)
+    --- PASS: TestAsyncHTTP/moejs (0.02s)
+=== RUN   TestHostInterop
+=== RUN   TestHostInterop/goja
+    interop_test.go:65: Go URL=after, Go res=map[files:[map[name:video.mp4]]], JS method=function
+=== RUN   TestHostInterop/moejs
+    interop_test.go:65: Go URL=before, Go res=map[], JS method=undefined
+--- PASS: TestHostInterop (0.00s)
+    --- PASS: TestHostInterop/goja (0.00s)
+    --- PASS: TestHostInterop/moejs (0.00s)
+=== RUN   TestFrozenCompatibility
+    interop_test.go:80: TypeError: Cannot modify property '__probe' of shared intrinsic [object Array]
+--- PASS: TestFrozenCompatibility (0.00s)
+=== RUN   TestLiveResolve
+    live_test.go:14: set GOPEED_MOEJS_LIVE=1 to contact public endpoints
+--- SKIP: TestLiveResolve (0.00s)
+PASS
+ok  	github.com/GopeedLab/gopeed/experiments/moejs	2.824s
