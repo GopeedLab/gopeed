@@ -134,6 +134,9 @@ jobs:
         if: runner.os == 'macOS'
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
+      - name: Test Windows FFmpeg memory and stream lifecycle
+        if: runner.os == 'Windows'
+        run: go test -v -count=1 -timeout 180s ./pkg/download/engine/ffmpeg ./pkg/download/engine/inject/stream ./pkg/download/engine
       - name: Install Linux WebView dependencies
         if: runner.os == 'Linux'
         run: |
