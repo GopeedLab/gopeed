@@ -50,6 +50,8 @@
   "autoTorrentEnable": "Automaticky vytvárať BT úlohy z .torrent súborov",
   "autoTorrentDeleteAfterDownload": "Po vytvorení BT úlohy odstrániť .torrent súbor",
   "autoDeleteMissingFileTasks": "Automaticky odstrániť úlohy s chýbajúcimi súbormi",
+  "autoCloseWhenAllTasksDone": "Ukončiť aplikáciu po dokončení všetkých úloh",
+  "autoCloseWhenAllTasksDoneDescription": "Zatvorí Gopeed po dokončení všetkých úloh sťahovania. Pozastavené úlohy zostanú pre ďalšie spustenie.",
   "items": "{count} položiek",
   "@items": {
     "placeholders": {

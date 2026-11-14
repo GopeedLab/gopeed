@@ -207,6 +207,9 @@ class ExtraConfig {
   bool defaultBtClient;
   bool notifyWhenNewVersion;
   bool desktopNotification;
+
+  /// Quit the app once every download task reached a terminal state.
+  bool autoCloseWhenAllTasksDone;
   bool backgroundLocationKeepAlive;
   bool backgroundContinuedProcessing;
   WindowStateConfig windowState;
@@ -227,6 +230,7 @@ class ExtraConfig {
     this.defaultBtClient = true,
     this.notifyWhenNewVersion = true,
     this.desktopNotification = true,
+    this.autoCloseWhenAllTasksDone = false,
     this.backgroundLocationKeepAlive = false,
     this.backgroundContinuedProcessing = false,
     WindowStateConfig? windowState,

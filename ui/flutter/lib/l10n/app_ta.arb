@@ -50,6 +50,8 @@
   "autoTorrentEnable": ".torrent கோப்புகளிலிருந்து BT பணிகளை தானாக உருவாக்கு",
   "autoTorrentDeleteAfterDownload": "BT பணி உருவாக்கத்திற்குப் பிறகு .torrent கோப்பை நீக்கு",
   "autoDeleteMissingFileTasks": "காணாமல் போன கோப்புகளுடன் பணிகளை தானாக நீக்கு",
+  "autoCloseWhenAllTasksDone": "அனைத்துப் பணிகளும் முடிந்ததும் பயன்பாட்டை மூடு",
+  "autoCloseWhenAllTasksDoneDescription": "அனைத்து பதிவிறக்கப் பணிகளும் முடிந்த பிறகு Gopeed மூடப்படும். இடைநிறுத்தப்பட்ட பணிகள் அடுத்த துவக்கத்திற்கு இருக்கும்.",
   "items": "{count} உருப்படிகள்",
   "subscribeTracker": "டிராக்கரை குழுசேரவும்",
   "subscribeFail": "சந்தா தோல்வியுற்றது, நெட்வொர்க்கைச் சரிபார்க்கவும் அல்லது பின்னர் மீண்டும் முயற்சிக்கவும்",

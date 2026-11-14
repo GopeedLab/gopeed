@@ -535,6 +535,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       onChanged: (value) => _mutateConfig((next) => next.autoDeleteMissingFileTasks = value),
                     ),
                   ),
+                  if (Util.isDesktop())
+                    SettingsItem(
+                      key: const ValueKey('auto-close-when-all-tasks-done'),
+                      title: context.l10n.autoCloseWhenAllTasksDone,
+                      subtitle: context.l10n.autoCloseWhenAllTasksDoneDescription,
+                      child: shad.Switch(
+                        value: config.extra.autoCloseWhenAllTasksDone,
+                        onChanged: (value) => _mutateConfig((next) => next.extra.autoCloseWhenAllTasksDone = value),
+                      ),
+                    ),
                 ],
               ),
             ),

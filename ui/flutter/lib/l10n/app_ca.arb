@@ -50,6 +50,8 @@
   "autoTorrentEnable": "Crea automàticament tasques BT a partir de fitxers .torrent",
   "autoTorrentDeleteAfterDownload": "Suprimeix el fitxer .torrent després de crear la tasca BT",
   "autoDeleteMissingFileTasks": "Suprimeix automàticament les tasques dels fitxers que falten",
+  "autoCloseWhenAllTasksDone": "Tanca l'aplicació quan acabin totes les tasques",
+  "autoCloseWhenAllTasksDoneDescription": "Tanca el Gopeed quan hagin acabat totes les tasques de descàrrega. Les tasques en pausa es mantenen per al proper inici.",
   "items": "{count} elements",
   "subscribeTracker": "Subscripció al rastrejador",
   "subscribeFail": "La subscripció ha fallat. Comproveu la xarxa o torneu-ho a provar més tard",
