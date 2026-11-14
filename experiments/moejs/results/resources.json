@@ -1,0 +1,6482 @@
+[
+  {
+    "engine": "goja",
+    "extension": "bilibili",
+    "mode": "cold",
+    "count": 20,
+    "user_cpu_ns": 2351490000,
+    "system_cpu_ns": 36032000,
+    "wall_ns": 2387153458,
+    "allocated_bytes": 1545352080,
+    "gc_cycles": 35,
+    "gc_pause_ns": 1459206,
+    "output_sha256": "5759030b1417335a06ed4f78d38ad2acc5c2fee375b67e64754875ff95c9b7ca",
+    "baseline": {
+      "heap_alloc_bytes": 22017016,
+      "heap_inuse_bytes": 23379968,
+      "heap_objects": 2563,
+      "rss_bytes": 117997568,
+      "process_peak_rss_bytes": 117997568,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 82758968,
+      "heap_inuse_bytes": 87121920,
+      "heap_objects": 963925,
+      "rss_bytes": 162201600,
+      "process_peak_rss_bytes": 162201600,
+      "goroutines": 2
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 22019736,
+      "heap_inuse_bytes": 23429120,
+      "heap_objects": 2593,
+      "rss_bytes": 162201600,
+      "process_peak_rss_bytes": 162201600,
+      "goroutines": 2
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 21981736,
+      "heap_inuse_bytes": 23330816,
+      "heap_objects": 2580,
+      "rss_bytes": 162201600,
+      "process_peak_rss_bytes": 162201600,
+      "goroutines": 2
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21981736,
+      "heap_inuse_bytes": 23330816,
+      "heap_objects": 2580,
+      "rss_bytes": 162201600,
+      "process_peak_rss_bytes": 162201600,
+      "goroutines": 2
+    },
+    "repeat": 0
+  },
+  {
+    "engine": "moejs",
+    "extension": "bilibili",
+    "mode": "cold",
+    "count": 20,
+    "user_cpu_ns": 2068507000,
+    "system_cpu_ns": 32133000,
+    "wall_ns": 2099830958,
+    "allocated_bytes": 1261865896,
+    "gc_cycles": 24,
+    "gc_pause_ns": 1080793,
+    "output_sha256": "5759030b1417335a06ed4f78d38ad2acc5c2fee375b67e64754875ff95c9b7ca",
+    "baseline": {
+      "heap_alloc_bytes": 24952328,
+      "heap_inuse_bytes": 28499968,
+      "heap_objects": 19384,
+      "rss_bytes": 116588544,
+      "process_peak_rss_bytes": 116604928,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 123303896,
+      "heap_inuse_bytes": 127762432,
+      "heap_objects": 1148980,
+      "rss_bytes": 179601408,
+      "process_peak_rss_bytes": 179601408,
+      "goroutines": 2
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 27268784,
+      "heap_inuse_bytes": 34816000,
+      "heap_objects": 22567,
+      "rss_bytes": 179601408,
+      "process_peak_rss_bytes": 179601408,
+      "goroutines": 2
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 22524920,
+      "heap_inuse_bytes": 26984448,
+      "heap_objects": 15206,
+      "rss_bytes": 179601408,
+      "process_peak_rss_bytes": 179601408,
+      "goroutines": 2
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 22524920,
+      "heap_inuse_bytes": 26984448,
+      "heap_objects": 15206,
+      "rss_bytes": 179601408,
+      "process_peak_rss_bytes": 179601408,
+      "goroutines": 2
+    },
+    "repeat": 0
+  },
+  {
+    "engine": "moejs",
+    "extension": "bilibili",
+    "mode": "cold",
+    "count": 20,
+    "user_cpu_ns": 2045124000,
+    "system_cpu_ns": 28933000,
+    "wall_ns": 2073177583,
+    "allocated_bytes": 1261667776,
+    "gc_cycles": 23,
+    "gc_pause_ns": 1043166,
+    "output_sha256": "5759030b1417335a06ed4f78d38ad2acc5c2fee375b67e64754875ff95c9b7ca",
+    "baseline": {
+      "heap_alloc_bytes": 24773184,
+      "heap_inuse_bytes": 29294592,
+      "heap_objects": 19363,
+      "rss_bytes": 116555776,
+      "process_peak_rss_bytes": 116572160,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 111449992,
+      "heap_inuse_bytes": 117563392,
+      "heap_objects": 947833,
+      "rss_bytes": 187236352,
+      "process_peak_rss_bytes": 187236352,
+      "goroutines": 2
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 27252352,
+      "heap_inuse_bytes": 33382400,
+      "heap_objects": 22153,
+      "rss_bytes": 187236352,
+      "process_peak_rss_bytes": 187236352,
+      "goroutines": 2
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 22509976,
+      "heap_inuse_bytes": 27459584,
+      "heap_objects": 14876,
+      "rss_bytes": 187236352,
+      "process_peak_rss_bytes": 187236352,
+      "goroutines": 2
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 22509976,
+      "heap_inuse_bytes": 27459584,
+      "heap_objects": 14876,
+      "rss_bytes": 187236352,
+      "process_peak_rss_bytes": 187236352,
+      "goroutines": 2
+    },
+    "repeat": 1
+  },
+  {
+    "engine": "goja",
+    "extension": "bilibili",
+    "mode": "cold",
+    "count": 20,
+    "user_cpu_ns": 2347515000,
+    "system_cpu_ns": 31722000,
+    "wall_ns": 2378713959,
+    "allocated_bytes": 1545240208,
+    "gc_cycles": 35,
+    "gc_pause_ns": 1468420,
+    "output_sha256": "5759030b1417335a06ed4f78d38ad2acc5c2fee375b67e64754875ff95c9b7ca",
+    "baseline": {
+      "heap_alloc_bytes": 22017144,
+      "heap_inuse_bytes": 23388160,
+      "heap_objects": 2565,
+      "rss_bytes": 114606080,
+      "process_peak_rss_bytes": 114606080,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 89064296,
+      "heap_inuse_bytes": 94199808,
+      "heap_objects": 1068452,
+      "rss_bytes": 158777344,
+      "process_peak_rss_bytes": 158777344,
+      "goroutines": 2
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 22019672,
+      "heap_inuse_bytes": 23429120,
+      "heap_objects": 2593,
+      "rss_bytes": 158826496,
+      "process_peak_rss_bytes": 158826496,
+      "goroutines": 2
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 21981672,
+      "heap_inuse_bytes": 23339008,
+      "heap_objects": 2580,
+      "rss_bytes": 158826496,
+      "process_peak_rss_bytes": 158826496,
+      "goroutines": 2
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21981672,
+      "heap_inuse_bytes": 23339008,
+      "heap_objects": 2580,
+      "rss_bytes": 158826496,
+      "process_peak_rss_bytes": 158826496,
+      "goroutines": 2
+    },
+    "repeat": 1
+  },
+  {
+    "engine": "goja",
+    "extension": "bilibili",
+    "mode": "cold",
+    "count": 20,
+    "user_cpu_ns": 2342090000,
+    "system_cpu_ns": 23496000,
+    "wall_ns": 2365265916,
+    "allocated_bytes": 1545279144,
+    "gc_cycles": 38,
+    "gc_pause_ns": 1511045,
+    "output_sha256": "5759030b1417335a06ed4f78d38ad2acc5c2fee375b67e64754875ff95c9b7ca",
+    "baseline": {
+      "heap_alloc_bytes": 22017464,
+      "heap_inuse_bytes": 23396352,
+      "heap_objects": 2567,
+      "rss_bytes": 124862464,
+      "process_peak_rss_bytes": 124878848,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 88459432,
+      "heap_inuse_bytes": 93503488,
+      "heap_objects": 1060406,
+      "rss_bytes": 150355968,
+      "process_peak_rss_bytes": 150355968,
+      "goroutines": 2
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 22020184,
+      "heap_inuse_bytes": 23486464,
+      "heap_objects": 2597,
+      "rss_bytes": 150355968,
+      "process_peak_rss_bytes": 150355968,
+      "goroutines": 2
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 21982232,
+      "heap_inuse_bytes": 23388160,
+      "heap_objects": 2585,
+      "rss_bytes": 150355968,
+      "process_peak_rss_bytes": 150355968,
+      "goroutines": 2
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21982232,
+      "heap_inuse_bytes": 23388160,
+      "heap_objects": 2585,
+      "rss_bytes": 150355968,
+      "process_peak_rss_bytes": 150355968,
+      "goroutines": 2
+    },
+    "repeat": 2
+  },
+  {
+    "engine": "moejs",
+    "extension": "bilibili",
+    "mode": "cold",
+    "count": 20,
+    "user_cpu_ns": 2042616000,
+    "system_cpu_ns": 30741000,
+    "wall_ns": 2072594375,
+    "allocated_bytes": 1261849704,
+    "gc_cycles": 24,
+    "gc_pause_ns": 1104081,
+    "output_sha256": "5759030b1417335a06ed4f78d38ad2acc5c2fee375b67e64754875ff95c9b7ca",
+    "baseline": {
+      "heap_alloc_bytes": 24950184,
+      "heap_inuse_bytes": 28418048,
+      "heap_objects": 19383,
+      "rss_bytes": 116539392,
+      "process_peak_rss_bytes": 116555776,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 133704784,
+      "heap_inuse_bytes": 138149888,
+      "heap_objects": 1222370,
+      "rss_bytes": 180666368,
+      "process_peak_rss_bytes": 180666368,
+      "goroutines": 2
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 27271568,
+      "heap_inuse_bytes": 35627008,
+      "heap_objects": 22770,
+      "rss_bytes": 180666368,
+      "process_peak_rss_bytes": 180666368,
+      "goroutines": 2
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 22527624,
+      "heap_inuse_bytes": 27025408,
+      "heap_objects": 15413,
+      "rss_bytes": 180666368,
+      "process_peak_rss_bytes": 180666368,
+      "goroutines": 2
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 22527624,
+      "heap_inuse_bytes": 27025408,
+      "heap_objects": 15413,
+      "rss_bytes": 180666368,
+      "process_peak_rss_bytes": 180666368,
+      "goroutines": 2
+    },
+    "repeat": 2
+  },
+  {
+    "engine": "moejs",
+    "extension": "bilibili",
+    "mode": "cold",
+    "count": 20,
+    "user_cpu_ns": 2051076000,
+    "system_cpu_ns": 30540000,
+    "wall_ns": 2081006125,
+    "allocated_bytes": 1261908184,
+    "gc_cycles": 24,
+    "gc_pause_ns": 1149041,
+    "output_sha256": "5759030b1417335a06ed4f78d38ad2acc5c2fee375b67e64754875ff95c9b7ca",
+    "baseline": {
+      "heap_alloc_bytes": 24952328,
+      "heap_inuse_bytes": 28475392,
+      "heap_objects": 19379,
+      "rss_bytes": 116686848,
+      "process_peak_rss_bytes": 116703232,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 131904776,
+      "heap_inuse_bytes": 136249344,
+      "heap_objects": 1214435,
+      "rss_bytes": 183107584,
+      "process_peak_rss_bytes": 183107584,
+      "goroutines": 2
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 27273408,
+      "heap_inuse_bytes": 35373056,
+      "heap_objects": 22799,
+      "rss_bytes": 183107584,
+      "process_peak_rss_bytes": 183107584,
+      "goroutines": 2
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 22529624,
+      "heap_inuse_bytes": 26943488,
+      "heap_objects": 15443,
+      "rss_bytes": 183107584,
+      "process_peak_rss_bytes": 183123968,
+      "goroutines": 2
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 22529624,
+      "heap_inuse_bytes": 26943488,
+      "heap_objects": 15443,
+      "rss_bytes": 183123968,
+      "process_peak_rss_bytes": 183123968,
+      "goroutines": 2
+    },
+    "repeat": 3
+  },
+  {
+    "engine": "goja",
+    "extension": "bilibili",
+    "mode": "cold",
+    "count": 20,
+    "user_cpu_ns": 2305019000,
+    "system_cpu_ns": 34717000,
+    "wall_ns": 2339350208,
+    "allocated_bytes": 1545462816,
+    "gc_cycles": 35,
+    "gc_pause_ns": 1397412,
+    "output_sha256": "5759030b1417335a06ed4f78d38ad2acc5c2fee375b67e64754875ff95c9b7ca",
+    "baseline": {
+      "heap_alloc_bytes": 22017400,
+      "heap_inuse_bytes": 23363584,
+      "heap_objects": 2564,
+      "rss_bytes": 117915648,
+      "process_peak_rss_bytes": 117932032,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 89767760,
+      "heap_inuse_bytes": 92790784,
+      "heap_objects": 1079466,
+      "rss_bytes": 162775040,
+      "process_peak_rss_bytes": 162775040,
+      "goroutines": 2
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 22020248,
+      "heap_inuse_bytes": 23445504,
+      "heap_objects": 2593,
+      "rss_bytes": 162775040,
+      "process_peak_rss_bytes": 162775040,
+      "goroutines": 2
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 21982248,
+      "heap_inuse_bytes": 23347200,
+      "heap_objects": 2580,
+      "rss_bytes": 162775040,
+      "process_peak_rss_bytes": 162775040,
+      "goroutines": 2
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21982248,
+      "heap_inuse_bytes": 23347200,
+      "heap_objects": 2580,
+      "rss_bytes": 162775040,
+      "process_peak_rss_bytes": 162775040,
+      "goroutines": 2
+    },
+    "repeat": 3
+  },
+  {
+    "engine": "goja",
+    "extension": "bilibili",
+    "mode": "cold",
+    "count": 20,
+    "user_cpu_ns": 2349243000,
+    "system_cpu_ns": 36456000,
+    "wall_ns": 2385263333,
+    "allocated_bytes": 1545315648,
+    "gc_cycles": 35,
+    "gc_pause_ns": 1440078,
+    "output_sha256": "5759030b1417335a06ed4f78d38ad2acc5c2fee375b67e64754875ff95c9b7ca",
+    "baseline": {
+      "heap_alloc_bytes": 22017096,
+      "heap_inuse_bytes": 23388160,
+      "heap_objects": 2562,
+      "rss_bytes": 119226368,
+      "process_peak_rss_bytes": 119226368,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 93590112,
+      "heap_inuse_bytes": 96681984,
+      "heap_objects": 1137370,
+      "rss_bytes": 165691392,
+      "process_peak_rss_bytes": 165691392,
+      "goroutines": 2
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 22020440,
+      "heap_inuse_bytes": 23453696,
+      "heap_objects": 2602,
+      "rss_bytes": 165691392,
+      "process_peak_rss_bytes": 165691392,
+      "goroutines": 2
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 21982440,
+      "heap_inuse_bytes": 23347200,
+      "heap_objects": 2589,
+      "rss_bytes": 165691392,
+      "process_peak_rss_bytes": 165691392,
+      "goroutines": 2
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21982440,
+      "heap_inuse_bytes": 23347200,
+      "heap_objects": 2589,
+      "rss_bytes": 165691392,
+      "process_peak_rss_bytes": 165691392,
+      "goroutines": 2
+    },
+    "repeat": 4
+  },
+  {
+    "engine": "moejs",
+    "extension": "bilibili",
+    "mode": "cold",
+    "count": 20,
+    "user_cpu_ns": 2050995000,
+    "system_cpu_ns": 32244000,
+    "wall_ns": 2083240208,
+    "allocated_bytes": 1261926096,
+    "gc_cycles": 25,
+    "gc_pause_ns": 1138126,
+    "output_sha256": "5759030b1417335a06ed4f78d38ad2acc5c2fee375b67e64754875ff95c9b7ca",
+    "baseline": {
+      "heap_alloc_bytes": 24949576,
+      "heap_inuse_bytes": 28459008,
+      "heap_objects": 19380,
+      "rss_bytes": 116555776,
+      "process_peak_rss_bytes": 116572160,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 129098712,
+      "heap_inuse_bytes": 133455872,
+      "heap_objects": 1205109,
+      "rss_bytes": 175636480,
+      "process_peak_rss_bytes": 175636480,
+      "goroutines": 2
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 27271984,
+      "heap_inuse_bytes": 35135488,
+      "heap_objects": 22798,
+      "rss_bytes": 175636480,
+      "process_peak_rss_bytes": 175636480,
+      "goroutines": 2
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 22528328,
+      "heap_inuse_bytes": 26861568,
+      "heap_objects": 15441,
+      "rss_bytes": 175636480,
+      "process_peak_rss_bytes": 175636480,
+      "goroutines": 2
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 22528328,
+      "heap_inuse_bytes": 26861568,
+      "heap_objects": 15441,
+      "rss_bytes": 175636480,
+      "process_peak_rss_bytes": 175636480,
+      "goroutines": 2
+    },
+    "repeat": 4
+  },
+  {
+    "engine": "goja",
+    "extension": "bilibili",
+    "mode": "warm",
+    "count": 200,
+    "user_cpu_ns": 3960685000,
+    "system_cpu_ns": 13096000,
+    "wall_ns": 3973106958,
+    "allocated_bytes": 1668416296,
+    "gc_cycles": 44,
+    "gc_pause_ns": 1433790,
+    "output_sha256": "5759030b1417335a06ed4f78d38ad2acc5c2fee375b67e64754875ff95c9b7ca",
+    "baseline": {
+      "heap_alloc_bytes": 22017336,
+      "heap_inuse_bytes": 23388160,
+      "heap_objects": 2565,
+      "rss_bytes": 126140416,
+      "process_peak_rss_bytes": 126140416,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 76586944,
+      "heap_inuse_bytes": 87654400,
+      "heap_objects": 640574,
+      "rss_bytes": 133349376,
+      "process_peak_rss_bytes": 133349376,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 38623808,
+      "heap_inuse_bytes": 58580992,
+      "heap_objects": 170249,
+      "rss_bytes": 133349376,
+      "process_peak_rss_bytes": 133349376,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 38585808,
+      "heap_inuse_bytes": 58531840,
+      "heap_objects": 170236,
+      "rss_bytes": 133349376,
+      "process_peak_rss_bytes": 133349376,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21982552,
+      "heap_inuse_bytes": 23379968,
+      "heap_objects": 2587,
+      "rss_bytes": 133349376,
+      "process_peak_rss_bytes": 133349376,
+      "goroutines": 2
+    },
+    "repeat": 0
+  },
+  {
+    "engine": "moejs",
+    "extension": "bilibili",
+    "mode": "warm",
+    "count": 200,
+    "user_cpu_ns": 630352000,
+    "system_cpu_ns": 4245000,
+    "wall_ns": 634607958,
+    "allocated_bytes": 261069464,
+    "gc_cycles": 7,
+    "gc_pause_ns": 229456,
+    "output_sha256": "5759030b1417335a06ed4f78d38ad2acc5c2fee375b67e64754875ff95c9b7ca",
+    "baseline": {
+      "heap_alloc_bytes": 24950152,
+      "heap_inuse_bytes": 28442624,
+      "heap_objects": 19379,
+      "rss_bytes": 116375552,
+      "process_peak_rss_bytes": 116391936,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 77248304,
+      "heap_inuse_bytes": 90439680,
+      "heap_objects": 391256,
+      "rss_bytes": 124207104,
+      "process_peak_rss_bytes": 124207104,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 38479008,
+      "heap_inuse_bytes": 59891712,
+      "heap_objects": 67473,
+      "rss_bytes": 124207104,
+      "process_peak_rss_bytes": 124207104,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 38473368,
+      "heap_inuse_bytes": 59744256,
+      "heap_objects": 67335,
+      "rss_bytes": 124207104,
+      "process_peak_rss_bytes": 124207104,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 24793696,
+      "heap_inuse_bytes": 29368320,
+      "heap_objects": 20399,
+      "rss_bytes": 124207104,
+      "process_peak_rss_bytes": 124207104,
+      "goroutines": 2
+    },
+    "repeat": 0
+  },
+  {
+    "engine": "moejs",
+    "extension": "bilibili",
+    "mode": "warm",
+    "count": 200,
+    "user_cpu_ns": 628718000,
+    "system_cpu_ns": 4387000,
+    "wall_ns": 632978833,
+    "allocated_bytes": 261137896,
+    "gc_cycles": 7,
+    "gc_pause_ns": 238457,
+    "output_sha256": "5759030b1417335a06ed4f78d38ad2acc5c2fee375b67e64754875ff95c9b7ca",
+    "baseline": {
+      "heap_alloc_bytes": 25059096,
+      "heap_inuse_bytes": 29728768,
+      "heap_objects": 19635,
+      "rss_bytes": 116129792,
+      "process_peak_rss_bytes": 116146176,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 70236176,
+      "heap_inuse_bytes": 83943424,
+      "heap_objects": 326383,
+      "rss_bytes": 123895808,
+      "process_peak_rss_bytes": 123895808,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 38482152,
+      "heap_inuse_bytes": 60063744,
+      "heap_objects": 67432,
+      "rss_bytes": 123895808,
+      "process_peak_rss_bytes": 123895808,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 38475416,
+      "heap_inuse_bytes": 59908096,
+      "heap_objects": 67273,
+      "rss_bytes": 123895808,
+      "process_peak_rss_bytes": 123895808,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 24795248,
+      "heap_inuse_bytes": 29974528,
+      "heap_objects": 20334,
+      "rss_bytes": 123895808,
+      "process_peak_rss_bytes": 123895808,
+      "goroutines": 2
+    },
+    "repeat": 1
+  },
+  {
+    "engine": "goja",
+    "extension": "bilibili",
+    "mode": "warm",
+    "count": 200,
+    "user_cpu_ns": 3916260000,
+    "system_cpu_ns": 12503000,
+    "wall_ns": 3928129125,
+    "allocated_bytes": 1668412872,
+    "gc_cycles": 45,
+    "gc_pause_ns": 1443918,
+    "output_sha256": "5759030b1417335a06ed4f78d38ad2acc5c2fee375b67e64754875ff95c9b7ca",
+    "baseline": {
+      "heap_alloc_bytes": 22017080,
+      "heap_inuse_bytes": 23379968,
+      "heap_objects": 2564,
+      "rss_bytes": 125485056,
+      "process_peak_rss_bytes": 125485056,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 79008216,
+      "heap_inuse_bytes": 90136576,
+      "heap_objects": 803442,
+      "rss_bytes": 130007040,
+      "process_peak_rss_bytes": 130007040,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 38624368,
+      "heap_inuse_bytes": 59604992,
+      "heap_objects": 170293,
+      "rss_bytes": 130007040,
+      "process_peak_rss_bytes": 130007040,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 38586384,
+      "heap_inuse_bytes": 59555840,
+      "heap_objects": 170281,
+      "rss_bytes": 130007040,
+      "process_peak_rss_bytes": 130007040,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21982424,
+      "heap_inuse_bytes": 23355392,
+      "heap_objects": 2588,
+      "rss_bytes": 130023424,
+      "process_peak_rss_bytes": 130023424,
+      "goroutines": 2
+    },
+    "repeat": 1
+  },
+  {
+    "engine": "goja",
+    "extension": "bilibili",
+    "mode": "warm",
+    "count": 200,
+    "user_cpu_ns": 3894454000,
+    "system_cpu_ns": 14066000,
+    "wall_ns": 3907966083,
+    "allocated_bytes": 1668419680,
+    "gc_cycles": 45,
+    "gc_pause_ns": 1440461,
+    "output_sha256": "5759030b1417335a06ed4f78d38ad2acc5c2fee375b67e64754875ff95c9b7ca",
+    "baseline": {
+      "heap_alloc_bytes": 22017560,
+      "heap_inuse_bytes": 23404544,
+      "heap_objects": 2566,
+      "rss_bytes": 124616704,
+      "process_peak_rss_bytes": 124616704,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 67698208,
+      "heap_inuse_bytes": 80535552,
+      "heap_objects": 615858,
+      "rss_bytes": 133480448,
+      "process_peak_rss_bytes": 133480448,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 38624336,
+      "heap_inuse_bytes": 60710912,
+      "heap_objects": 170273,
+      "rss_bytes": 133480448,
+      "process_peak_rss_bytes": 133480448,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 38586336,
+      "heap_inuse_bytes": 60661760,
+      "heap_objects": 170260,
+      "rss_bytes": 133480448,
+      "process_peak_rss_bytes": 133480448,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21982728,
+      "heap_inuse_bytes": 23371776,
+      "heap_objects": 2589,
+      "rss_bytes": 133496832,
+      "process_peak_rss_bytes": 133496832,
+      "goroutines": 2
+    },
+    "repeat": 2
+  },
+  {
+    "engine": "moejs",
+    "extension": "bilibili",
+    "mode": "warm",
+    "count": 200,
+    "user_cpu_ns": 630032000,
+    "system_cpu_ns": 4239000,
+    "wall_ns": 634226958,
+    "allocated_bytes": 261380888,
+    "gc_cycles": 7,
+    "gc_pause_ns": 240334,
+    "output_sha256": "5759030b1417335a06ed4f78d38ad2acc5c2fee375b67e64754875ff95c9b7ca",
+    "baseline": {
+      "heap_alloc_bytes": 24948856,
+      "heap_inuse_bytes": 28426240,
+      "heap_objects": 19386,
+      "rss_bytes": 116457472,
+      "process_peak_rss_bytes": 116473856,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 77288928,
+      "heap_inuse_bytes": 90513408,
+      "heap_objects": 391689,
+      "rss_bytes": 124239872,
+      "process_peak_rss_bytes": 124239872,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 38475600,
+      "heap_inuse_bytes": 60080128,
+      "heap_objects": 67360,
+      "rss_bytes": 124239872,
+      "process_peak_rss_bytes": 124239872,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 38470280,
+      "heap_inuse_bytes": 59949056,
+      "heap_objects": 67224,
+      "rss_bytes": 124239872,
+      "process_peak_rss_bytes": 124239872,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 24789088,
+      "heap_inuse_bytes": 29384704,
+      "heap_objects": 20270,
+      "rss_bytes": 124239872,
+      "process_peak_rss_bytes": 124239872,
+      "goroutines": 2
+    },
+    "repeat": 2
+  },
+  {
+    "engine": "moejs",
+    "extension": "bilibili",
+    "mode": "warm",
+    "count": 200,
+    "user_cpu_ns": 635367000,
+    "system_cpu_ns": 5100000,
+    "wall_ns": 640435750,
+    "allocated_bytes": 261540352,
+    "gc_cycles": 7,
+    "gc_pause_ns": 232207,
+    "output_sha256": "5759030b1417335a06ed4f78d38ad2acc5c2fee375b67e64754875ff95c9b7ca",
+    "baseline": {
+      "heap_alloc_bytes": 24952248,
+      "heap_inuse_bytes": 28442624,
+      "heap_objects": 19389,
+      "rss_bytes": 116686848,
+      "process_peak_rss_bytes": 116703232,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 73401600,
+      "heap_inuse_bytes": 87588864,
+      "heap_objects": 336366,
+      "rss_bytes": 125059072,
+      "process_peak_rss_bytes": 125059072,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 38654920,
+      "heap_inuse_bytes": 60416000,
+      "heap_objects": 67379,
+      "rss_bytes": 125059072,
+      "process_peak_rss_bytes": 125059072,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 38474424,
+      "heap_inuse_bytes": 60096512,
+      "heap_objects": 67269,
+      "rss_bytes": 125059072,
+      "process_peak_rss_bytes": 125059072,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 24793728,
+      "heap_inuse_bytes": 29442048,
+      "heap_objects": 20325,
+      "rss_bytes": 125059072,
+      "process_peak_rss_bytes": 125059072,
+      "goroutines": 2
+    },
+    "repeat": 3
+  },
+  {
+    "engine": "goja",
+    "extension": "bilibili",
+    "mode": "warm",
+    "count": 200,
+    "user_cpu_ns": 3923218000,
+    "system_cpu_ns": 14412000,
+    "wall_ns": 3937157584,
+    "allocated_bytes": 1668416504,
+    "gc_cycles": 46,
+    "gc_pause_ns": 1467044,
+    "output_sha256": "5759030b1417335a06ed4f78d38ad2acc5c2fee375b67e64754875ff95c9b7ca",
+    "baseline": {
+      "heap_alloc_bytes": 22017144,
+      "heap_inuse_bytes": 23371776,
+      "heap_objects": 2564,
+      "rss_bytes": 114688000,
+      "process_peak_rss_bytes": 114688000,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 80456784,
+      "heap_inuse_bytes": 91553792,
+      "heap_objects": 824023,
+      "rss_bytes": 130580480,
+      "process_peak_rss_bytes": 130580480,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 38623520,
+      "heap_inuse_bytes": 59785216,
+      "heap_objects": 170238,
+      "rss_bytes": 130580480,
+      "process_peak_rss_bytes": 130580480,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 38585520,
+      "heap_inuse_bytes": 59736064,
+      "heap_objects": 170225,
+      "rss_bytes": 130580480,
+      "process_peak_rss_bytes": 130580480,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21982424,
+      "heap_inuse_bytes": 23371776,
+      "heap_objects": 2586,
+      "rss_bytes": 130580480,
+      "process_peak_rss_bytes": 130580480,
+      "goroutines": 2
+    },
+    "repeat": 3
+  },
+  {
+    "engine": "goja",
+    "extension": "bilibili",
+    "mode": "warm",
+    "count": 200,
+    "user_cpu_ns": 3957867000,
+    "system_cpu_ns": 12475000,
+    "wall_ns": 3971134459,
+    "allocated_bytes": 1668412000,
+    "gc_cycles": 45,
+    "gc_pause_ns": 1429373,
+    "output_sha256": "5759030b1417335a06ed4f78d38ad2acc5c2fee375b67e64754875ff95c9b7ca",
+    "baseline": {
+      "heap_alloc_bytes": 22017240,
+      "heap_inuse_bytes": 23379968,
+      "heap_objects": 2565,
+      "rss_bytes": 124600320,
+      "process_peak_rss_bytes": 124600320,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 79495616,
+      "heap_inuse_bytes": 90759168,
+      "heap_objects": 808788,
+      "rss_bytes": 131252224,
+      "process_peak_rss_bytes": 131252224,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 38624480,
+      "heap_inuse_bytes": 60694528,
+      "heap_objects": 170295,
+      "rss_bytes": 131252224,
+      "process_peak_rss_bytes": 131252224,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 38586480,
+      "heap_inuse_bytes": 60645376,
+      "heap_objects": 170282,
+      "rss_bytes": 131252224,
+      "process_peak_rss_bytes": 131252224,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21982520,
+      "heap_inuse_bytes": 23363584,
+      "heap_objects": 2589,
+      "rss_bytes": 131252224,
+      "process_peak_rss_bytes": 131252224,
+      "goroutines": 2
+    },
+    "repeat": 4
+  },
+  {
+    "engine": "moejs",
+    "extension": "bilibili",
+    "mode": "warm",
+    "count": 200,
+    "user_cpu_ns": 636506000,
+    "system_cpu_ns": 5029000,
+    "wall_ns": 641694459,
+    "allocated_bytes": 261195448,
+    "gc_cycles": 8,
+    "gc_pause_ns": 275167,
+    "output_sha256": "5759030b1417335a06ed4f78d38ad2acc5c2fee375b67e64754875ff95c9b7ca",
+    "baseline": {
+      "heap_alloc_bytes": 25057592,
+      "heap_inuse_bytes": 28647424,
+      "heap_objects": 19641,
+      "rss_bytes": 116523008,
+      "process_peak_rss_bytes": 116539392,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 77488792,
+      "heap_inuse_bytes": 90710016,
+      "heap_objects": 393206,
+      "rss_bytes": 124387328,
+      "process_peak_rss_bytes": 124387328,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 38656328,
+      "heap_inuse_bytes": 60424192,
+      "heap_objects": 67412,
+      "rss_bytes": 124387328,
+      "process_peak_rss_bytes": 124387328,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 38473848,
+      "heap_inuse_bytes": 60055552,
+      "heap_objects": 67262,
+      "rss_bytes": 124387328,
+      "process_peak_rss_bytes": 124387328,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 24792544,
+      "heap_inuse_bytes": 29450240,
+      "heap_objects": 20303,
+      "rss_bytes": 124387328,
+      "process_peak_rss_bytes": 124387328,
+      "goroutines": 2
+    },
+    "repeat": 4
+  },
+  {
+    "engine": "goja",
+    "extension": "youtube",
+    "mode": "cold",
+    "count": 20,
+    "user_cpu_ns": 5526025000,
+    "system_cpu_ns": 80441000,
+    "wall_ns": 5604515708,
+    "allocated_bytes": 3353629256,
+    "gc_cycles": 44,
+    "gc_pause_ns": 1845751,
+    "output_sha256": "0556a6212d87e648808a4909c9fcde61f8b7d541a50a5012769fdbfa76944b9c",
+    "baseline": {
+      "heap_alloc_bytes": 24514120,
+      "heap_inuse_bytes": 25812992,
+      "heap_objects": 2574,
+      "rss_bytes": 201080832,
+      "process_peak_rss_bytes": 201080832,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 166675296,
+      "heap_inuse_bytes": 176128000,
+      "heap_objects": 3049169,
+      "rss_bytes": 307478528,
+      "process_peak_rss_bytes": 307478528,
+      "goroutines": 2
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 24516088,
+      "heap_inuse_bytes": 25894912,
+      "heap_objects": 2592,
+      "rss_bytes": 307478528,
+      "process_peak_rss_bytes": 307478528,
+      "goroutines": 2
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 24471712,
+      "heap_inuse_bytes": 25731072,
+      "heap_objects": 2567,
+      "rss_bytes": 307478528,
+      "process_peak_rss_bytes": 307478528,
+      "goroutines": 2
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 24471712,
+      "heap_inuse_bytes": 25731072,
+      "heap_objects": 2567,
+      "rss_bytes": 307478528,
+      "process_peak_rss_bytes": 307478528,
+      "goroutines": 2
+    },
+    "repeat": 0
+  },
+  {
+    "engine": "moejs",
+    "extension": "youtube",
+    "mode": "cold",
+    "count": 20,
+    "user_cpu_ns": 4648919000,
+    "system_cpu_ns": 64842000,
+    "wall_ns": 4711268209,
+    "allocated_bytes": 3079132576,
+    "gc_cycles": 28,
+    "gc_pause_ns": 1343423,
+    "output_sha256": "0556a6212d87e648808a4909c9fcde61f8b7d541a50a5012769fdbfa76944b9c",
+    "baseline": {
+      "heap_alloc_bytes": 36118920,
+      "heap_inuse_bytes": 41328640,
+      "heap_objects": 40135,
+      "rss_bytes": 208748544,
+      "process_peak_rss_bytes": 208764928,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 190146536,
+      "heap_inuse_bytes": 222674944,
+      "heap_objects": 1488407,
+      "rss_bytes": 356057088,
+      "process_peak_rss_bytes": 356057088,
+      "goroutines": 2
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 36189624,
+      "heap_inuse_bytes": 46841856,
+      "heap_objects": 43173,
+      "rss_bytes": 356057088,
+      "process_peak_rss_bytes": 356057088,
+      "goroutines": 2
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 25513128,
+      "heap_inuse_bytes": 31522816,
+      "heap_objects": 28003,
+      "rss_bytes": 356057088,
+      "process_peak_rss_bytes": 356057088,
+      "goroutines": 2
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 25513128,
+      "heap_inuse_bytes": 31522816,
+      "heap_objects": 28003,
+      "rss_bytes": 356057088,
+      "process_peak_rss_bytes": 356057088,
+      "goroutines": 2
+    },
+    "repeat": 0
+  },
+  {
+    "engine": "moejs",
+    "extension": "youtube",
+    "mode": "cold",
+    "count": 20,
+    "user_cpu_ns": 4739075000,
+    "system_cpu_ns": 60547000,
+    "wall_ns": 4797196292,
+    "allocated_bytes": 3078943448,
+    "gc_cycles": 23,
+    "gc_pause_ns": 1091503,
+    "output_sha256": "0556a6212d87e648808a4909c9fcde61f8b7d541a50a5012769fdbfa76944b9c",
+    "baseline": {
+      "heap_alloc_bytes": 36112408,
+      "heap_inuse_bytes": 41353216,
+      "heap_objects": 40135,
+      "rss_bytes": 210354176,
+      "process_peak_rss_bytes": 210370560,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 294384064,
+      "heap_inuse_bytes": 316301312,
+      "heap_objects": 2580976,
+      "rss_bytes": 393052160,
+      "process_peak_rss_bytes": 393052160,
+      "goroutines": 2
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 45557880,
+      "heap_inuse_bytes": 60891136,
+      "heap_objects": 49425,
+      "rss_bytes": 393052160,
+      "process_peak_rss_bytes": 393052160,
+      "goroutines": 2
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 25505864,
+      "heap_inuse_bytes": 30392320,
+      "heap_objects": 27892,
+      "rss_bytes": 393052160,
+      "process_peak_rss_bytes": 393052160,
+      "goroutines": 2
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 25505864,
+      "heap_inuse_bytes": 30392320,
+      "heap_objects": 27892,
+      "rss_bytes": 393052160,
+      "process_peak_rss_bytes": 393052160,
+      "goroutines": 2
+    },
+    "repeat": 1
+  },
+  {
+    "engine": "goja",
+    "extension": "youtube",
+    "mode": "cold",
+    "count": 20,
+    "user_cpu_ns": 5499259000,
+    "system_cpu_ns": 70252000,
+    "wall_ns": 5567560292,
+    "allocated_bytes": 3353542856,
+    "gc_cycles": 42,
+    "gc_pause_ns": 1807455,
+    "output_sha256": "0556a6212d87e648808a4909c9fcde61f8b7d541a50a5012769fdbfa76944b9c",
+    "baseline": {
+      "heap_alloc_bytes": 24513640,
+      "heap_inuse_bytes": 25837568,
+      "heap_objects": 2568,
+      "rss_bytes": 208732160,
+      "process_peak_rss_bytes": 208732160,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 158293592,
+      "heap_inuse_bytes": 168304640,
+      "heap_objects": 2439534,
+      "rss_bytes": 297566208,
+      "process_peak_rss_bytes": 297566208,
+      "goroutines": 2
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 24515880,
+      "heap_inuse_bytes": 25935872,
+      "heap_objects": 2591,
+      "rss_bytes": 297566208,
+      "process_peak_rss_bytes": 297566208,
+      "goroutines": 2
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 24471536,
+      "heap_inuse_bytes": 25780224,
+      "heap_objects": 2566,
+      "rss_bytes": 297566208,
+      "process_peak_rss_bytes": 297566208,
+      "goroutines": 2
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 24471536,
+      "heap_inuse_bytes": 25780224,
+      "heap_objects": 2566,
+      "rss_bytes": 297566208,
+      "process_peak_rss_bytes": 297566208,
+      "goroutines": 2
+    },
+    "repeat": 1
+  },
+  {
+    "engine": "goja",
+    "extension": "youtube",
+    "mode": "cold",
+    "count": 20,
+    "user_cpu_ns": 5321130000,
+    "system_cpu_ns": 65297000,
+    "wall_ns": 5384409958,
+    "allocated_bytes": 3353587256,
+    "gc_cycles": 45,
+    "gc_pause_ns": 1888834,
+    "output_sha256": "0556a6212d87e648808a4909c9fcde61f8b7d541a50a5012769fdbfa76944b9c",
+    "baseline": {
+      "heap_alloc_bytes": 24513880,
+      "heap_inuse_bytes": 25821184,
+      "heap_objects": 2570,
+      "rss_bytes": 213336064,
+      "process_peak_rss_bytes": 213336064,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 180301264,
+      "heap_inuse_bytes": 185761792,
+      "heap_objects": 3247338,
+      "rss_bytes": 259375104,
+      "process_peak_rss_bytes": 259375104,
+      "goroutines": 2
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 24516488,
+      "heap_inuse_bytes": 25919488,
+      "heap_objects": 2595,
+      "rss_bytes": 259375104,
+      "process_peak_rss_bytes": 259375104,
+      "goroutines": 2
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 24472112,
+      "heap_inuse_bytes": 25755648,
+      "heap_objects": 2570,
+      "rss_bytes": 259375104,
+      "process_peak_rss_bytes": 259375104,
+      "goroutines": 2
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 24472112,
+      "heap_inuse_bytes": 25755648,
+      "heap_objects": 2570,
+      "rss_bytes": 259375104,
+      "process_peak_rss_bytes": 259375104,
+      "goroutines": 2
+    },
+    "repeat": 2
+  },
+  {
+    "engine": "moejs",
+    "extension": "youtube",
+    "mode": "cold",
+    "count": 20,
+    "user_cpu_ns": 4684583000,
+    "system_cpu_ns": 62010000,
+    "wall_ns": 4744315917,
+    "allocated_bytes": 3079094320,
+    "gc_cycles": 25,
+    "gc_pause_ns": 1154081,
+    "output_sha256": "0556a6212d87e648808a4909c9fcde61f8b7d541a50a5012769fdbfa76944b9c",
+    "baseline": {
+      "heap_alloc_bytes": 36112616,
+      "heap_inuse_bytes": 41320448,
+      "heap_objects": 40137,
+      "rss_bytes": 210403328,
+      "process_peak_rss_bytes": 210419712,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 230052136,
+      "heap_inuse_bytes": 249421824,
+      "heap_objects": 1742973,
+      "rss_bytes": 370819072,
+      "process_peak_rss_bytes": 370819072,
+      "goroutines": 2
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 45553992,
+      "heap_inuse_bytes": 53805056,
+      "heap_objects": 49322,
+      "rss_bytes": 370819072,
+      "process_peak_rss_bytes": 370835456,
+      "goroutines": 2
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 25501912,
+      "heap_inuse_bytes": 30343168,
+      "heap_objects": 27785,
+      "rss_bytes": 370835456,
+      "process_peak_rss_bytes": 370835456,
+      "goroutines": 2
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 25501912,
+      "heap_inuse_bytes": 30343168,
+      "heap_objects": 27785,
+      "rss_bytes": 370835456,
+      "process_peak_rss_bytes": 370835456,
+      "goroutines": 2
+    },
+    "repeat": 2
+  },
+  {
+    "engine": "moejs",
+    "extension": "youtube",
+    "mode": "cold",
+    "count": 20,
+    "user_cpu_ns": 4739724000,
+    "system_cpu_ns": 59733000,
+    "wall_ns": 4796876000,
+    "allocated_bytes": 3081192912,
+    "gc_cycles": 24,
+    "gc_pause_ns": 1181245,
+    "output_sha256": "0556a6212d87e648808a4909c9fcde61f8b7d541a50a5012769fdbfa76944b9c",
+    "baseline": {
+      "heap_alloc_bytes": 36110792,
+      "heap_inuse_bytes": 42074112,
+      "heap_objects": 40138,
+      "rss_bytes": 207470592,
+      "process_peak_rss_bytes": 207552512,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 296829120,
+      "heap_inuse_bytes": 314761216,
+      "heap_objects": 2601559,
+      "rss_bytes": 394526720,
+      "process_peak_rss_bytes": 394526720,
+      "goroutines": 2
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 45550392,
+      "heap_inuse_bytes": 60932096,
+      "heap_objects": 49272,
+      "rss_bytes": 394526720,
+      "process_peak_rss_bytes": 394526720,
+      "goroutines": 2
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 35144488,
+      "heap_inuse_bytes": 49520640,
+      "heap_objects": 42539,
+      "rss_bytes": 394526720,
+      "process_peak_rss_bytes": 394526720,
+      "goroutines": 2
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 25498696,
+      "heap_inuse_bytes": 30932992,
+      "heap_objects": 27741,
+      "rss_bytes": 394493952,
+      "process_peak_rss_bytes": 394526720,
+      "goroutines": 2
+    },
+    "repeat": 3
+  },
+  {
+    "engine": "goja",
+    "extension": "youtube",
+    "mode": "cold",
+    "count": 20,
+    "user_cpu_ns": 5509100000,
+    "system_cpu_ns": 84562000,
+    "wall_ns": 5591697792,
+    "allocated_bytes": 3353724384,
+    "gc_cycles": 46,
+    "gc_pause_ns": 1893419,
+    "output_sha256": "0556a6212d87e648808a4909c9fcde61f8b7d541a50a5012769fdbfa76944b9c",
+    "baseline": {
+      "heap_alloc_bytes": 24513688,
+      "heap_inuse_bytes": 25853952,
+      "heap_objects": 2568,
+      "rss_bytes": 221069312,
+      "process_peak_rss_bytes": 221069312,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 165454832,
+      "heap_inuse_bytes": 175325184,
+      "heap_objects": 3042481,
+      "rss_bytes": 282263552,
+      "process_peak_rss_bytes": 282263552,
+      "goroutines": 2
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 24515784,
+      "heap_inuse_bytes": 25952256,
+      "heap_objects": 2589,
+      "rss_bytes": 282263552,
+      "process_peak_rss_bytes": 282263552,
+      "goroutines": 2
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 24471408,
+      "heap_inuse_bytes": 25796608,
+      "heap_objects": 2564,
+      "rss_bytes": 282263552,
+      "process_peak_rss_bytes": 282263552,
+      "goroutines": 2
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 24471408,
+      "heap_inuse_bytes": 25796608,
+      "heap_objects": 2564,
+      "rss_bytes": 282263552,
+      "process_peak_rss_bytes": 282263552,
+      "goroutines": 2
+    },
+    "repeat": 3
+  },
+  {
+    "engine": "goja",
+    "extension": "youtube",
+    "mode": "cold",
+    "count": 20,
+    "user_cpu_ns": 5420398000,
+    "system_cpu_ns": 80268000,
+    "wall_ns": 5498526750,
+    "allocated_bytes": 3353629688,
+    "gc_cycles": 44,
+    "gc_pause_ns": 1880498,
+    "output_sha256": "0556a6212d87e648808a4909c9fcde61f8b7d541a50a5012769fdbfa76944b9c",
+    "baseline": {
+      "heap_alloc_bytes": 24513688,
+      "heap_inuse_bytes": 25862144,
+      "heap_objects": 2568,
+      "rss_bytes": 221265920,
+      "process_peak_rss_bytes": 221265920,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 179711584,
+      "heap_inuse_bytes": 187940864,
+      "heap_objects": 3126543,
+      "rss_bytes": 302972928,
+      "process_peak_rss_bytes": 302972928,
+      "goroutines": 2
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 24516104,
+      "heap_inuse_bytes": 25993216,
+      "heap_objects": 2592,
+      "rss_bytes": 303054848,
+      "process_peak_rss_bytes": 303054848,
+      "goroutines": 2
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 24471728,
+      "heap_inuse_bytes": 25821184,
+      "heap_objects": 2567,
+      "rss_bytes": 303054848,
+      "process_peak_rss_bytes": 303054848,
+      "goroutines": 2
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 24471728,
+      "heap_inuse_bytes": 25821184,
+      "heap_objects": 2567,
+      "rss_bytes": 303054848,
+      "process_peak_rss_bytes": 303054848,
+      "goroutines": 2
+    },
+    "repeat": 4
+  },
+  {
+    "engine": "moejs",
+    "extension": "youtube",
+    "mode": "cold",
+    "count": 20,
+    "user_cpu_ns": 4676569000,
+    "system_cpu_ns": 69582000,
+    "wall_ns": 4743612834,
+    "allocated_bytes": 3079063592,
+    "gc_cycles": 27,
+    "gc_pause_ns": 1256503,
+    "output_sha256": "0556a6212d87e648808a4909c9fcde61f8b7d541a50a5012769fdbfa76944b9c",
+    "baseline": {
+      "heap_alloc_bytes": 36109112,
+      "heap_inuse_bytes": 41336832,
+      "heap_objects": 40142,
+      "rss_bytes": 207634432,
+      "process_peak_rss_bytes": 207650816,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 188336576,
+      "heap_inuse_bytes": 215334912,
+      "heap_objects": 1487892,
+      "rss_bytes": 376356864,
+      "process_peak_rss_bytes": 376356864,
+      "goroutines": 2
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 36173400,
+      "heap_inuse_bytes": 47202304,
+      "heap_objects": 42881,
+      "rss_bytes": 376356864,
+      "process_peak_rss_bytes": 376356864,
+      "goroutines": 2
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 35142856,
+      "heap_inuse_bytes": 46129152,
+      "heap_objects": 42510,
+      "rss_bytes": 376324096,
+      "process_peak_rss_bytes": 376356864,
+      "goroutines": 2
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 25497384,
+      "heap_inuse_bytes": 30261248,
+      "heap_objects": 27714,
+      "rss_bytes": 376324096,
+      "process_peak_rss_bytes": 376356864,
+      "goroutines": 2
+    },
+    "repeat": 4
+  },
+  {
+    "engine": "goja",
+    "extension": "youtube",
+    "mode": "warm",
+    "count": 200,
+    "user_cpu_ns": 575425000,
+    "system_cpu_ns": 3618000,
+    "wall_ns": 578882208,
+    "allocated_bytes": 240352552,
+    "gc_cycles": 4,
+    "gc_pause_ns": 145166,
+    "output_sha256": "0556a6212d87e648808a4909c9fcde61f8b7d541a50a5012769fdbfa76944b9c",
+    "baseline": {
+      "heap_alloc_bytes": 24513944,
+      "heap_inuse_bytes": 25878528,
+      "heap_objects": 2572,
+      "rss_bytes": 211304448,
+      "process_peak_rss_bytes": 211304448,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 116852368,
+      "heap_inuse_bytes": 136314880,
+      "heap_objects": 1156527,
+      "rss_bytes": 215400448,
+      "process_peak_rss_bytes": 215400448,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 58542088,
+      "heap_inuse_bytes": 102465536,
+      "heap_objects": 333078,
+      "rss_bytes": 215400448,
+      "process_peak_rss_bytes": 215400448,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 58498560,
+      "heap_inuse_bytes": 102408192,
+      "heap_objects": 333059,
+      "rss_bytes": 215400448,
+      "process_peak_rss_bytes": 215400448,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 24472336,
+      "heap_inuse_bytes": 25853952,
+      "heap_objects": 2576,
+      "rss_bytes": 215400448,
+      "process_peak_rss_bytes": 215400448,
+      "goroutines": 2
+    },
+    "repeat": 0
+  },
+  {
+    "engine": "moejs",
+    "extension": "youtube",
+    "mode": "warm",
+    "count": 200,
+    "user_cpu_ns": 41498000,
+    "system_cpu_ns": 1492000,
+    "wall_ns": 42961500,
+    "allocated_bytes": 30869632,
+    "gc_cycles": 0,
+    "gc_pause_ns": 0,
+    "output_sha256": "0556a6212d87e648808a4909c9fcde61f8b7d541a50a5012769fdbfa76944b9c",
+    "baseline": {
+      "heap_alloc_bytes": 36105896,
+      "heap_inuse_bytes": 42213376,
+      "heap_objects": 40137,
+      "rss_bytes": 206618624,
+      "process_peak_rss_bytes": 206635008,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 99599152,
+      "heap_inuse_bytes": 135897088,
+      "heap_objects": 402813,
+      "rss_bytes": 207994880,
+      "process_peak_rss_bytes": 208027648,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 68858048,
+      "heap_inuse_bytes": 113680384,
+      "heap_objects": 147417,
+      "rss_bytes": 208027648,
+      "process_peak_rss_bytes": 208027648,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 67804608,
+      "heap_inuse_bytes": 112173056,
+      "heap_objects": 146536,
+      "rss_bytes": 208044032,
+      "process_peak_rss_bytes": 208044032,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 35115576,
+      "heap_inuse_bytes": 44335104,
+      "heap_objects": 42512,
+      "rss_bytes": 208044032,
+      "process_peak_rss_bytes": 208044032,
+      "goroutines": 2
+    },
+    "repeat": 0
+  },
+  {
+    "engine": "moejs",
+    "extension": "youtube",
+    "mode": "warm",
+    "count": 200,
+    "user_cpu_ns": 41456000,
+    "system_cpu_ns": 1542000,
+    "wall_ns": 42968459,
+    "allocated_bytes": 30867840,
+    "gc_cycles": 0,
+    "gc_pause_ns": 0,
+    "output_sha256": "0556a6212d87e648808a4909c9fcde61f8b7d541a50a5012769fdbfa76944b9c",
+    "baseline": {
+      "heap_alloc_bytes": 36114840,
+      "heap_inuse_bytes": 42262528,
+      "heap_objects": 40137,
+      "rss_bytes": 202113024,
+      "process_peak_rss_bytes": 202129408,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 99620704,
+      "heap_inuse_bytes": 133201920,
+      "heap_objects": 403167,
+      "rss_bytes": 203177984,
+      "process_peak_rss_bytes": 203177984,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 68881632,
+      "heap_inuse_bytes": 111345664,
+      "heap_objects": 147799,
+      "rss_bytes": 203177984,
+      "process_peak_rss_bytes": 203177984,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 67828032,
+      "heap_inuse_bytes": 109797376,
+      "heap_objects": 146917,
+      "rss_bytes": 203177984,
+      "process_peak_rss_bytes": 203177984,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 35138936,
+      "heap_inuse_bytes": 43925504,
+      "heap_objects": 42894,
+      "rss_bytes": 203177984,
+      "process_peak_rss_bytes": 203177984,
+      "goroutines": 2
+    },
+    "repeat": 1
+  },
+  {
+    "engine": "goja",
+    "extension": "youtube",
+    "mode": "warm",
+    "count": 200,
+    "user_cpu_ns": 576760000,
+    "system_cpu_ns": 4174000,
+    "wall_ns": 580699667,
+    "allocated_bytes": 240352680,
+    "gc_cycles": 4,
+    "gc_pause_ns": 136041,
+    "output_sha256": "0556a6212d87e648808a4909c9fcde61f8b7d541a50a5012769fdbfa76944b9c",
+    "baseline": {
+      "heap_alloc_bytes": 24513944,
+      "heap_inuse_bytes": 25853952,
+      "heap_objects": 2568,
+      "rss_bytes": 208535552,
+      "process_peak_rss_bytes": 208535552,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 116346944,
+      "heap_inuse_bytes": 136036352,
+      "heap_objects": 1145802,
+      "rss_bytes": 213827584,
+      "process_peak_rss_bytes": 213827584,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 58542984,
+      "heap_inuse_bytes": 102481920,
+      "heap_objects": 333137,
+      "rss_bytes": 213827584,
+      "process_peak_rss_bytes": 213827584,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 58499408,
+      "heap_inuse_bytes": 102424576,
+      "heap_objects": 333117,
+      "rss_bytes": 213827584,
+      "process_peak_rss_bytes": 213827584,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 24472256,
+      "heap_inuse_bytes": 25886720,
+      "heap_objects": 2576,
+      "rss_bytes": 213843968,
+      "process_peak_rss_bytes": 213843968,
+      "goroutines": 2
+    },
+    "repeat": 1
+  },
+  {
+    "engine": "goja",
+    "extension": "youtube",
+    "mode": "warm",
+    "count": 200,
+    "user_cpu_ns": 592989000,
+    "system_cpu_ns": 5631000,
+    "wall_ns": 599046166,
+    "allocated_bytes": 240352840,
+    "gc_cycles": 4,
+    "gc_pause_ns": 169084,
+    "output_sha256": "0556a6212d87e648808a4909c9fcde61f8b7d541a50a5012769fdbfa76944b9c",
+    "baseline": {
+      "heap_alloc_bytes": 24513992,
+      "heap_inuse_bytes": 25829376,
+      "heap_objects": 2572,
+      "rss_bytes": 208732160,
+      "process_peak_rss_bytes": 208732160,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 125626432,
+      "heap_inuse_bytes": 143433728,
+      "heap_objects": 1567350,
+      "rss_bytes": 214433792,
+      "process_peak_rss_bytes": 214433792,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 58542760,
+      "heap_inuse_bytes": 102612992,
+      "heap_objects": 333116,
+      "rss_bytes": 214433792,
+      "process_peak_rss_bytes": 214433792,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 58499184,
+      "heap_inuse_bytes": 102539264,
+      "heap_objects": 333096,
+      "rss_bytes": 214433792,
+      "process_peak_rss_bytes": 214433792,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 24472336,
+      "heap_inuse_bytes": 25862144,
+      "heap_objects": 2574,
+      "rss_bytes": 214433792,
+      "process_peak_rss_bytes": 214433792,
+      "goroutines": 2
+    },
+    "repeat": 2
+  },
+  {
+    "engine": "moejs",
+    "extension": "youtube",
+    "mode": "warm",
+    "count": 200,
+    "user_cpu_ns": 41477000,
+    "system_cpu_ns": 1744000,
+    "wall_ns": 43220208,
+    "allocated_bytes": 30871120,
+    "gc_cycles": 0,
+    "gc_pause_ns": 0,
+    "output_sha256": "0556a6212d87e648808a4909c9fcde61f8b7d541a50a5012769fdbfa76944b9c",
+    "baseline": {
+      "heap_alloc_bytes": 36120040,
+      "heap_inuse_bytes": 41353216,
+      "heap_objects": 40135,
+      "rss_bytes": 210403328,
+      "process_peak_rss_bytes": 210419712,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 99622016,
+      "heap_inuse_bytes": 133136384,
+      "heap_objects": 403270,
+      "rss_bytes": 211550208,
+      "process_peak_rss_bytes": 211550208,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 68879344,
+      "heap_inuse_bytes": 111124480,
+      "heap_objects": 147850,
+      "rss_bytes": 211582976,
+      "process_peak_rss_bytes": 211582976,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 67826544,
+      "heap_inuse_bytes": 109641728,
+      "heap_objects": 146973,
+      "rss_bytes": 211582976,
+      "process_peak_rss_bytes": 211582976,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 35137128,
+      "heap_inuse_bytes": 43409408,
+      "heap_objects": 42950,
+      "rss_bytes": 211582976,
+      "process_peak_rss_bytes": 211582976,
+      "goroutines": 2
+    },
+    "repeat": 2
+  },
+  {
+    "engine": "moejs",
+    "extension": "youtube",
+    "mode": "warm",
+    "count": 200,
+    "user_cpu_ns": 41718000,
+    "system_cpu_ns": 1435000,
+    "wall_ns": 43125042,
+    "allocated_bytes": 30872608,
+    "gc_cycles": 0,
+    "gc_pause_ns": 0,
+    "output_sha256": "0556a6212d87e648808a4909c9fcde61f8b7d541a50a5012769fdbfa76944b9c",
+    "baseline": {
+      "heap_alloc_bytes": 36110712,
+      "heap_inuse_bytes": 41377792,
+      "heap_objects": 40144,
+      "rss_bytes": 207732736,
+      "process_peak_rss_bytes": 207749120,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 99611472,
+      "heap_inuse_bytes": 132505600,
+      "heap_objects": 403030,
+      "rss_bytes": 208846848,
+      "process_peak_rss_bytes": 208846848,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 68867728,
+      "heap_inuse_bytes": 110665728,
+      "heap_objects": 147589,
+      "rss_bytes": 208863232,
+      "process_peak_rss_bytes": 208863232,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 67814288,
+      "heap_inuse_bytes": 109158400,
+      "heap_objects": 146708,
+      "rss_bytes": 208879616,
+      "process_peak_rss_bytes": 208879616,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 35124936,
+      "heap_inuse_bytes": 44310528,
+      "heap_objects": 42686,
+      "rss_bytes": 208879616,
+      "process_peak_rss_bytes": 208879616,
+      "goroutines": 2
+    },
+    "repeat": 3
+  },
+  {
+    "engine": "goja",
+    "extension": "youtube",
+    "mode": "warm",
+    "count": 200,
+    "user_cpu_ns": 578287000,
+    "system_cpu_ns": 4153000,
+    "wall_ns": 582355292,
+    "allocated_bytes": 240352664,
+    "gc_cycles": 4,
+    "gc_pause_ns": 139624,
+    "output_sha256": "0556a6212d87e648808a4909c9fcde61f8b7d541a50a5012769fdbfa76944b9c",
+    "baseline": {
+      "heap_alloc_bytes": 24513768,
+      "heap_inuse_bytes": 25862144,
+      "heap_objects": 2568,
+      "rss_bytes": 210665472,
+      "process_peak_rss_bytes": 210665472,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 117053528,
+      "heap_inuse_bytes": 136151040,
+      "heap_objects": 1160993,
+      "rss_bytes": 214417408,
+      "process_peak_rss_bytes": 214417408,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 58541752,
+      "heap_inuse_bytes": 102268928,
+      "heap_objects": 333062,
+      "rss_bytes": 214417408,
+      "process_peak_rss_bytes": 214417408,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 58498176,
+      "heap_inuse_bytes": 102211584,
+      "heap_objects": 333042,
+      "rss_bytes": 214417408,
+      "process_peak_rss_bytes": 214417408,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 24472192,
+      "heap_inuse_bytes": 25894912,
+      "heap_objects": 2574,
+      "rss_bytes": 214433792,
+      "process_peak_rss_bytes": 214433792,
+      "goroutines": 2
+    },
+    "repeat": 3
+  },
+  {
+    "engine": "goja",
+    "extension": "youtube",
+    "mode": "warm",
+    "count": 200,
+    "user_cpu_ns": 575998000,
+    "system_cpu_ns": 4099000,
+    "wall_ns": 579834708,
+    "allocated_bytes": 240352888,
+    "gc_cycles": 4,
+    "gc_pause_ns": 142000,
+    "output_sha256": "0556a6212d87e648808a4909c9fcde61f8b7d541a50a5012769fdbfa76944b9c",
+    "baseline": {
+      "heap_alloc_bytes": 24513896,
+      "heap_inuse_bytes": 25821184,
+      "heap_objects": 2571,
+      "rss_bytes": 199507968,
+      "process_peak_rss_bytes": 199524352,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 121028712,
+      "heap_inuse_bytes": 139886592,
+      "heap_objects": 1278778,
+      "rss_bytes": 215400448,
+      "process_peak_rss_bytes": 215400448,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 58542776,
+      "heap_inuse_bytes": 102916096,
+      "heap_objects": 333126,
+      "rss_bytes": 215400448,
+      "process_peak_rss_bytes": 215400448,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 58499232,
+      "heap_inuse_bytes": 102842368,
+      "heap_objects": 333107,
+      "rss_bytes": 215400448,
+      "process_peak_rss_bytes": 215400448,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 24472208,
+      "heap_inuse_bytes": 25837568,
+      "heap_objects": 2574,
+      "rss_bytes": 215400448,
+      "process_peak_rss_bytes": 215400448,
+      "goroutines": 2
+    },
+    "repeat": 4
+  },
+  {
+    "engine": "moejs",
+    "extension": "youtube",
+    "mode": "warm",
+    "count": 200,
+    "user_cpu_ns": 41406000,
+    "system_cpu_ns": 1469000,
+    "wall_ns": 42845875,
+    "allocated_bytes": 30868656,
+    "gc_cycles": 0,
+    "gc_pause_ns": 0,
+    "output_sha256": "0556a6212d87e648808a4909c9fcde61f8b7d541a50a5012769fdbfa76944b9c",
+    "baseline": {
+      "heap_alloc_bytes": 36109464,
+      "heap_inuse_bytes": 41361408,
+      "heap_objects": 40136,
+      "rss_bytes": 210206720,
+      "process_peak_rss_bytes": 210223104,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 99611376,
+      "heap_inuse_bytes": 132153344,
+      "heap_objects": 403071,
+      "rss_bytes": 211533824,
+      "process_peak_rss_bytes": 211533824,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 68869904,
+      "heap_inuse_bytes": 110231552,
+      "heap_objects": 147662,
+      "rss_bytes": 211533824,
+      "process_peak_rss_bytes": 211533824,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 67818224,
+      "heap_inuse_bytes": 108773376,
+      "heap_objects": 146792,
+      "rss_bytes": 211533824,
+      "process_peak_rss_bytes": 211550208,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 35128792,
+      "heap_inuse_bytes": 43261952,
+      "heap_objects": 42769,
+      "rss_bytes": 211550208,
+      "process_peak_rss_bytes": 211550208,
+      "goroutines": 2
+    },
+    "repeat": 4
+  },
+  {
+    "engine": "goja",
+    "extension": "twitter",
+    "mode": "cold",
+    "count": 20,
+    "user_cpu_ns": 301975000,
+    "system_cpu_ns": 5148000,
+    "wall_ns": 307179458,
+    "allocated_bytes": 229927032,
+    "gc_cycles": 10,
+    "gc_pause_ns": 411041,
+    "output_sha256": "9703ef25e194d7c4ea8514d41f094a4b2d5280cca5f9ddf147d68ade2eda6aba",
+    "baseline": {
+      "heap_alloc_bytes": 21162080,
+      "heap_inuse_bytes": 22372352,
+      "heap_objects": 2534,
+      "rss_bytes": 78692352,
+      "process_peak_rss_bytes": 78692352,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 44058352,
+      "heap_inuse_bytes": 45973504,
+      "heap_objects": 356936,
+      "rss_bytes": 83607552,
+      "process_peak_rss_bytes": 83607552,
+      "goroutines": 2
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 21164336,
+      "heap_inuse_bytes": 22437888,
+      "heap_objects": 2562,
+      "rss_bytes": 83607552,
+      "process_peak_rss_bytes": 83607552,
+      "goroutines": 2
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 21126384,
+      "heap_inuse_bytes": 22347776,
+      "heap_objects": 2549,
+      "rss_bytes": 83607552,
+      "process_peak_rss_bytes": 83607552,
+      "goroutines": 2
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21126384,
+      "heap_inuse_bytes": 22347776,
+      "heap_objects": 2549,
+      "rss_bytes": 83607552,
+      "process_peak_rss_bytes": 83607552,
+      "goroutines": 2
+    },
+    "repeat": 0
+  },
+  {
+    "engine": "moejs",
+    "extension": "twitter",
+    "mode": "cold",
+    "count": 20,
+    "user_cpu_ns": 205322000,
+    "system_cpu_ns": 5772000,
+    "wall_ns": 211102292,
+    "allocated_bytes": 162189344,
+    "gc_cycles": 6,
+    "gc_pause_ns": 273540,
+    "output_sha256": "9703ef25e194d7c4ea8514d41f094a4b2d5280cca5f9ddf147d68ade2eda6aba",
+    "baseline": {
+      "heap_alloc_bytes": 21649296,
+      "heap_inuse_bytes": 23445504,
+      "heap_objects": 7439,
+      "rss_bytes": 98107392,
+      "process_peak_rss_bytes": 98123776,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 50274928,
+      "heap_inuse_bytes": 52174848,
+      "heap_objects": 272548,
+      "rss_bytes": 101711872,
+      "process_peak_rss_bytes": 101728256,
+      "goroutines": 2
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 23039704,
+      "heap_inuse_bytes": 26968064,
+      "heap_objects": 9195,
+      "rss_bytes": 101761024,
+      "process_peak_rss_bytes": 101761024,
+      "goroutines": 2
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 21286616,
+      "heap_inuse_bytes": 23166976,
+      "heap_objects": 6500,
+      "rss_bytes": 101761024,
+      "process_peak_rss_bytes": 101761024,
+      "goroutines": 2
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21286616,
+      "heap_inuse_bytes": 23166976,
+      "heap_objects": 6500,
+      "rss_bytes": 101761024,
+      "process_peak_rss_bytes": 101761024,
+      "goroutines": 2
+    },
+    "repeat": 0
+  },
+  {
+    "engine": "moejs",
+    "extension": "twitter",
+    "mode": "cold",
+    "count": 20,
+    "user_cpu_ns": 209261000,
+    "system_cpu_ns": 6087000,
+    "wall_ns": 215339292,
+    "allocated_bytes": 162188128,
+    "gc_cycles": 6,
+    "gc_pause_ns": 300914,
+    "output_sha256": "9703ef25e194d7c4ea8514d41f094a4b2d5280cca5f9ddf147d68ade2eda6aba",
+    "baseline": {
+      "heap_alloc_bytes": 21649840,
+      "heap_inuse_bytes": 23486464,
+      "heap_objects": 7444,
+      "rss_bytes": 77676544,
+      "process_peak_rss_bytes": 77758464,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 48871872,
+      "heap_inuse_bytes": 51060736,
+      "heap_objects": 244872,
+      "rss_bytes": 86507520,
+      "process_peak_rss_bytes": 86507520,
+      "goroutines": 2
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 23140064,
+      "heap_inuse_bytes": 27172864,
+      "heap_objects": 9288,
+      "rss_bytes": 86523904,
+      "process_peak_rss_bytes": 86523904,
+      "goroutines": 2
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 21285672,
+      "heap_inuse_bytes": 23175168,
+      "heap_objects": 6493,
+      "rss_bytes": 86523904,
+      "process_peak_rss_bytes": 86523904,
+      "goroutines": 2
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21285672,
+      "heap_inuse_bytes": 23175168,
+      "heap_objects": 6493,
+      "rss_bytes": 86523904,
+      "process_peak_rss_bytes": 86523904,
+      "goroutines": 2
+    },
+    "repeat": 1
+  },
+  {
+    "engine": "goja",
+    "extension": "twitter",
+    "mode": "cold",
+    "count": 20,
+    "user_cpu_ns": 306449000,
+    "system_cpu_ns": 5444000,
+    "wall_ns": 311916958,
+    "allocated_bytes": 229927096,
+    "gc_cycles": 10,
+    "gc_pause_ns": 386251,
+    "output_sha256": "9703ef25e194d7c4ea8514d41f094a4b2d5280cca5f9ddf147d68ade2eda6aba",
+    "baseline": {
+      "heap_alloc_bytes": 21162080,
+      "heap_inuse_bytes": 22372352,
+      "heap_objects": 2535,
+      "rss_bytes": 78626816,
+      "process_peak_rss_bytes": 78626816,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 47897752,
+      "heap_inuse_bytes": 49717248,
+      "heap_objects": 415127,
+      "rss_bytes": 82739200,
+      "process_peak_rss_bytes": 82739200,
+      "goroutines": 2
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 21164336,
+      "heap_inuse_bytes": 22429696,
+      "heap_objects": 2564,
+      "rss_bytes": 82739200,
+      "process_peak_rss_bytes": 82739200,
+      "goroutines": 2
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 21126416,
+      "heap_inuse_bytes": 22355968,
+      "heap_objects": 2552,
+      "rss_bytes": 82739200,
+      "process_peak_rss_bytes": 82739200,
+      "goroutines": 2
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21126400,
+      "heap_inuse_bytes": 22355968,
+      "heap_objects": 2551,
+      "rss_bytes": 82739200,
+      "process_peak_rss_bytes": 82739200,
+      "goroutines": 2
+    },
+    "repeat": 1
+  },
+  {
+    "engine": "goja",
+    "extension": "twitter",
+    "mode": "cold",
+    "count": 20,
+    "user_cpu_ns": 306311000,
+    "system_cpu_ns": 4785000,
+    "wall_ns": 311125041,
+    "allocated_bytes": 229926712,
+    "gc_cycles": 10,
+    "gc_pause_ns": 398294,
+    "output_sha256": "9703ef25e194d7c4ea8514d41f094a4b2d5280cca5f9ddf147d68ade2eda6aba",
+    "baseline": {
+      "heap_alloc_bytes": 21162032,
+      "heap_inuse_bytes": 22380544,
+      "heap_objects": 2532,
+      "rss_bytes": 78839808,
+      "process_peak_rss_bytes": 78839808,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 46519920,
+      "heap_inuse_bytes": 48447488,
+      "heap_objects": 385659,
+      "rss_bytes": 83804160,
+      "process_peak_rss_bytes": 83804160,
+      "goroutines": 2
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 21164208,
+      "heap_inuse_bytes": 22437888,
+      "heap_objects": 2563,
+      "rss_bytes": 83804160,
+      "process_peak_rss_bytes": 83804160,
+      "goroutines": 2
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 21126256,
+      "heap_inuse_bytes": 22355968,
+      "heap_objects": 2550,
+      "rss_bytes": 83804160,
+      "process_peak_rss_bytes": 83804160,
+      "goroutines": 2
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21126256,
+      "heap_inuse_bytes": 22355968,
+      "heap_objects": 2550,
+      "rss_bytes": 83804160,
+      "process_peak_rss_bytes": 83804160,
+      "goroutines": 2
+    },
+    "repeat": 2
+  },
+  {
+    "engine": "moejs",
+    "extension": "twitter",
+    "mode": "cold",
+    "count": 20,
+    "user_cpu_ns": 208310000,
+    "system_cpu_ns": 6084000,
+    "wall_ns": 214435042,
+    "allocated_bytes": 162191072,
+    "gc_cycles": 6,
+    "gc_pause_ns": 298419,
+    "output_sha256": "9703ef25e194d7c4ea8514d41f094a4b2d5280cca5f9ddf147d68ade2eda6aba",
+    "baseline": {
+      "heap_alloc_bytes": 21648480,
+      "heap_inuse_bytes": 23461888,
+      "heap_objects": 7433,
+      "rss_bytes": 98304000,
+      "process_peak_rss_bytes": 98320384,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 51969368,
+      "heap_inuse_bytes": 53657600,
+      "heap_objects": 302375,
+      "rss_bytes": 101695488,
+      "process_peak_rss_bytes": 101728256,
+      "goroutines": 2
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 22254832,
+      "heap_inuse_bytes": 25665536,
+      "heap_objects": 8488,
+      "rss_bytes": 101761024,
+      "process_peak_rss_bytes": 101761024,
+      "goroutines": 2
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 21286888,
+      "heap_inuse_bytes": 23175168,
+      "heap_objects": 6508,
+      "rss_bytes": 101761024,
+      "process_peak_rss_bytes": 101761024,
+      "goroutines": 2
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21286888,
+      "heap_inuse_bytes": 23175168,
+      "heap_objects": 6508,
+      "rss_bytes": 101761024,
+      "process_peak_rss_bytes": 101761024,
+      "goroutines": 2
+    },
+    "repeat": 2
+  },
+  {
+    "engine": "moejs",
+    "extension": "twitter",
+    "mode": "cold",
+    "count": 20,
+    "user_cpu_ns": 205836000,
+    "system_cpu_ns": 6049000,
+    "wall_ns": 212006375,
+    "allocated_bytes": 162188256,
+    "gc_cycles": 6,
+    "gc_pause_ns": 299791,
+    "output_sha256": "9703ef25e194d7c4ea8514d41f094a4b2d5280cca5f9ddf147d68ade2eda6aba",
+    "baseline": {
+      "heap_alloc_bytes": 21649888,
+      "heap_inuse_bytes": 23486464,
+      "heap_objects": 7444,
+      "rss_bytes": 78069760,
+      "process_peak_rss_bytes": 78086144,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 47497920,
+      "heap_inuse_bytes": 49741824,
+      "heap_objects": 241840,
+      "rss_bytes": 86310912,
+      "process_peak_rss_bytes": 86310912,
+      "goroutines": 2
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 22354696,
+      "heap_inuse_bytes": 25690112,
+      "heap_objects": 8538,
+      "rss_bytes": 86343680,
+      "process_peak_rss_bytes": 86343680,
+      "goroutines": 2
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 21285688,
+      "heap_inuse_bytes": 23158784,
+      "heap_objects": 6468,
+      "rss_bytes": 86343680,
+      "process_peak_rss_bytes": 86343680,
+      "goroutines": 2
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21285688,
+      "heap_inuse_bytes": 23158784,
+      "heap_objects": 6468,
+      "rss_bytes": 86343680,
+      "process_peak_rss_bytes": 86343680,
+      "goroutines": 2
+    },
+    "repeat": 3
+  },
+  {
+    "engine": "goja",
+    "extension": "twitter",
+    "mode": "cold",
+    "count": 20,
+    "user_cpu_ns": 304364000,
+    "system_cpu_ns": 5170000,
+    "wall_ns": 309569416,
+    "allocated_bytes": 229926472,
+    "gc_cycles": 10,
+    "gc_pause_ns": 378751,
+    "output_sha256": "9703ef25e194d7c4ea8514d41f094a4b2d5280cca5f9ddf147d68ade2eda6aba",
+    "baseline": {
+      "heap_alloc_bytes": 21162240,
+      "heap_inuse_bytes": 22380544,
+      "heap_objects": 2538,
+      "rss_bytes": 79069184,
+      "process_peak_rss_bytes": 79069184,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 50649120,
+      "heap_inuse_bytes": 52346880,
+      "heap_objects": 459271,
+      "rss_bytes": 84131840,
+      "process_peak_rss_bytes": 84131840,
+      "goroutines": 2
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 21164032,
+      "heap_inuse_bytes": 22421504,
+      "heap_objects": 2559,
+      "rss_bytes": 84131840,
+      "process_peak_rss_bytes": 84131840,
+      "goroutines": 2
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 21126080,
+      "heap_inuse_bytes": 22331392,
+      "heap_objects": 2546,
+      "rss_bytes": 84131840,
+      "process_peak_rss_bytes": 84131840,
+      "goroutines": 2
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21126080,
+      "heap_inuse_bytes": 22331392,
+      "heap_objects": 2546,
+      "rss_bytes": 84131840,
+      "process_peak_rss_bytes": 84131840,
+      "goroutines": 2
+    },
+    "repeat": 3
+  },
+  {
+    "engine": "goja",
+    "extension": "twitter",
+    "mode": "cold",
+    "count": 20,
+    "user_cpu_ns": 311580000,
+    "system_cpu_ns": 6381000,
+    "wall_ns": 318122750,
+    "allocated_bytes": 229927112,
+    "gc_cycles": 10,
+    "gc_pause_ns": 419247,
+    "output_sha256": "9703ef25e194d7c4ea8514d41f094a4b2d5280cca5f9ddf147d68ade2eda6aba",
+    "baseline": {
+      "heap_alloc_bytes": 21161872,
+      "heap_inuse_bytes": 22380544,
+      "heap_objects": 2528,
+      "rss_bytes": 78987264,
+      "process_peak_rss_bytes": 78987264,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 49335248,
+      "heap_inuse_bytes": 51183616,
+      "heap_objects": 452906,
+      "rss_bytes": 82886656,
+      "process_peak_rss_bytes": 82886656,
+      "goroutines": 2
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 21164112,
+      "heap_inuse_bytes": 22421504,
+      "heap_objects": 2559,
+      "rss_bytes": 82886656,
+      "process_peak_rss_bytes": 82886656,
+      "goroutines": 2
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 21126160,
+      "heap_inuse_bytes": 22339584,
+      "heap_objects": 2546,
+      "rss_bytes": 82886656,
+      "process_peak_rss_bytes": 82886656,
+      "goroutines": 2
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21126160,
+      "heap_inuse_bytes": 22339584,
+      "heap_objects": 2546,
+      "rss_bytes": 82886656,
+      "process_peak_rss_bytes": 82886656,
+      "goroutines": 2
+    },
+    "repeat": 4
+  },
+  {
+    "engine": "moejs",
+    "extension": "twitter",
+    "mode": "cold",
+    "count": 20,
+    "user_cpu_ns": 205293000,
+    "system_cpu_ns": 5524000,
+    "wall_ns": 210890125,
+    "allocated_bytes": 162189760,
+    "gc_cycles": 6,
+    "gc_pause_ns": 269708,
+    "output_sha256": "9703ef25e194d7c4ea8514d41f094a4b2d5280cca5f9ddf147d68ade2eda6aba",
+    "baseline": {
+      "heap_alloc_bytes": 21649312,
+      "heap_inuse_bytes": 23478272,
+      "heap_objects": 7441,
+      "rss_bytes": 98140160,
+      "process_peak_rss_bytes": 98156544,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 50528608,
+      "heap_inuse_bytes": 52461568,
+      "heap_objects": 281887,
+      "rss_bytes": 101548032,
+      "process_peak_rss_bytes": 101548032,
+      "goroutines": 2
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 23039480,
+      "heap_inuse_bytes": 27066368,
+      "heap_objects": 9188,
+      "rss_bytes": 101597184,
+      "process_peak_rss_bytes": 101597184,
+      "goroutines": 2
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 21285752,
+      "heap_inuse_bytes": 23199744,
+      "heap_objects": 6489,
+      "rss_bytes": 101597184,
+      "process_peak_rss_bytes": 101597184,
+      "goroutines": 2
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21285752,
+      "heap_inuse_bytes": 23199744,
+      "heap_objects": 6489,
+      "rss_bytes": 101597184,
+      "process_peak_rss_bytes": 101597184,
+      "goroutines": 2
+    },
+    "repeat": 4
+  },
+  {
+    "engine": "goja",
+    "extension": "twitter",
+    "mode": "warm",
+    "count": 200,
+    "user_cpu_ns": 650302000,
+    "system_cpu_ns": 5275000,
+    "wall_ns": 655654458,
+    "allocated_bytes": 336692000,
+    "gc_cycles": 15,
+    "gc_pause_ns": 451919,
+    "output_sha256": "9703ef25e194d7c4ea8514d41f094a4b2d5280cca5f9ddf147d68ade2eda6aba",
+    "baseline": {
+      "heap_alloc_bytes": 21161920,
+      "heap_inuse_bytes": 22380544,
+      "heap_objects": 2532,
+      "rss_bytes": 78888960,
+      "process_peak_rss_bytes": 78888960,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 48486808,
+      "heap_inuse_bytes": 50987008,
+      "heap_objects": 463241,
+      "rss_bytes": 82493440,
+      "process_peak_rss_bytes": 82493440,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 23789352,
+      "heap_inuse_bytes": 29548544,
+      "heap_objects": 30545,
+      "rss_bytes": 82493440,
+      "process_peak_rss_bytes": 82493440,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 23751400,
+      "heap_inuse_bytes": 29491200,
+      "heap_objects": 30532,
+      "rss_bytes": 82493440,
+      "process_peak_rss_bytes": 82493440,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21126752,
+      "heap_inuse_bytes": 22388736,
+      "heap_objects": 2557,
+      "rss_bytes": 82509824,
+      "process_peak_rss_bytes": 82509824,
+      "goroutines": 2
+    },
+    "repeat": 0
+  },
+  {
+    "engine": "moejs",
+    "extension": "twitter",
+    "mode": "warm",
+    "count": 200,
+    "user_cpu_ns": 87852000,
+    "system_cpu_ns": 3093000,
+    "wall_ns": 90956209,
+    "allocated_bytes": 50870408,
+    "gc_cycles": 2,
+    "gc_pause_ns": 63083,
+    "output_sha256": "9703ef25e194d7c4ea8514d41f094a4b2d5280cca5f9ddf147d68ade2eda6aba",
+    "baseline": {
+      "heap_alloc_bytes": 21649648,
+      "heap_inuse_bytes": 23470080,
+      "heap_objects": 7443,
+      "rss_bytes": 77742080,
+      "process_peak_rss_bytes": 77807616,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 44243296,
+      "heap_inuse_bytes": 46956544,
+      "heap_objects": 241437,
+      "rss_bytes": 80117760,
+      "process_peak_rss_bytes": 80117760,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 23960360,
+      "heap_inuse_bytes": 29360128,
+      "heap_objects": 19218,
+      "rss_bytes": 80183296,
+      "process_peak_rss_bytes": 80183296,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 23904504,
+      "heap_inuse_bytes": 28557312,
+      "heap_objects": 18892,
+      "rss_bytes": 80183296,
+      "process_peak_rss_bytes": 80183296,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21282616,
+      "heap_inuse_bytes": 22962176,
+      "heap_objects": 6514,
+      "rss_bytes": 80183296,
+      "process_peak_rss_bytes": 80183296,
+      "goroutines": 2
+    },
+    "repeat": 0
+  },
+  {
+    "engine": "moejs",
+    "extension": "twitter",
+    "mode": "warm",
+    "count": 200,
+    "user_cpu_ns": 87424000,
+    "system_cpu_ns": 3066000,
+    "wall_ns": 90473708,
+    "allocated_bytes": 50870584,
+    "gc_cycles": 2,
+    "gc_pause_ns": 71376,
+    "output_sha256": "9703ef25e194d7c4ea8514d41f094a4b2d5280cca5f9ddf147d68ade2eda6aba",
+    "baseline": {
+      "heap_alloc_bytes": 21649648,
+      "heap_inuse_bytes": 23486464,
+      "heap_objects": 7437,
+      "rss_bytes": 98271232,
+      "process_peak_rss_bytes": 98287616,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 45268008,
+      "heap_inuse_bytes": 48046080,
+      "heap_objects": 252449,
+      "rss_bytes": 100859904,
+      "process_peak_rss_bytes": 100859904,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 23965584,
+      "heap_inuse_bytes": 29818880,
+      "heap_objects": 19373,
+      "rss_bytes": 100925440,
+      "process_peak_rss_bytes": 100925440,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 23904480,
+      "heap_inuse_bytes": 28622848,
+      "heap_objects": 18890,
+      "rss_bytes": 101023744,
+      "process_peak_rss_bytes": 101023744,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21282552,
+      "heap_inuse_bytes": 22978560,
+      "heap_objects": 6509,
+      "rss_bytes": 101023744,
+      "process_peak_rss_bytes": 101023744,
+      "goroutines": 2
+    },
+    "repeat": 1
+  },
+  {
+    "engine": "goja",
+    "extension": "twitter",
+    "mode": "warm",
+    "count": 200,
+    "user_cpu_ns": 647856000,
+    "system_cpu_ns": 5199000,
+    "wall_ns": 653029250,
+    "allocated_bytes": 336691512,
+    "gc_cycles": 14,
+    "gc_pause_ns": 399210,
+    "output_sha256": "9703ef25e194d7c4ea8514d41f094a4b2d5280cca5f9ddf147d68ade2eda6aba",
+    "baseline": {
+      "heap_alloc_bytes": 21162256,
+      "heap_inuse_bytes": 22388736,
+      "heap_objects": 2533,
+      "rss_bytes": 78790656,
+      "process_peak_rss_bytes": 78790656,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 48140328,
+      "heap_inuse_bytes": 50577408,
+      "heap_objects": 422982,
+      "rss_bytes": 82608128,
+      "process_peak_rss_bytes": 82608128,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 23789608,
+      "heap_inuse_bytes": 29630464,
+      "heap_objects": 30546,
+      "rss_bytes": 82608128,
+      "process_peak_rss_bytes": 82608128,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 23751656,
+      "heap_inuse_bytes": 29573120,
+      "heap_objects": 30533,
+      "rss_bytes": 82608128,
+      "process_peak_rss_bytes": 82608128,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21127008,
+      "heap_inuse_bytes": 22396928,
+      "heap_objects": 2558,
+      "rss_bytes": 82608128,
+      "process_peak_rss_bytes": 82608128,
+      "goroutines": 2
+    },
+    "repeat": 1
+  },
+  {
+    "engine": "goja",
+    "extension": "twitter",
+    "mode": "warm",
+    "count": 200,
+    "user_cpu_ns": 636118000,
+    "system_cpu_ns": 8523000,
+    "wall_ns": 644790291,
+    "allocated_bytes": 336692016,
+    "gc_cycles": 15,
+    "gc_pause_ns": 438289,
+    "output_sha256": "9703ef25e194d7c4ea8514d41f094a4b2d5280cca5f9ddf147d68ade2eda6aba",
+    "baseline": {
+      "heap_alloc_bytes": 21162128,
+      "heap_inuse_bytes": 22380544,
+      "heap_objects": 2532,
+      "rss_bytes": 99581952,
+      "process_peak_rss_bytes": 99581952,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 49328832,
+      "heap_inuse_bytes": 51822592,
+      "heap_objects": 479123,
+      "rss_bytes": 102318080,
+      "process_peak_rss_bytes": 102318080,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 23789448,
+      "heap_inuse_bytes": 29556736,
+      "heap_objects": 30545,
+      "rss_bytes": 102318080,
+      "process_peak_rss_bytes": 102318080,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 23751496,
+      "heap_inuse_bytes": 29491200,
+      "heap_objects": 30532,
+      "rss_bytes": 102318080,
+      "process_peak_rss_bytes": 102318080,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21126848,
+      "heap_inuse_bytes": 22380544,
+      "heap_objects": 2557,
+      "rss_bytes": 102334464,
+      "process_peak_rss_bytes": 102334464,
+      "goroutines": 2
+    },
+    "repeat": 2
+  },
+  {
+    "engine": "moejs",
+    "extension": "twitter",
+    "mode": "warm",
+    "count": 200,
+    "user_cpu_ns": 87730000,
+    "system_cpu_ns": 2951000,
+    "wall_ns": 90675666,
+    "allocated_bytes": 50872424,
+    "gc_cycles": 2,
+    "gc_pause_ns": 72875,
+    "output_sha256": "9703ef25e194d7c4ea8514d41f094a4b2d5280cca5f9ddf147d68ade2eda6aba",
+    "baseline": {
+      "heap_alloc_bytes": 21649408,
+      "heap_inuse_bytes": 23478272,
+      "heap_objects": 7438,
+      "rss_bytes": 77692928,
+      "process_peak_rss_bytes": 77709312,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 44255656,
+      "heap_inuse_bytes": 46981120,
+      "heap_objects": 241673,
+      "rss_bytes": 80101376,
+      "process_peak_rss_bytes": 80117760,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 23959648,
+      "heap_inuse_bytes": 29278208,
+      "heap_objects": 19151,
+      "rss_bytes": 80166912,
+      "process_peak_rss_bytes": 80232448,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 23904560,
+      "heap_inuse_bytes": 28581888,
+      "heap_objects": 18885,
+      "rss_bytes": 80232448,
+      "process_peak_rss_bytes": 80232448,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21282776,
+      "heap_inuse_bytes": 22978560,
+      "heap_objects": 6511,
+      "rss_bytes": 80232448,
+      "process_peak_rss_bytes": 80232448,
+      "goroutines": 2
+    },
+    "repeat": 2
+  },
+  {
+    "engine": "moejs",
+    "extension": "twitter",
+    "mode": "warm",
+    "count": 200,
+    "user_cpu_ns": 87082000,
+    "system_cpu_ns": 3483000,
+    "wall_ns": 90542167,
+    "allocated_bytes": 50871672,
+    "gc_cycles": 2,
+    "gc_pause_ns": 61708,
+    "output_sha256": "9703ef25e194d7c4ea8514d41f094a4b2d5280cca5f9ddf147d68ade2eda6aba",
+    "baseline": {
+      "heap_alloc_bytes": 21649344,
+      "heap_inuse_bytes": 23461888,
+      "heap_objects": 7440,
+      "rss_bytes": 97910784,
+      "process_peak_rss_bytes": 97927168,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 48278056,
+      "heap_inuse_bytes": 51167232,
+      "heap_objects": 285376,
+      "rss_bytes": 100745216,
+      "process_peak_rss_bytes": 100745216,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 23966736,
+      "heap_inuse_bytes": 29843456,
+      "heap_objects": 19407,
+      "rss_bytes": 100777984,
+      "process_peak_rss_bytes": 100777984,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 23903984,
+      "heap_inuse_bytes": 28631040,
+      "heap_objects": 18893,
+      "rss_bytes": 100777984,
+      "process_peak_rss_bytes": 100777984,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21281976,
+      "heap_inuse_bytes": 22921216,
+      "heap_objects": 6510,
+      "rss_bytes": 100777984,
+      "process_peak_rss_bytes": 100777984,
+      "goroutines": 2
+    },
+    "repeat": 3
+  },
+  {
+    "engine": "goja",
+    "extension": "twitter",
+    "mode": "warm",
+    "count": 200,
+    "user_cpu_ns": 649800000,
+    "system_cpu_ns": 5460000,
+    "wall_ns": 655305042,
+    "allocated_bytes": 336691288,
+    "gc_cycles": 14,
+    "gc_pause_ns": 424960,
+    "output_sha256": "9703ef25e194d7c4ea8514d41f094a4b2d5280cca5f9ddf147d68ade2eda6aba",
+    "baseline": {
+      "heap_alloc_bytes": 21162048,
+      "heap_inuse_bytes": 22380544,
+      "heap_objects": 2534,
+      "rss_bytes": 78856192,
+      "process_peak_rss_bytes": 78856192,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 46779432,
+      "heap_inuse_bytes": 49209344,
+      "heap_objects": 375098,
+      "rss_bytes": 82673664,
+      "process_peak_rss_bytes": 82673664,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 23789256,
+      "heap_inuse_bytes": 29646848,
+      "heap_objects": 30541,
+      "rss_bytes": 82673664,
+      "process_peak_rss_bytes": 82673664,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 23751304,
+      "heap_inuse_bytes": 29589504,
+      "heap_objects": 30528,
+      "rss_bytes": 82673664,
+      "process_peak_rss_bytes": 82673664,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21126656,
+      "heap_inuse_bytes": 22388736,
+      "heap_objects": 2553,
+      "rss_bytes": 82690048,
+      "process_peak_rss_bytes": 82722816,
+      "goroutines": 2
+    },
+    "repeat": 3
+  },
+  {
+    "engine": "goja",
+    "extension": "twitter",
+    "mode": "warm",
+    "count": 200,
+    "user_cpu_ns": 635008000,
+    "system_cpu_ns": 5237000,
+    "wall_ns": 640292709,
+    "allocated_bytes": 336692112,
+    "gc_cycles": 15,
+    "gc_pause_ns": 464628,
+    "output_sha256": "9703ef25e194d7c4ea8514d41f094a4b2d5280cca5f9ddf147d68ade2eda6aba",
+    "baseline": {
+      "heap_alloc_bytes": 21161984,
+      "heap_inuse_bytes": 22372352,
+      "heap_objects": 2535,
+      "rss_bytes": 78675968,
+      "process_peak_rss_bytes": 78675968,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 49472008,
+      "heap_inuse_bytes": 51945472,
+      "heap_objects": 481306,
+      "rss_bytes": 82558976,
+      "process_peak_rss_bytes": 82558976,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 23789336,
+      "heap_inuse_bytes": 29523968,
+      "heap_objects": 30546,
+      "rss_bytes": 82558976,
+      "process_peak_rss_bytes": 82558976,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 23751384,
+      "heap_inuse_bytes": 29466624,
+      "heap_objects": 30533,
+      "rss_bytes": 82608128,
+      "process_peak_rss_bytes": 82608128,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21126784,
+      "heap_inuse_bytes": 22396928,
+      "heap_objects": 2559,
+      "rss_bytes": 82673664,
+      "process_peak_rss_bytes": 82673664,
+      "goroutines": 2
+    },
+    "repeat": 4
+  },
+  {
+    "engine": "moejs",
+    "extension": "twitter",
+    "mode": "warm",
+    "count": 200,
+    "user_cpu_ns": 87972000,
+    "system_cpu_ns": 3113000,
+    "wall_ns": 91080375,
+    "allocated_bytes": 50869384,
+    "gc_cycles": 2,
+    "gc_pause_ns": 75125,
+    "output_sha256": "9703ef25e194d7c4ea8514d41f094a4b2d5280cca5f9ddf147d68ade2eda6aba",
+    "baseline": {
+      "heap_alloc_bytes": 21649408,
+      "heap_inuse_bytes": 23461888,
+      "heap_objects": 7440,
+      "rss_bytes": 77971456,
+      "process_peak_rss_bytes": 77987840,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 44033080,
+      "heap_inuse_bytes": 46809088,
+      "heap_objects": 237403,
+      "rss_bytes": 80379904,
+      "process_peak_rss_bytes": 80379904,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 23962832,
+      "heap_inuse_bytes": 29556736,
+      "heap_objects": 19294,
+      "rss_bytes": 80429056,
+      "process_peak_rss_bytes": 80429056,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 23904416,
+      "heap_inuse_bytes": 28540928,
+      "heap_objects": 18883,
+      "rss_bytes": 80429056,
+      "process_peak_rss_bytes": 80429056,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21282648,
+      "heap_inuse_bytes": 22962176,
+      "heap_objects": 6512,
+      "rss_bytes": 80429056,
+      "process_peak_rss_bytes": 80429056,
+      "goroutines": 2
+    },
+    "repeat": 4
+  },
+  {
+    "engine": "goja",
+    "extension": "bilibili",
+    "mode": "retained",
+    "count": 1,
+    "user_cpu_ns": 119058000,
+    "system_cpu_ns": 9866000,
+    "wall_ns": 128874834,
+    "allocated_bytes": 77335496,
+    "gc_cycles": 2,
+    "gc_pause_ns": 109958,
+    "output_sha256": "5759030b1417335a06ed4f78d38ad2acc5c2fee375b67e64754875ff95c9b7ca",
+    "baseline": {
+      "heap_alloc_bytes": 21945104,
+      "heap_inuse_bytes": 22749184,
+      "heap_objects": 2358,
+      "rss_bytes": 74137600,
+      "process_peak_rss_bytes": 74252288,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 82951240,
+      "heap_inuse_bytes": 87105536,
+      "heap_objects": 952570,
+      "rss_bytes": 119242752,
+      "process_peak_rss_bytes": 119242752,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 38583592,
+      "heap_inuse_bytes": 60555264,
+      "heap_objects": 170201,
+      "rss_bytes": 119652352,
+      "process_peak_rss_bytes": 119652352,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 38583608,
+      "heap_inuse_bytes": 60555264,
+      "heap_objects": 170202,
+      "rss_bytes": 119701504,
+      "process_peak_rss_bytes": 119717888,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21980688,
+      "heap_inuse_bytes": 23289856,
+      "heap_objects": 2561,
+      "rss_bytes": 119930880,
+      "process_peak_rss_bytes": 119930880,
+      "goroutines": 2
+    },
+    "repeat": 0
+  },
+  {
+    "engine": "moejs",
+    "extension": "bilibili",
+    "mode": "retained",
+    "count": 1,
+    "user_cpu_ns": 99372000,
+    "system_cpu_ns": 9191000,
+    "wall_ns": 108870500,
+    "allocated_bytes": 64357056,
+    "gc_cycles": 2,
+    "gc_pause_ns": 108833,
+    "output_sha256": "5759030b1417335a06ed4f78d38ad2acc5c2fee375b67e64754875ff95c9b7ca",
+    "baseline": {
+      "heap_alloc_bytes": 21945104,
+      "heap_inuse_bytes": 22749184,
+      "heap_objects": 2358,
+      "rss_bytes": 73891840,
+      "process_peak_rss_bytes": 74006528,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 80467024,
+      "heap_inuse_bytes": 83591168,
+      "heap_objects": 638876,
+      "rss_bytes": 115048448,
+      "process_peak_rss_bytes": 115048448,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 38369712,
+      "heap_inuse_bytes": 57425920,
+      "heap_objects": 65196,
+      "rss_bytes": 115458048,
+      "process_peak_rss_bytes": 115458048,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 38375304,
+      "heap_inuse_bytes": 57425920,
+      "heap_objects": 65204,
+      "rss_bytes": 115458048,
+      "process_peak_rss_bytes": 115458048,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 22462088,
+      "heap_inuse_bytes": 26877952,
+      "heap_objects": 13664,
+      "rss_bytes": 115458048,
+      "process_peak_rss_bytes": 115458048,
+      "goroutines": 2
+    },
+    "repeat": 0
+  },
+  {
+    "engine": "moejs",
+    "extension": "bilibili",
+    "mode": "retained",
+    "count": 1,
+    "user_cpu_ns": 96967000,
+    "system_cpu_ns": 6926000,
+    "wall_ns": 103868125,
+    "allocated_bytes": 64350728,
+    "gc_cycles": 1,
+    "gc_pause_ns": 65917,
+    "output_sha256": "5759030b1417335a06ed4f78d38ad2acc5c2fee375b67e64754875ff95c9b7ca",
+    "baseline": {
+      "heap_alloc_bytes": 21945264,
+      "heap_inuse_bytes": 22749184,
+      "heap_objects": 2359,
+      "rss_bytes": 74055680,
+      "process_peak_rss_bytes": 74170368,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 83725632,
+      "heap_inuse_bytes": 86523904,
+      "heap_objects": 692274,
+      "rss_bytes": 115916800,
+      "process_peak_rss_bytes": 115916800,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 38368000,
+      "heap_inuse_bytes": 58531840,
+      "heap_objects": 65212,
+      "rss_bytes": 116424704,
+      "process_peak_rss_bytes": 116424704,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 38373592,
+      "heap_inuse_bytes": 58531840,
+      "heap_objects": 65220,
+      "rss_bytes": 116490240,
+      "process_peak_rss_bytes": 116490240,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 22459448,
+      "heap_inuse_bytes": 26779648,
+      "heap_objects": 13666,
+      "rss_bytes": 116490240,
+      "process_peak_rss_bytes": 116490240,
+      "goroutines": 2
+    },
+    "repeat": 1
+  },
+  {
+    "engine": "goja",
+    "extension": "bilibili",
+    "mode": "retained",
+    "count": 1,
+    "user_cpu_ns": 111637000,
+    "system_cpu_ns": 7763000,
+    "wall_ns": 119418792,
+    "allocated_bytes": 77335640,
+    "gc_cycles": 2,
+    "gc_pause_ns": 127292,
+    "output_sha256": "5759030b1417335a06ed4f78d38ad2acc5c2fee375b67e64754875ff95c9b7ca",
+    "baseline": {
+      "heap_alloc_bytes": 21945264,
+      "heap_inuse_bytes": 22749184,
+      "heap_objects": 2359,
+      "rss_bytes": 74039296,
+      "process_peak_rss_bytes": 74153984,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 83660728,
+      "heap_inuse_bytes": 86941696,
+      "heap_objects": 932610,
+      "rss_bytes": 119390208,
+      "process_peak_rss_bytes": 119390208,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 38584872,
+      "heap_inuse_bytes": 60416000,
+      "heap_objects": 170249,
+      "rss_bytes": 119783424,
+      "process_peak_rss_bytes": 119783424,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 38584888,
+      "heap_inuse_bytes": 60416000,
+      "heap_objects": 170250,
+      "rss_bytes": 119783424,
+      "process_peak_rss_bytes": 119783424,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21981008,
+      "heap_inuse_bytes": 23257088,
+      "heap_objects": 2558,
+      "rss_bytes": 119996416,
+      "process_peak_rss_bytes": 119996416,
+      "goroutines": 2
+    },
+    "repeat": 1
+  },
+  {
+    "engine": "goja",
+    "extension": "bilibili",
+    "mode": "retained",
+    "count": 1,
+    "user_cpu_ns": 117756000,
+    "system_cpu_ns": 7594000,
+    "wall_ns": 125313583,
+    "allocated_bytes": 77335160,
+    "gc_cycles": 2,
+    "gc_pause_ns": 110375,
+    "output_sha256": "5759030b1417335a06ed4f78d38ad2acc5c2fee375b67e64754875ff95c9b7ca",
+    "baseline": {
+      "heap_alloc_bytes": 21945104,
+      "heap_inuse_bytes": 22749184,
+      "heap_objects": 2358,
+      "rss_bytes": 73990144,
+      "process_peak_rss_bytes": 74104832,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 86589176,
+      "heap_inuse_bytes": 89784320,
+      "heap_objects": 987213,
+      "rss_bytes": 123518976,
+      "process_peak_rss_bytes": 123518976,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 38583768,
+      "heap_inuse_bytes": 60530688,
+      "heap_objects": 170225,
+      "rss_bytes": 123912192,
+      "process_peak_rss_bytes": 123912192,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 38589360,
+      "heap_inuse_bytes": 60538880,
+      "heap_objects": 170233,
+      "rss_bytes": 123912192,
+      "process_peak_rss_bytes": 123912192,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21985816,
+      "heap_inuse_bytes": 23298048,
+      "heap_objects": 2562,
+      "rss_bytes": 124076032,
+      "process_peak_rss_bytes": 124076032,
+      "goroutines": 2
+    },
+    "repeat": 2
+  },
+  {
+    "engine": "moejs",
+    "extension": "bilibili",
+    "mode": "retained",
+    "count": 1,
+    "user_cpu_ns": 103105000,
+    "system_cpu_ns": 7478000,
+    "wall_ns": 110505625,
+    "allocated_bytes": 64351840,
+    "gc_cycles": 1,
+    "gc_pause_ns": 64417,
+    "output_sha256": "5759030b1417335a06ed4f78d38ad2acc5c2fee375b67e64754875ff95c9b7ca",
+    "baseline": {
+      "heap_alloc_bytes": 21945264,
+      "heap_inuse_bytes": 22749184,
+      "heap_objects": 2359,
+      "rss_bytes": 74055680,
+      "process_peak_rss_bytes": 74186752,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 83350600,
+      "heap_inuse_bytes": 86433792,
+      "heap_objects": 676526,
+      "rss_bytes": 116162560,
+      "process_peak_rss_bytes": 116162560,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 38368352,
+      "heap_inuse_bytes": 58392576,
+      "heap_objects": 65206,
+      "rss_bytes": 116736000,
+      "process_peak_rss_bytes": 116736000,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 38373944,
+      "heap_inuse_bytes": 58392576,
+      "heap_objects": 65214,
+      "rss_bytes": 116785152,
+      "process_peak_rss_bytes": 116785152,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 22460312,
+      "heap_inuse_bytes": 26828800,
+      "heap_objects": 13667,
+      "rss_bytes": 116932608,
+      "process_peak_rss_bytes": 116932608,
+      "goroutines": 2
+    },
+    "repeat": 2
+  },
+  {
+    "engine": "moejs",
+    "extension": "bilibili",
+    "mode": "retained",
+    "count": 1,
+    "user_cpu_ns": 96801000,
+    "system_cpu_ns": 8152000,
+    "wall_ns": 104868958,
+    "allocated_bytes": 64354232,
+    "gc_cycles": 1,
+    "gc_pause_ns": 64875,
+    "output_sha256": "5759030b1417335a06ed4f78d38ad2acc5c2fee375b67e64754875ff95c9b7ca",
+    "baseline": {
+      "heap_alloc_bytes": 21945104,
+      "heap_inuse_bytes": 22749184,
+      "heap_objects": 2358,
+      "rss_bytes": 74039296,
+      "process_peak_rss_bytes": 74153984,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 83364816,
+      "heap_inuse_bytes": 86441984,
+      "heap_objects": 676458,
+      "rss_bytes": 116113408,
+      "process_peak_rss_bytes": 116113408,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 38369424,
+      "heap_inuse_bytes": 58286080,
+      "heap_objects": 65202,
+      "rss_bytes": 116670464,
+      "process_peak_rss_bytes": 116670464,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 38375016,
+      "heap_inuse_bytes": 58286080,
+      "heap_objects": 65210,
+      "rss_bytes": 116768768,
+      "process_peak_rss_bytes": 116768768,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 22461400,
+      "heap_inuse_bytes": 26796032,
+      "heap_objects": 13663,
+      "rss_bytes": 116768768,
+      "process_peak_rss_bytes": 116768768,
+      "goroutines": 2
+    },
+    "repeat": 3
+  },
+  {
+    "engine": "goja",
+    "extension": "bilibili",
+    "mode": "retained",
+    "count": 1,
+    "user_cpu_ns": 120915000,
+    "system_cpu_ns": 8311000,
+    "wall_ns": 129189958,
+    "allocated_bytes": 77335608,
+    "gc_cycles": 2,
+    "gc_pause_ns": 129583,
+    "output_sha256": "5759030b1417335a06ed4f78d38ad2acc5c2fee375b67e64754875ff95c9b7ca",
+    "baseline": {
+      "heap_alloc_bytes": 21945104,
+      "heap_inuse_bytes": 22749184,
+      "heap_objects": 2358,
+      "rss_bytes": 94306304,
+      "process_peak_rss_bytes": 94420992,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 82922392,
+      "heap_inuse_bytes": 86941696,
+      "heap_objects": 955826,
+      "rss_bytes": 118145024,
+      "process_peak_rss_bytes": 118145024,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 38584568,
+      "heap_inuse_bytes": 60334080,
+      "heap_objects": 170254,
+      "rss_bytes": 118521856,
+      "process_peak_rss_bytes": 118521856,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 38584584,
+      "heap_inuse_bytes": 60334080,
+      "heap_objects": 170255,
+      "rss_bytes": 118571008,
+      "process_peak_rss_bytes": 118571008,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21980704,
+      "heap_inuse_bytes": 23281664,
+      "heap_objects": 2563,
+      "rss_bytes": 118767616,
+      "process_peak_rss_bytes": 118767616,
+      "goroutines": 2
+    },
+    "repeat": 3
+  },
+  {
+    "engine": "goja",
+    "extension": "bilibili",
+    "mode": "retained",
+    "count": 1,
+    "user_cpu_ns": 110123000,
+    "system_cpu_ns": 7155000,
+    "wall_ns": 117242417,
+    "allocated_bytes": 77334952,
+    "gc_cycles": 2,
+    "gc_pause_ns": 118624,
+    "output_sha256": "5759030b1417335a06ed4f78d38ad2acc5c2fee375b67e64754875ff95c9b7ca",
+    "baseline": {
+      "heap_alloc_bytes": 21945104,
+      "heap_inuse_bytes": 22749184,
+      "heap_objects": 2358,
+      "rss_bytes": 74006528,
+      "process_peak_rss_bytes": 74121216,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 83554224,
+      "heap_inuse_bytes": 86638592,
+      "heap_objects": 928414,
+      "rss_bytes": 118996992,
+      "process_peak_rss_bytes": 118996992,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 38583624,
+      "heap_inuse_bytes": 59744256,
+      "heap_objects": 170220,
+      "rss_bytes": 119357440,
+      "process_peak_rss_bytes": 119357440,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 38589216,
+      "heap_inuse_bytes": 59752448,
+      "heap_objects": 170228,
+      "rss_bytes": 119357440,
+      "process_peak_rss_bytes": 119357440,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21985736,
+      "heap_inuse_bytes": 23273472,
+      "heap_objects": 2561,
+      "rss_bytes": 119521280,
+      "process_peak_rss_bytes": 119521280,
+      "goroutines": 2
+    },
+    "repeat": 4
+  },
+  {
+    "engine": "moejs",
+    "extension": "bilibili",
+    "mode": "retained",
+    "count": 1,
+    "user_cpu_ns": 98560000,
+    "system_cpu_ns": 7372000,
+    "wall_ns": 105986709,
+    "allocated_bytes": 64359800,
+    "gc_cycles": 1,
+    "gc_pause_ns": 65917,
+    "output_sha256": "5759030b1417335a06ed4f78d38ad2acc5c2fee375b67e64754875ff95c9b7ca",
+    "baseline": {
+      "heap_alloc_bytes": 21945104,
+      "heap_inuse_bytes": 22749184,
+      "heap_objects": 2358,
+      "rss_bytes": 74153984,
+      "process_peak_rss_bytes": 74268672,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 83478608,
+      "heap_inuse_bytes": 86515712,
+      "heap_objects": 676456,
+      "rss_bytes": 115933184,
+      "process_peak_rss_bytes": 115933184,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 38370752,
+      "heap_inuse_bytes": 58187776,
+      "heap_objects": 65203,
+      "rss_bytes": 116490240,
+      "process_peak_rss_bytes": 116490240,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 38376344,
+      "heap_inuse_bytes": 58187776,
+      "heap_objects": 65211,
+      "rss_bytes": 116588544,
+      "process_peak_rss_bytes": 116588544,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 22462904,
+      "heap_inuse_bytes": 26796032,
+      "heap_objects": 13668,
+      "rss_bytes": 116736000,
+      "process_peak_rss_bytes": 116736000,
+      "goroutines": 2
+    },
+    "repeat": 4
+  },
+  {
+    "engine": "goja",
+    "extension": "bilibili",
+    "mode": "retained",
+    "count": 8,
+    "user_cpu_ns": 1048341000,
+    "system_cpu_ns": 33206000,
+    "wall_ns": 1081168625,
+    "allocated_bytes": 618039384,
+    "gc_cycles": 7,
+    "gc_pause_ns": 319417,
+    "output_sha256": "5759030b1417335a06ed4f78d38ad2acc5c2fee375b67e64754875ff95c9b7ca",
+    "baseline": {
+      "heap_alloc_bytes": 21945104,
+      "heap_inuse_bytes": 22749184,
+      "heap_objects": 2358,
+      "rss_bytes": 73973760,
+      "process_peak_rss_bytes": 74104832,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 307497896,
+      "heap_inuse_bytes": 316178432,
+      "heap_objects": 4102723,
+      "rss_bytes": 355467264,
+      "process_peak_rss_bytes": 355467264,
+      "goroutines": 10
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 154818864,
+      "heap_inuse_bytes": 233840640,
+      "heap_objects": 1344151,
+      "rss_bytes": 355942400,
+      "process_peak_rss_bytes": 355942400,
+      "goroutines": 10
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 154824456,
+      "heap_inuse_bytes": 233848832,
+      "heap_objects": 1344159,
+      "rss_bytes": 355942400,
+      "process_peak_rss_bytes": 355942400,
+      "goroutines": 10
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21992536,
+      "heap_inuse_bytes": 23552000,
+      "heap_objects": 2603,
+      "rss_bytes": 356106240,
+      "process_peak_rss_bytes": 356106240,
+      "goroutines": 2
+    },
+    "repeat": 0
+  },
+  {
+    "engine": "moejs",
+    "extension": "bilibili",
+    "mode": "retained",
+    "count": 8,
+    "user_cpu_ns": 821313000,
+    "system_cpu_ns": 30729000,
+    "wall_ns": 851653250,
+    "allocated_bytes": 505803168,
+    "gc_cycles": 7,
+    "gc_pause_ns": 349831,
+    "output_sha256": "5759030b1417335a06ed4f78d38ad2acc5c2fee375b67e64754875ff95c9b7ca",
+    "baseline": {
+      "heap_alloc_bytes": 21945264,
+      "heap_inuse_bytes": 22749184,
+      "heap_objects": 2359,
+      "rss_bytes": 74219520,
+      "process_peak_rss_bytes": 74334208,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 255983648,
+      "heap_inuse_bytes": 265322496,
+      "heap_objects": 2006217,
+      "rss_bytes": 305676288,
+      "process_peak_rss_bytes": 305676288,
+      "goroutines": 10
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 148402216,
+      "heap_inuse_bytes": 193544192,
+      "heap_objects": 393473,
+      "rss_bytes": 305954816,
+      "process_peak_rss_bytes": 305954816,
+      "goroutines": 10
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 148407808,
+      "heap_inuse_bytes": 193544192,
+      "heap_objects": 393481,
+      "rss_bytes": 305954816,
+      "process_peak_rss_bytes": 305954816,
+      "goroutines": 10
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 22469992,
+      "heap_inuse_bytes": 27140096,
+      "heap_objects": 13702,
+      "rss_bytes": 305954816,
+      "process_peak_rss_bytes": 305954816,
+      "goroutines": 2
+    },
+    "repeat": 0
+  },
+  {
+    "engine": "moejs",
+    "extension": "bilibili",
+    "mode": "retained",
+    "count": 8,
+    "user_cpu_ns": 836840000,
+    "system_cpu_ns": 30728000,
+    "wall_ns": 867215583,
+    "allocated_bytes": 505813552,
+    "gc_cycles": 6,
+    "gc_pause_ns": 284083,
+    "output_sha256": "5759030b1417335a06ed4f78d38ad2acc5c2fee375b67e64754875ff95c9b7ca",
+    "baseline": {
+      "heap_alloc_bytes": 21945264,
+      "heap_inuse_bytes": 22749184,
+      "heap_objects": 2359,
+      "rss_bytes": 74088448,
+      "process_peak_rss_bytes": 74203136,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 287772792,
+      "heap_inuse_bytes": 298008576,
+      "heap_objects": 2481248,
+      "rss_bytes": 338280448,
+      "process_peak_rss_bytes": 338280448,
+      "goroutines": 10
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 148404328,
+      "heap_inuse_bytes": 198524928,
+      "heap_objects": 393463,
+      "rss_bytes": 338640896,
+      "process_peak_rss_bytes": 338640896,
+      "goroutines": 10
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 148404344,
+      "heap_inuse_bytes": 198524928,
+      "heap_objects": 393464,
+      "rss_bytes": 338657280,
+      "process_peak_rss_bytes": 338657280,
+      "goroutines": 10
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 22466720,
+      "heap_inuse_bytes": 26984448,
+      "heap_objects": 13686,
+      "rss_bytes": 338722816,
+      "process_peak_rss_bytes": 338722816,
+      "goroutines": 2
+    },
+    "repeat": 1
+  },
+  {
+    "engine": "goja",
+    "extension": "bilibili",
+    "mode": "retained",
+    "count": 8,
+    "user_cpu_ns": 1074401000,
+    "system_cpu_ns": 37222000,
+    "wall_ns": 1111216625,
+    "allocated_bytes": 618039664,
+    "gc_cycles": 8,
+    "gc_pause_ns": 355086,
+    "output_sha256": "5759030b1417335a06ed4f78d38ad2acc5c2fee375b67e64754875ff95c9b7ca",
+    "baseline": {
+      "heap_alloc_bytes": 21945104,
+      "heap_inuse_bytes": 22749184,
+      "heap_objects": 2358,
+      "rss_bytes": 74235904,
+      "process_peak_rss_bytes": 74334208,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 329779552,
+      "heap_inuse_bytes": 339451904,
+      "heap_objects": 4411522,
+      "rss_bytes": 378781696,
+      "process_peak_rss_bytes": 378781696,
+      "goroutines": 10
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 154818736,
+      "heap_inuse_bytes": 244080640,
+      "heap_objects": 1344152,
+      "rss_bytes": 379633664,
+      "process_peak_rss_bytes": 379633664,
+      "goroutines": 10
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 154824328,
+      "heap_inuse_bytes": 244088832,
+      "heap_objects": 1344160,
+      "rss_bytes": 379633664,
+      "process_peak_rss_bytes": 379633664,
+      "goroutines": 10
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21992376,
+      "heap_inuse_bytes": 23535616,
+      "heap_objects": 2602,
+      "rss_bytes": 379830272,
+      "process_peak_rss_bytes": 379830272,
+      "goroutines": 2
+    },
+    "repeat": 1
+  },
+  {
+    "engine": "goja",
+    "extension": "bilibili",
+    "mode": "retained",
+    "count": 8,
+    "user_cpu_ns": 1062969000,
+    "system_cpu_ns": 36162000,
+    "wall_ns": 1098684459,
+    "allocated_bytes": 618039000,
+    "gc_cycles": 6,
+    "gc_pause_ns": 274833,
+    "output_sha256": "5759030b1417335a06ed4f78d38ad2acc5c2fee375b67e64754875ff95c9b7ca",
+    "baseline": {
+      "heap_alloc_bytes": 21945264,
+      "heap_inuse_bytes": 22749184,
+      "heap_objects": 2359,
+      "rss_bytes": 73891840,
+      "process_peak_rss_bytes": 74006528,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 331295832,
+      "heap_inuse_bytes": 340942848,
+      "heap_objects": 4436310,
+      "rss_bytes": 380370944,
+      "process_peak_rss_bytes": 380370944,
+      "goroutines": 10
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 154818864,
+      "heap_inuse_bytes": 251224064,
+      "heap_objects": 1344151,
+      "rss_bytes": 380977152,
+      "process_peak_rss_bytes": 380977152,
+      "goroutines": 10
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 154824456,
+      "heap_inuse_bytes": 251224064,
+      "heap_objects": 1344159,
+      "rss_bytes": 381009920,
+      "process_peak_rss_bytes": 381009920,
+      "goroutines": 10
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21992584,
+      "heap_inuse_bytes": 23560192,
+      "heap_objects": 2606,
+      "rss_bytes": 381288448,
+      "process_peak_rss_bytes": 381288448,
+      "goroutines": 2
+    },
+    "repeat": 2
+  },
+  {
+    "engine": "moejs",
+    "extension": "bilibili",
+    "mode": "retained",
+    "count": 8,
+    "user_cpu_ns": 822192000,
+    "system_cpu_ns": 28881000,
+    "wall_ns": 850701875,
+    "allocated_bytes": 505798984,
+    "gc_cycles": 6,
+    "gc_pause_ns": 280042,
+    "output_sha256": "5759030b1417335a06ed4f78d38ad2acc5c2fee375b67e64754875ff95c9b7ca",
+    "baseline": {
+      "heap_alloc_bytes": 21945104,
+      "heap_inuse_bytes": 22749184,
+      "heap_objects": 2358,
+      "rss_bytes": 74055680,
+      "process_peak_rss_bytes": 74170368,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 246954808,
+      "heap_inuse_bytes": 254181376,
+      "heap_objects": 1755734,
+      "rss_bytes": 289636352,
+      "process_peak_rss_bytes": 289652736,
+      "goroutines": 10
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 148397592,
+      "heap_inuse_bytes": 197099520,
+      "heap_objects": 393432,
+      "rss_bytes": 289947648,
+      "process_peak_rss_bytes": 289947648,
+      "goroutines": 10
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 148403184,
+      "heap_inuse_bytes": 197099520,
+      "heap_objects": 393440,
+      "rss_bytes": 289996800,
+      "process_peak_rss_bytes": 289996800,
+      "goroutines": 10
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 22467752,
+      "heap_inuse_bytes": 27009024,
+      "heap_objects": 13696,
+      "rss_bytes": 290144256,
+      "process_peak_rss_bytes": 290144256,
+      "goroutines": 2
+    },
+    "repeat": 2
+  },
+  {
+    "engine": "moejs",
+    "extension": "bilibili",
+    "mode": "retained",
+    "count": 8,
+    "user_cpu_ns": 819093000,
+    "system_cpu_ns": 30330000,
+    "wall_ns": 849041083,
+    "allocated_bytes": 505804864,
+    "gc_cycles": 6,
+    "gc_pause_ns": 354750,
+    "output_sha256": "5759030b1417335a06ed4f78d38ad2acc5c2fee375b67e64754875ff95c9b7ca",
+    "baseline": {
+      "heap_alloc_bytes": 21945104,
+      "heap_inuse_bytes": 22749184,
+      "heap_objects": 2358,
+      "rss_bytes": 74186752,
+      "process_peak_rss_bytes": 74334208,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 267602952,
+      "heap_inuse_bytes": 276201472,
+      "heap_objects": 2035542,
+      "rss_bytes": 316882944,
+      "process_peak_rss_bytes": 316882944,
+      "goroutines": 10
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 148395992,
+      "heap_inuse_bytes": 205496320,
+      "heap_objects": 393402,
+      "rss_bytes": 317259776,
+      "process_peak_rss_bytes": 317259776,
+      "goroutines": 10
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 148396008,
+      "heap_inuse_bytes": 205496320,
+      "heap_objects": 393403,
+      "rss_bytes": 317259776,
+      "process_peak_rss_bytes": 317259776,
+      "goroutines": 10
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 22461808,
+      "heap_inuse_bytes": 26902528,
+      "heap_objects": 13688,
+      "rss_bytes": 317259776,
+      "process_peak_rss_bytes": 317259776,
+      "goroutines": 2
+    },
+    "repeat": 3
+  },
+  {
+    "engine": "goja",
+    "extension": "bilibili",
+    "mode": "retained",
+    "count": 8,
+    "user_cpu_ns": 1050912000,
+    "system_cpu_ns": 35079000,
+    "wall_ns": 1085482375,
+    "allocated_bytes": 618038904,
+    "gc_cycles": 6,
+    "gc_pause_ns": 317001,
+    "output_sha256": "5759030b1417335a06ed4f78d38ad2acc5c2fee375b67e64754875ff95c9b7ca",
+    "baseline": {
+      "heap_alloc_bytes": 21945264,
+      "heap_inuse_bytes": 22749184,
+      "heap_objects": 2359,
+      "rss_bytes": 73940992,
+      "process_peak_rss_bytes": 74055680,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 331534960,
+      "heap_inuse_bytes": 341196800,
+      "heap_objects": 4442802,
+      "rss_bytes": 380731392,
+      "process_peak_rss_bytes": 380731392,
+      "goroutines": 10
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 154818416,
+      "heap_inuse_bytes": 250781696,
+      "heap_objects": 1344134,
+      "rss_bytes": 381288448,
+      "process_peak_rss_bytes": 381288448,
+      "goroutines": 10
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 154824008,
+      "heap_inuse_bytes": 250781696,
+      "heap_objects": 1344142,
+      "rss_bytes": 381321216,
+      "process_peak_rss_bytes": 381321216,
+      "goroutines": 10
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21992456,
+      "heap_inuse_bytes": 23527424,
+      "heap_objects": 2600,
+      "rss_bytes": 381485056,
+      "process_peak_rss_bytes": 381485056,
+      "goroutines": 2
+    },
+    "repeat": 3
+  },
+  {
+    "engine": "goja",
+    "extension": "bilibili",
+    "mode": "retained",
+    "count": 8,
+    "user_cpu_ns": 1055957000,
+    "system_cpu_ns": 35122000,
+    "wall_ns": 1090588792,
+    "allocated_bytes": 618038408,
+    "gc_cycles": 6,
+    "gc_pause_ns": 284707,
+    "output_sha256": "5759030b1417335a06ed4f78d38ad2acc5c2fee375b67e64754875ff95c9b7ca",
+    "baseline": {
+      "heap_alloc_bytes": 21945264,
+      "heap_inuse_bytes": 22749184,
+      "heap_objects": 2359,
+      "rss_bytes": 74121216,
+      "process_peak_rss_bytes": 74235904,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 325261024,
+      "heap_inuse_bytes": 334725120,
+      "heap_objects": 4345704,
+      "rss_bytes": 374341632,
+      "process_peak_rss_bytes": 374341632,
+      "goroutines": 10
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 154818944,
+      "heap_inuse_bytes": 247848960,
+      "heap_objects": 1344169,
+      "rss_bytes": 374800384,
+      "process_peak_rss_bytes": 374800384,
+      "goroutines": 10
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 154824536,
+      "heap_inuse_bytes": 247848960,
+      "heap_objects": 1344177,
+      "rss_bytes": 374800384,
+      "process_peak_rss_bytes": 374800384,
+      "goroutines": 10
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21992312,
+      "heap_inuse_bytes": 23560192,
+      "heap_objects": 2602,
+      "rss_bytes": 374980608,
+      "process_peak_rss_bytes": 374980608,
+      "goroutines": 2
+    },
+    "repeat": 4
+  },
+  {
+    "engine": "moejs",
+    "extension": "bilibili",
+    "mode": "retained",
+    "count": 8,
+    "user_cpu_ns": 818959000,
+    "system_cpu_ns": 31425000,
+    "wall_ns": 849982542,
+    "allocated_bytes": 505808104,
+    "gc_cycles": 6,
+    "gc_pause_ns": 284374,
+    "output_sha256": "5759030b1417335a06ed4f78d38ad2acc5c2fee375b67e64754875ff95c9b7ca",
+    "baseline": {
+      "heap_alloc_bytes": 21945264,
+      "heap_inuse_bytes": 22749184,
+      "heap_objects": 2359,
+      "rss_bytes": 73924608,
+      "process_peak_rss_bytes": 74039296,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 280419624,
+      "heap_inuse_bytes": 288858112,
+      "heap_objects": 2227420,
+      "rss_bytes": 324763648,
+      "process_peak_rss_bytes": 324796416,
+      "goroutines": 10
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 148399960,
+      "heap_inuse_bytes": 207421440,
+      "heap_objects": 393440,
+      "rss_bytes": 325287936,
+      "process_peak_rss_bytes": 325287936,
+      "goroutines": 10
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 148405552,
+      "heap_inuse_bytes": 207421440,
+      "heap_objects": 393448,
+      "rss_bytes": 325304320,
+      "process_peak_rss_bytes": 325304320,
+      "goroutines": 10
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 22469256,
+      "heap_inuse_bytes": 26927104,
+      "heap_objects": 13698,
+      "rss_bytes": 325304320,
+      "process_peak_rss_bytes": 325304320,
+      "goroutines": 2
+    },
+    "repeat": 4
+  },
+  {
+    "engine": "goja",
+    "extension": "youtube",
+    "mode": "retained",
+    "count": 1,
+    "user_cpu_ns": 247268000,
+    "system_cpu_ns": 15980000,
+    "wall_ns": 263079666,
+    "allocated_bytes": 167740176,
+    "gc_cycles": 2,
+    "gc_pause_ns": 103500,
+    "output_sha256": "0556a6212d87e648808a4909c9fcde61f8b7d541a50a5012769fdbfa76944b9c",
+    "baseline": {
+      "heap_alloc_bytes": 24435632,
+      "heap_inuse_bytes": 25239552,
+      "heap_objects": 2359,
+      "rss_bytes": 74022912,
+      "process_peak_rss_bytes": 74137600,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 173517144,
+      "heap_inuse_bytes": 178774016,
+      "heap_objects": 3121580,
+      "rss_bytes": 212221952,
+      "process_peak_rss_bytes": 212221952,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 58497816,
+      "heap_inuse_bytes": 102154240,
+      "heap_objects": 333089,
+      "rss_bytes": 212746240,
+      "process_peak_rss_bytes": 212746240,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 58497800,
+      "heap_inuse_bytes": 102154240,
+      "heap_objects": 333089,
+      "rss_bytes": 212795392,
+      "process_peak_rss_bytes": 212795392,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 24470776,
+      "heap_inuse_bytes": 25681920,
+      "heap_objects": 2552,
+      "rss_bytes": 213008384,
+      "process_peak_rss_bytes": 213008384,
+      "goroutines": 2
+    },
+    "repeat": 0
+  },
+  {
+    "engine": "moejs",
+    "extension": "youtube",
+    "mode": "retained",
+    "count": 1,
+    "user_cpu_ns": 233526000,
+    "system_cpu_ns": 16236000,
+    "wall_ns": 249635209,
+    "allocated_bytes": 156917104,
+    "gc_cycles": 2,
+    "gc_pause_ns": 113542,
+    "output_sha256": "0556a6212d87e648808a4909c9fcde61f8b7d541a50a5012769fdbfa76944b9c",
+    "baseline": {
+      "heap_alloc_bytes": 24435472,
+      "heap_inuse_bytes": 25239552,
+      "heap_objects": 2358,
+      "rss_bytes": 94535680,
+      "process_peak_rss_bytes": 94650368,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 162537216,
+      "heap_inuse_bytes": 167714816,
+      "heap_objects": 1442729,
+      "rss_bytes": 198967296,
+      "process_peak_rss_bytes": 198967296,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 67663360,
+      "heap_inuse_bytes": 104652800,
+      "heap_objects": 142901,
+      "rss_bytes": 199720960,
+      "process_peak_rss_bytes": 199720960,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 67663344,
+      "heap_inuse_bytes": 104652800,
+      "heap_objects": 142901,
+      "rss_bytes": 199737344,
+      "process_peak_rss_bytes": 199737344,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 25440224,
+      "heap_inuse_bytes": 30187520,
+      "heap_objects": 25074,
+      "rss_bytes": 199753728,
+      "process_peak_rss_bytes": 199753728,
+      "goroutines": 2
+    },
+    "repeat": 0
+  },
+  {
+    "engine": "moejs",
+    "extension": "youtube",
+    "mode": "retained",
+    "count": 1,
+    "user_cpu_ns": 224038000,
+    "system_cpu_ns": 15519000,
+    "wall_ns": 239419167,
+    "allocated_bytes": 156907504,
+    "gc_cycles": 2,
+    "gc_pause_ns": 106167,
+    "output_sha256": "0556a6212d87e648808a4909c9fcde61f8b7d541a50a5012769fdbfa76944b9c",
+    "baseline": {
+      "heap_alloc_bytes": 24435792,
+      "heap_inuse_bytes": 25239552,
+      "heap_objects": 2360,
+      "rss_bytes": 73875456,
+      "process_peak_rss_bytes": 73990144,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 167180384,
+      "heap_inuse_bytes": 172548096,
+      "heap_objects": 1483168,
+      "rss_bytes": 204029952,
+      "process_peak_rss_bytes": 204029952,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 67658720,
+      "heap_inuse_bytes": 108388352,
+      "heap_objects": 142911,
+      "rss_bytes": 204800000,
+      "process_peak_rss_bytes": 204800000,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 67664312,
+      "heap_inuse_bytes": 108396544,
+      "heap_objects": 142919,
+      "rss_bytes": 204816384,
+      "process_peak_rss_bytes": 204816384,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 25441192,
+      "heap_inuse_bytes": 29949952,
+      "heap_objects": 25092,
+      "rss_bytes": 204849152,
+      "process_peak_rss_bytes": 204849152,
+      "goroutines": 2
+    },
+    "repeat": 1
+  },
+  {
+    "engine": "goja",
+    "extension": "youtube",
+    "mode": "retained",
+    "count": 1,
+    "user_cpu_ns": 243020000,
+    "system_cpu_ns": 15808000,
+    "wall_ns": 258744291,
+    "allocated_bytes": 167740720,
+    "gc_cycles": 2,
+    "gc_pause_ns": 110959,
+    "output_sha256": "0556a6212d87e648808a4909c9fcde61f8b7d541a50a5012769fdbfa76944b9c",
+    "baseline": {
+      "heap_alloc_bytes": 24435792,
+      "heap_inuse_bytes": 25239552,
+      "heap_objects": 2360,
+      "rss_bytes": 74235904,
+      "process_peak_rss_bytes": 74350592,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 175051584,
+      "heap_inuse_bytes": 180609024,
+      "heap_objects": 3148369,
+      "rss_bytes": 214368256,
+      "process_peak_rss_bytes": 214368256,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 58497848,
+      "heap_inuse_bytes": 102604800,
+      "heap_objects": 333076,
+      "rss_bytes": 214892544,
+      "process_peak_rss_bytes": 214892544,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 58497832,
+      "heap_inuse_bytes": 102604800,
+      "heap_objects": 333076,
+      "rss_bytes": 214925312,
+      "process_peak_rss_bytes": 214925312,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 24471128,
+      "heap_inuse_bytes": 25706496,
+      "heap_objects": 2550,
+      "rss_bytes": 215089152,
+      "process_peak_rss_bytes": 215089152,
+      "goroutines": 2
+    },
+    "repeat": 1
+  },
+  {
+    "engine": "goja",
+    "extension": "youtube",
+    "mode": "retained",
+    "count": 1,
+    "user_cpu_ns": 246326000,
+    "system_cpu_ns": 15824000,
+    "wall_ns": 262009542,
+    "allocated_bytes": 167740464,
+    "gc_cycles": 2,
+    "gc_pause_ns": 112832,
+    "output_sha256": "0556a6212d87e648808a4909c9fcde61f8b7d541a50a5012769fdbfa76944b9c",
+    "baseline": {
+      "heap_alloc_bytes": 24435632,
+      "heap_inuse_bytes": 25239552,
+      "heap_objects": 2359,
+      "rss_bytes": 94486528,
+      "process_peak_rss_bytes": 94601216,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 174178496,
+      "heap_inuse_bytes": 179494912,
+      "heap_objects": 3130057,
+      "rss_bytes": 212992000,
+      "process_peak_rss_bytes": 212992000,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 58497400,
+      "heap_inuse_bytes": 102391808,
+      "heap_objects": 333065,
+      "rss_bytes": 213549056,
+      "process_peak_rss_bytes": 213549056,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 58497384,
+      "heap_inuse_bytes": 102391808,
+      "heap_objects": 333065,
+      "rss_bytes": 213581824,
+      "process_peak_rss_bytes": 213581824,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 24470696,
+      "heap_inuse_bytes": 25681920,
+      "heap_objects": 2549,
+      "rss_bytes": 213975040,
+      "process_peak_rss_bytes": 213975040,
+      "goroutines": 2
+    },
+    "repeat": 2
+  },
+  {
+    "engine": "moejs",
+    "extension": "youtube",
+    "mode": "retained",
+    "count": 1,
+    "user_cpu_ns": 226586000,
+    "system_cpu_ns": 15454000,
+    "wall_ns": 241953750,
+    "allocated_bytes": 156909600,
+    "gc_cycles": 2,
+    "gc_pause_ns": 123291,
+    "output_sha256": "0556a6212d87e648808a4909c9fcde61f8b7d541a50a5012769fdbfa76944b9c",
+    "baseline": {
+      "heap_alloc_bytes": 24435520,
+      "heap_inuse_bytes": 25239552,
+      "heap_objects": 2359,
+      "rss_bytes": 74055680,
+      "process_peak_rss_bytes": 74186752,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 164025376,
+      "heap_inuse_bytes": 169263104,
+      "heap_objects": 1454958,
+      "rss_bytes": 200605696,
+      "process_peak_rss_bytes": 200622080,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 67659248,
+      "heap_inuse_bytes": 106086400,
+      "heap_objects": 142906,
+      "rss_bytes": 201424896,
+      "process_peak_rss_bytes": 201424896,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 67664840,
+      "heap_inuse_bytes": 106094592,
+      "heap_objects": 142914,
+      "rss_bytes": 201539584,
+      "process_peak_rss_bytes": 201539584,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 25441720,
+      "heap_inuse_bytes": 30203904,
+      "heap_objects": 25087,
+      "rss_bytes": 201703424,
+      "process_peak_rss_bytes": 201703424,
+      "goroutines": 2
+    },
+    "repeat": 2
+  },
+  {
+    "engine": "moejs",
+    "extension": "youtube",
+    "mode": "retained",
+    "count": 1,
+    "user_cpu_ns": 222251000,
+    "system_cpu_ns": 15426000,
+    "wall_ns": 237588125,
+    "allocated_bytes": 156907424,
+    "gc_cycles": 2,
+    "gc_pause_ns": 108335,
+    "output_sha256": "0556a6212d87e648808a4909c9fcde61f8b7d541a50a5012769fdbfa76944b9c",
+    "baseline": {
+      "heap_alloc_bytes": 24435472,
+      "heap_inuse_bytes": 25239552,
+      "heap_objects": 2358,
+      "rss_bytes": 74072064,
+      "process_peak_rss_bytes": 74186752,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 166959400,
+      "heap_inuse_bytes": 172343296,
+      "heap_objects": 1481392,
+      "rss_bytes": 203882496,
+      "process_peak_rss_bytes": 203882496,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 67657888,
+      "heap_inuse_bytes": 108265472,
+      "heap_objects": 142903,
+      "rss_bytes": 204685312,
+      "process_peak_rss_bytes": 204685312,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 67663480,
+      "heap_inuse_bytes": 108273664,
+      "heap_objects": 142911,
+      "rss_bytes": 204783616,
+      "process_peak_rss_bytes": 204783616,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 25440360,
+      "heap_inuse_bytes": 29917184,
+      "heap_objects": 25084,
+      "rss_bytes": 204914688,
+      "process_peak_rss_bytes": 204914688,
+      "goroutines": 2
+    },
+    "repeat": 3
+  },
+  {
+    "engine": "goja",
+    "extension": "youtube",
+    "mode": "retained",
+    "count": 1,
+    "user_cpu_ns": 244882000,
+    "system_cpu_ns": 15373000,
+    "wall_ns": 260144417,
+    "allocated_bytes": 167741024,
+    "gc_cycles": 2,
+    "gc_pause_ns": 105959,
+    "output_sha256": "0556a6212d87e648808a4909c9fcde61f8b7d541a50a5012769fdbfa76944b9c",
+    "baseline": {
+      "heap_alloc_bytes": 24435472,
+      "heap_inuse_bytes": 25239552,
+      "heap_objects": 2358,
+      "rss_bytes": 73809920,
+      "process_peak_rss_bytes": 73924608,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 173156792,
+      "heap_inuse_bytes": 178405376,
+      "heap_objects": 3115290,
+      "rss_bytes": 211730432,
+      "process_peak_rss_bytes": 211730432,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 58497192,
+      "heap_inuse_bytes": 102113280,
+      "heap_objects": 333033,
+      "rss_bytes": 212238336,
+      "process_peak_rss_bytes": 212238336,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 58497176,
+      "heap_inuse_bytes": 102113280,
+      "heap_objects": 333033,
+      "rss_bytes": 212254720,
+      "process_peak_rss_bytes": 212254720,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 24471208,
+      "heap_inuse_bytes": 25690112,
+      "heap_objects": 2553,
+      "rss_bytes": 212500480,
+      "process_peak_rss_bytes": 212500480,
+      "goroutines": 2
+    },
+    "repeat": 3
+  },
+  {
+    "engine": "goja",
+    "extension": "youtube",
+    "mode": "retained",
+    "count": 1,
+    "user_cpu_ns": 257689000,
+    "system_cpu_ns": 17736000,
+    "wall_ns": 281920167,
+    "allocated_bytes": 167740528,
+    "gc_cycles": 2,
+    "gc_pause_ns": 159500,
+    "output_sha256": "0556a6212d87e648808a4909c9fcde61f8b7d541a50a5012769fdbfa76944b9c",
+    "baseline": {
+      "heap_alloc_bytes": 24435632,
+      "heap_inuse_bytes": 25239552,
+      "heap_objects": 2359,
+      "rss_bytes": 74137600,
+      "process_peak_rss_bytes": 74252288,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 176294560,
+      "heap_inuse_bytes": 181641216,
+      "heap_objects": 3170121,
+      "rss_bytes": 215269376,
+      "process_peak_rss_bytes": 215269376,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 58497032,
+      "heap_inuse_bytes": 102907904,
+      "heap_objects": 333034,
+      "rss_bytes": 215924736,
+      "process_peak_rss_bytes": 215924736,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 58502592,
+      "heap_inuse_bytes": 102916096,
+      "heap_objects": 333041,
+      "rss_bytes": 215957504,
+      "process_peak_rss_bytes": 215957504,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 24476448,
+      "heap_inuse_bytes": 25722880,
+      "heap_objects": 2559,
+      "rss_bytes": 216268800,
+      "process_peak_rss_bytes": 216268800,
+      "goroutines": 2
+    },
+    "repeat": 4
+  },
+  {
+    "engine": "moejs",
+    "extension": "youtube",
+    "mode": "retained",
+    "count": 1,
+    "user_cpu_ns": 236164000,
+    "system_cpu_ns": 18510000,
+    "wall_ns": 254733750,
+    "allocated_bytes": 156925072,
+    "gc_cycles": 2,
+    "gc_pause_ns": 113043,
+    "output_sha256": "0556a6212d87e648808a4909c9fcde61f8b7d541a50a5012769fdbfa76944b9c",
+    "baseline": {
+      "heap_alloc_bytes": 24435472,
+      "heap_inuse_bytes": 25239552,
+      "heap_objects": 2358,
+      "rss_bytes": 74088448,
+      "process_peak_rss_bytes": 74203136,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 163153400,
+      "heap_inuse_bytes": 168624128,
+      "heap_objects": 1443625,
+      "rss_bytes": 200015872,
+      "process_peak_rss_bytes": 200015872,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 67667360,
+      "heap_inuse_bytes": 106283008,
+      "heap_objects": 142908,
+      "rss_bytes": 200769536,
+      "process_peak_rss_bytes": 200769536,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 67667376,
+      "heap_inuse_bytes": 106283008,
+      "heap_objects": 142909,
+      "rss_bytes": 200867840,
+      "process_peak_rss_bytes": 200867840,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 25444256,
+      "heap_inuse_bytes": 31457280,
+      "heap_objects": 25082,
+      "rss_bytes": 201031680,
+      "process_peak_rss_bytes": 201031680,
+      "goroutines": 2
+    },
+    "repeat": 4
+  },
+  {
+    "engine": "goja",
+    "extension": "youtube",
+    "mode": "retained",
+    "count": 8,
+    "user_cpu_ns": 2275021000,
+    "system_cpu_ns": 72781000,
+    "wall_ns": 2346844792,
+    "allocated_bytes": 1341275208,
+    "gc_cycles": 8,
+    "gc_pause_ns": 368375,
+    "output_sha256": "0556a6212d87e648808a4909c9fcde61f8b7d541a50a5012769fdbfa76944b9c",
+    "baseline": {
+      "heap_alloc_bytes": 24435472,
+      "heap_inuse_bytes": 25239552,
+      "heap_objects": 2358,
+      "rss_bytes": 74252288,
+      "process_peak_rss_bytes": 74366976,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 627041056,
+      "heap_inuse_bytes": 644923392,
+      "heap_objects": 10554703,
+      "rss_bytes": 695762944,
+      "process_peak_rss_bytes": 695762944,
+      "goroutines": 10
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 296686824,
+      "heap_inuse_bytes": 465756160,
+      "heap_objects": 2646464,
+      "rss_bytes": 696713216,
+      "process_peak_rss_bytes": 696713216,
+      "goroutines": 10
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 296686840,
+      "heap_inuse_bytes": 465756160,
+      "heap_objects": 2646465,
+      "rss_bytes": 696713216,
+      "process_peak_rss_bytes": 696713216,
+      "goroutines": 10
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 24476696,
+      "heap_inuse_bytes": 25878528,
+      "heap_objects": 2582,
+      "rss_bytes": 696909824,
+      "process_peak_rss_bytes": 696909824,
+      "goroutines": 2
+    },
+    "repeat": 0
+  },
+  {
+    "engine": "moejs",
+    "extension": "youtube",
+    "mode": "retained",
+    "count": 8,
+    "user_cpu_ns": 1790398000,
+    "system_cpu_ns": 77227000,
+    "wall_ns": 1866680417,
+    "allocated_bytes": 1234351656,
+    "gc_cycles": 7,
+    "gc_pause_ns": 340375,
+    "output_sha256": "0556a6212d87e648808a4909c9fcde61f8b7d541a50a5012769fdbfa76944b9c",
+    "baseline": {
+      "heap_alloc_bytes": 24435632,
+      "heap_inuse_bytes": 25239552,
+      "heap_objects": 2359,
+      "rss_bytes": 74203136,
+      "process_peak_rss_bytes": 74317824,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 670870168,
+      "heap_inuse_bytes": 689733632,
+      "heap_objects": 4898298,
+      "rss_bytes": 733102080,
+      "process_peak_rss_bytes": 733118464,
+      "goroutines": 10
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 360551176,
+      "heap_inuse_bytes": 493133824,
+      "heap_objects": 905942,
+      "rss_bytes": 734150656,
+      "process_peak_rss_bytes": 734150656,
+      "goroutines": 10
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 360551192,
+      "heap_inuse_bytes": 493133824,
+      "heap_objects": 905943,
+      "rss_bytes": 734199808,
+      "process_peak_rss_bytes": 734199808,
+      "goroutines": 10
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 25453824,
+      "heap_inuse_bytes": 30187520,
+      "heap_objects": 25109,
+      "rss_bytes": 734232576,
+      "process_peak_rss_bytes": 734232576,
+      "goroutines": 2
+    },
+    "repeat": 0
+  },
+  {
+    "engine": "moejs",
+    "extension": "youtube",
+    "mode": "retained",
+    "count": 8,
+    "user_cpu_ns": 1790668000,
+    "system_cpu_ns": 69428000,
+    "wall_ns": 1858993000,
+    "allocated_bytes": 1234346176,
+    "gc_cycles": 7,
+    "gc_pause_ns": 339874,
+    "output_sha256": "0556a6212d87e648808a4909c9fcde61f8b7d541a50a5012769fdbfa76944b9c",
+    "baseline": {
+      "heap_alloc_bytes": 24435472,
+      "heap_inuse_bytes": 25239552,
+      "heap_objects": 2358,
+      "rss_bytes": 73990144,
+      "process_peak_rss_bytes": 74104832,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 627177216,
+      "heap_inuse_bytes": 645103616,
+      "heap_objects": 4252572,
+      "rss_bytes": 712179712,
+      "process_peak_rss_bytes": 712179712,
+      "goroutines": 10
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 360547768,
+      "heap_inuse_bytes": 485498880,
+      "heap_objects": 905939,
+      "rss_bytes": 713129984,
+      "process_peak_rss_bytes": 713129984,
+      "goroutines": 10
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 360547784,
+      "heap_inuse_bytes": 485498880,
+      "heap_objects": 905940,
+      "rss_bytes": 713146368,
+      "process_peak_rss_bytes": 713146368,
+      "goroutines": 10
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 25450272,
+      "heap_inuse_bytes": 30523392,
+      "heap_objects": 25106,
+      "rss_bytes": 713162752,
+      "process_peak_rss_bytes": 713162752,
+      "goroutines": 2
+    },
+    "repeat": 1
+  },
+  {
+    "engine": "goja",
+    "extension": "youtube",
+    "mode": "retained",
+    "count": 8,
+    "user_cpu_ns": 2293914000,
+    "system_cpu_ns": 72081000,
+    "wall_ns": 2365151417,
+    "allocated_bytes": 1341231648,
+    "gc_cycles": 8,
+    "gc_pause_ns": 367790,
+    "output_sha256": "0556a6212d87e648808a4909c9fcde61f8b7d541a50a5012769fdbfa76944b9c",
+    "baseline": {
+      "heap_alloc_bytes": 24435472,
+      "heap_inuse_bytes": 25239552,
+      "heap_objects": 2358,
+      "rss_bytes": 73957376,
+      "process_peak_rss_bytes": 74072064,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 630726736,
+      "heap_inuse_bytes": 650412032,
+      "heap_objects": 10097937,
+      "rss_bytes": 700530688,
+      "process_peak_rss_bytes": 700530688,
+      "goroutines": 10
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 296686728,
+      "heap_inuse_bytes": 472653824,
+      "heap_objects": 2646449,
+      "rss_bytes": 701202432,
+      "process_peak_rss_bytes": 701251584,
+      "goroutines": 10
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 296686744,
+      "heap_inuse_bytes": 472653824,
+      "heap_objects": 2646450,
+      "rss_bytes": 701202432,
+      "process_peak_rss_bytes": 701251584,
+      "goroutines": 10
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 24476888,
+      "heap_inuse_bytes": 25919488,
+      "heap_objects": 2585,
+      "rss_bytes": 701382656,
+      "process_peak_rss_bytes": 701382656,
+      "goroutines": 2
+    },
+    "repeat": 1
+  },
+  {
+    "engine": "goja",
+    "extension": "youtube",
+    "mode": "retained",
+    "count": 8,
+    "user_cpu_ns": 2283604000,
+    "system_cpu_ns": 64204000,
+    "wall_ns": 2346968708,
+    "allocated_bytes": 1341232688,
+    "gc_cycles": 8,
+    "gc_pause_ns": 372585,
+    "output_sha256": "0556a6212d87e648808a4909c9fcde61f8b7d541a50a5012769fdbfa76944b9c",
+    "baseline": {
+      "heap_alloc_bytes": 24435472,
+      "heap_inuse_bytes": 25239552,
+      "heap_objects": 2358,
+      "rss_bytes": 74088448,
+      "process_peak_rss_bytes": 74219520,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 564217912,
+      "heap_inuse_bytes": 580657152,
+      "heap_objects": 8651438,
+      "rss_bytes": 636502016,
+      "process_peak_rss_bytes": 636502016,
+      "goroutines": 10
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 296685992,
+      "heap_inuse_bytes": 462905344,
+      "heap_objects": 2646398,
+      "rss_bytes": 636960768,
+      "process_peak_rss_bytes": 636960768,
+      "goroutines": 10
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 296691584,
+      "heap_inuse_bytes": 462905344,
+      "heap_objects": 2646406,
+      "rss_bytes": 636960768,
+      "process_peak_rss_bytes": 636960768,
+      "goroutines": 10
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 24482688,
+      "heap_inuse_bytes": 25927680,
+      "heap_objects": 2592,
+      "rss_bytes": 637140992,
+      "process_peak_rss_bytes": 637140992,
+      "goroutines": 2
+    },
+    "repeat": 2
+  },
+  {
+    "engine": "moejs",
+    "extension": "youtube",
+    "mode": "retained",
+    "count": 8,
+    "user_cpu_ns": 1789203000,
+    "system_cpu_ns": 66231000,
+    "wall_ns": 1854372750,
+    "allocated_bytes": 1234344000,
+    "gc_cycles": 7,
+    "gc_pause_ns": 319040,
+    "output_sha256": "0556a6212d87e648808a4909c9fcde61f8b7d541a50a5012769fdbfa76944b9c",
+    "baseline": {
+      "heap_alloc_bytes": 24435472,
+      "heap_inuse_bytes": 25239552,
+      "heap_objects": 2358,
+      "rss_bytes": 73973760,
+      "process_peak_rss_bytes": 74088448,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 584498112,
+      "heap_inuse_bytes": 604045312,
+      "heap_objects": 3755546,
+      "rss_bytes": 653213696,
+      "process_peak_rss_bytes": 653213696,
+      "goroutines": 10
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 360547752,
+      "heap_inuse_bytes": 466067456,
+      "heap_objects": 905936,
+      "rss_bytes": 653705216,
+      "process_peak_rss_bytes": 653737984,
+      "goroutines": 10
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 360547768,
+      "heap_inuse_bytes": 466067456,
+      "heap_objects": 905937,
+      "rss_bytes": 653705216,
+      "process_peak_rss_bytes": 653737984,
+      "goroutines": 10
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 25450576,
+      "heap_inuse_bytes": 31055872,
+      "heap_objects": 25105,
+      "rss_bytes": 653721600,
+      "process_peak_rss_bytes": 653737984,
+      "goroutines": 2
+    },
+    "repeat": 2
+  },
+  {
+    "engine": "moejs",
+    "extension": "youtube",
+    "mode": "retained",
+    "count": 8,
+    "user_cpu_ns": 1792430000,
+    "system_cpu_ns": 78102000,
+    "wall_ns": 1871250791,
+    "allocated_bytes": 1234305144,
+    "gc_cycles": 7,
+    "gc_pause_ns": 331541,
+    "output_sha256": "0556a6212d87e648808a4909c9fcde61f8b7d541a50a5012769fdbfa76944b9c",
+    "baseline": {
+      "heap_alloc_bytes": 24435632,
+      "heap_inuse_bytes": 25239552,
+      "heap_objects": 2359,
+      "rss_bytes": 73859072,
+      "process_peak_rss_bytes": 73973760,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 674297184,
+      "heap_inuse_bytes": 693346304,
+      "heap_objects": 4926069,
+      "rss_bytes": 703807488,
+      "process_peak_rss_bytes": 732725248,
+      "goroutines": 10
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 360544072,
+      "heap_inuse_bytes": 498098176,
+      "heap_objects": 905940,
+      "rss_bytes": 732823552,
+      "process_peak_rss_bytes": 732823552,
+      "goroutines": 10
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 360544088,
+      "heap_inuse_bytes": 498098176,
+      "heap_objects": 905941,
+      "rss_bytes": 732839936,
+      "process_peak_rss_bytes": 732839936,
+      "goroutines": 10
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 25446992,
+      "heap_inuse_bytes": 30998528,
+      "heap_objects": 25108,
+      "rss_bytes": 732872704,
+      "process_peak_rss_bytes": 732872704,
+      "goroutines": 2
+    },
+    "repeat": 3
+  },
+  {
+    "engine": "goja",
+    "extension": "youtube",
+    "mode": "retained",
+    "count": 8,
+    "user_cpu_ns": 2215688000,
+    "system_cpu_ns": 64219000,
+    "wall_ns": 2278671542,
+    "allocated_bytes": 1341275736,
+    "gc_cycles": 8,
+    "gc_pause_ns": 360293,
+    "output_sha256": "0556a6212d87e648808a4909c9fcde61f8b7d541a50a5012769fdbfa76944b9c",
+    "baseline": {
+      "heap_alloc_bytes": 24435632,
+      "heap_inuse_bytes": 25239552,
+      "heap_objects": 2359,
+      "rss_bytes": 74006528,
+      "process_peak_rss_bytes": 74121216,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 556282584,
+      "heap_inuse_bytes": 590258176,
+      "heap_objects": 8691671,
+      "rss_bytes": 646447104,
+      "process_peak_rss_bytes": 646447104,
+      "goroutines": 10
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 296685976,
+      "heap_inuse_bytes": 455499776,
+      "heap_objects": 2646390,
+      "rss_bytes": 646545408,
+      "process_peak_rss_bytes": 646561792,
+      "goroutines": 10
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 296685992,
+      "heap_inuse_bytes": 455499776,
+      "heap_objects": 2646391,
+      "rss_bytes": 646561792,
+      "process_peak_rss_bytes": 646561792,
+      "goroutines": 10
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 24477128,
+      "heap_inuse_bytes": 25870336,
+      "heap_objects": 2588,
+      "rss_bytes": 646758400,
+      "process_peak_rss_bytes": 646758400,
+      "goroutines": 2
+    },
+    "repeat": 3
+  },
+  {
+    "engine": "goja",
+    "extension": "youtube",
+    "mode": "retained",
+    "count": 8,
+    "user_cpu_ns": 2328264000,
+    "system_cpu_ns": 70431000,
+    "wall_ns": 2397866625,
+    "allocated_bytes": 1341274696,
+    "gc_cycles": 8,
+    "gc_pause_ns": 366538,
+    "output_sha256": "0556a6212d87e648808a4909c9fcde61f8b7d541a50a5012769fdbfa76944b9c",
+    "baseline": {
+      "heap_alloc_bytes": 24435632,
+      "heap_inuse_bytes": 25239552,
+      "heap_objects": 2359,
+      "rss_bytes": 73973760,
+      "process_peak_rss_bytes": 74088448,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 596757792,
+      "heap_inuse_bytes": 615940096,
+      "heap_objects": 9516308,
+      "rss_bytes": 664485888,
+      "process_peak_rss_bytes": 664485888,
+      "goroutines": 10
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 296684984,
+      "heap_inuse_bytes": 447168512,
+      "heap_objects": 2646332,
+      "rss_bytes": 658309120,
+      "process_peak_rss_bytes": 665288704,
+      "goroutines": 10
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 296685000,
+      "heap_inuse_bytes": 447168512,
+      "heap_objects": 2646333,
+      "rss_bytes": 658309120,
+      "process_peak_rss_bytes": 665288704,
+      "goroutines": 10
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 24477000,
+      "heap_inuse_bytes": 25886720,
+      "heap_objects": 2584,
+      "rss_bytes": 658522112,
+      "process_peak_rss_bytes": 665288704,
+      "goroutines": 2
+    },
+    "repeat": 4
+  },
+  {
+    "engine": "moejs",
+    "extension": "youtube",
+    "mode": "retained",
+    "count": 8,
+    "user_cpu_ns": 1790600000,
+    "system_cpu_ns": 65537000,
+    "wall_ns": 1854977666,
+    "allocated_bytes": 1234336720,
+    "gc_cycles": 7,
+    "gc_pause_ns": 332085,
+    "output_sha256": "0556a6212d87e648808a4909c9fcde61f8b7d541a50a5012769fdbfa76944b9c",
+    "baseline": {
+      "heap_alloc_bytes": 24435472,
+      "heap_inuse_bytes": 25239552,
+      "heap_objects": 2358,
+      "rss_bytes": 74022912,
+      "process_peak_rss_bytes": 74137600,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 589968264,
+      "heap_inuse_bytes": 610541568,
+      "heap_objects": 3837881,
+      "rss_bytes": 653754368,
+      "process_peak_rss_bytes": 653754368,
+      "goroutines": 10
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 360550824,
+      "heap_inuse_bytes": 464969728,
+      "heap_objects": 905939,
+      "rss_bytes": 654360576,
+      "process_peak_rss_bytes": 654393344,
+      "goroutines": 10
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 360550840,
+      "heap_inuse_bytes": 464969728,
+      "heap_objects": 905940,
+      "rss_bytes": 654360576,
+      "process_peak_rss_bytes": 654393344,
+      "goroutines": 10
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 25453616,
+      "heap_inuse_bytes": 30154752,
+      "heap_objects": 25107,
+      "rss_bytes": 654376960,
+      "process_peak_rss_bytes": 654393344,
+      "goroutines": 2
+    },
+    "repeat": 4
+  },
+  {
+    "engine": "goja",
+    "extension": "twitter",
+    "mode": "retained",
+    "count": 1,
+    "user_cpu_ns": 13500000,
+    "system_cpu_ns": 1398000,
+    "wall_ns": 14877916,
+    "allocated_bytes": 11578232,
+    "gc_cycles": 0,
+    "gc_pause_ns": 0,
+    "output_sha256": "9703ef25e194d7c4ea8514d41f094a4b2d5280cca5f9ddf147d68ade2eda6aba",
+    "baseline": {
+      "heap_alloc_bytes": 21093136,
+      "heap_inuse_bytes": 21897216,
+      "heap_objects": 2358,
+      "rss_bytes": 73973760,
+      "process_peak_rss_bytes": 74088448,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 32722752,
+      "heap_inuse_bytes": 33808384,
+      "heap_objects": 189216,
+      "rss_bytes": 78954496,
+      "process_peak_rss_bytes": 78954496,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 23749808,
+      "heap_inuse_bytes": 29237248,
+      "heap_objects": 30498,
+      "rss_bytes": 79216640,
+      "process_peak_rss_bytes": 79216640,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 23755368,
+      "heap_inuse_bytes": 29237248,
+      "heap_objects": 30505,
+      "rss_bytes": 79216640,
+      "process_peak_rss_bytes": 79216640,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21130848,
+      "heap_inuse_bytes": 22306816,
+      "heap_objects": 2532,
+      "rss_bytes": 79446016,
+      "process_peak_rss_bytes": 79446016,
+      "goroutines": 2
+    },
+    "repeat": 0
+  },
+  {
+    "engine": "moejs",
+    "extension": "twitter",
+    "mode": "retained",
+    "count": 1,
+    "user_cpu_ns": 9979000,
+    "system_cpu_ns": 1469000,
+    "wall_ns": 11418958,
+    "allocated_bytes": 8541232,
+    "gc_cycles": 0,
+    "gc_pause_ns": 0,
+    "output_sha256": "9703ef25e194d7c4ea8514d41f094a4b2d5280cca5f9ddf147d68ade2eda6aba",
+    "baseline": {
+      "heap_alloc_bytes": 21093456,
+      "heap_inuse_bytes": 21897216,
+      "heap_objects": 2360,
+      "rss_bytes": 73891840,
+      "process_peak_rss_bytes": 74022912,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 29685912,
+      "heap_inuse_bytes": 30736384,
+      "heap_objects": 94001,
+      "rss_bytes": 77742080,
+      "process_peak_rss_bytes": 77742080,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 23851432,
+      "heap_inuse_bytes": 27172864,
+      "heap_objects": 17960,
+      "rss_bytes": 78086144,
+      "process_peak_rss_bytes": 78086144,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 23857024,
+      "heap_inuse_bytes": 27189248,
+      "heap_objects": 17968,
+      "rss_bytes": 78086144,
+      "process_peak_rss_bytes": 78086144,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21283368,
+      "heap_inuse_bytes": 22913024,
+      "heap_objects": 6269,
+      "rss_bytes": 78118912,
+      "process_peak_rss_bytes": 78118912,
+      "goroutines": 2
+    },
+    "repeat": 0
+  },
+  {
+    "engine": "moejs",
+    "extension": "twitter",
+    "mode": "retained",
+    "count": 1,
+    "user_cpu_ns": 9984000,
+    "system_cpu_ns": 1216000,
+    "wall_ns": 11185333,
+    "allocated_bytes": 8540976,
+    "gc_cycles": 0,
+    "gc_pause_ns": 0,
+    "output_sha256": "9703ef25e194d7c4ea8514d41f094a4b2d5280cca5f9ddf147d68ade2eda6aba",
+    "baseline": {
+      "heap_alloc_bytes": 21093136,
+      "heap_inuse_bytes": 21897216,
+      "heap_objects": 2358,
+      "rss_bytes": 74301440,
+      "process_peak_rss_bytes": 74432512,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 29685496,
+      "heap_inuse_bytes": 30736384,
+      "heap_objects": 94003,
+      "rss_bytes": 78659584,
+      "process_peak_rss_bytes": 78659584,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 23851528,
+      "heap_inuse_bytes": 27172864,
+      "heap_objects": 17968,
+      "rss_bytes": 79003648,
+      "process_peak_rss_bytes": 79003648,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 23857120,
+      "heap_inuse_bytes": 27189248,
+      "heap_objects": 17976,
+      "rss_bytes": 79003648,
+      "process_peak_rss_bytes": 79003648,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21283464,
+      "heap_inuse_bytes": 22896640,
+      "heap_objects": 6277,
+      "rss_bytes": 79020032,
+      "process_peak_rss_bytes": 79020032,
+      "goroutines": 2
+    },
+    "repeat": 1
+  },
+  {
+    "engine": "goja",
+    "extension": "twitter",
+    "mode": "retained",
+    "count": 1,
+    "user_cpu_ns": 13344000,
+    "system_cpu_ns": 1726000,
+    "wall_ns": 15058125,
+    "allocated_bytes": 11578088,
+    "gc_cycles": 0,
+    "gc_pause_ns": 0,
+    "output_sha256": "9703ef25e194d7c4ea8514d41f094a4b2d5280cca5f9ddf147d68ade2eda6aba",
+    "baseline": {
+      "heap_alloc_bytes": 21093136,
+      "heap_inuse_bytes": 21897216,
+      "heap_objects": 2358,
+      "rss_bytes": 94584832,
+      "process_peak_rss_bytes": 94715904,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 32722448,
+      "heap_inuse_bytes": 33808384,
+      "heap_objects": 189212,
+      "rss_bytes": 99614720,
+      "process_peak_rss_bytes": 99614720,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 23749504,
+      "heap_inuse_bytes": 29237248,
+      "heap_objects": 30494,
+      "rss_bytes": 99909632,
+      "process_peak_rss_bytes": 99909632,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 23755064,
+      "heap_inuse_bytes": 29237248,
+      "heap_objects": 30501,
+      "rss_bytes": 99909632,
+      "process_peak_rss_bytes": 99909632,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21130496,
+      "heap_inuse_bytes": 22298624,
+      "heap_objects": 2527,
+      "rss_bytes": 100073472,
+      "process_peak_rss_bytes": 100073472,
+      "goroutines": 2
+    },
+    "repeat": 1
+  },
+  {
+    "engine": "goja",
+    "extension": "twitter",
+    "mode": "retained",
+    "count": 1,
+    "user_cpu_ns": 13367000,
+    "system_cpu_ns": 1794000,
+    "wall_ns": 15146042,
+    "allocated_bytes": 11578264,
+    "gc_cycles": 0,
+    "gc_pause_ns": 0,
+    "output_sha256": "9703ef25e194d7c4ea8514d41f094a4b2d5280cca5f9ddf147d68ade2eda6aba",
+    "baseline": {
+      "heap_alloc_bytes": 21093136,
+      "heap_inuse_bytes": 21897216,
+      "heap_objects": 2358,
+      "rss_bytes": 74022912,
+      "process_peak_rss_bytes": 74153984,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 32722624,
+      "heap_inuse_bytes": 33808384,
+      "heap_objects": 189215,
+      "rss_bytes": 79036416,
+      "process_peak_rss_bytes": 79036416,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 23749632,
+      "heap_inuse_bytes": 29237248,
+      "heap_objects": 30496,
+      "rss_bytes": 79314944,
+      "process_peak_rss_bytes": 79314944,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 23749616,
+      "heap_inuse_bytes": 29237248,
+      "heap_objects": 30496,
+      "rss_bytes": 79314944,
+      "process_peak_rss_bytes": 79314944,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21125048,
+      "heap_inuse_bytes": 22290432,
+      "heap_objects": 2522,
+      "rss_bytes": 79560704,
+      "process_peak_rss_bytes": 79560704,
+      "goroutines": 2
+    },
+    "repeat": 2
+  },
+  {
+    "engine": "moejs",
+    "extension": "twitter",
+    "mode": "retained",
+    "count": 1,
+    "user_cpu_ns": 10138000,
+    "system_cpu_ns": 1304000,
+    "wall_ns": 11427666,
+    "allocated_bytes": 8540864,
+    "gc_cycles": 0,
+    "gc_pause_ns": 0,
+    "output_sha256": "9703ef25e194d7c4ea8514d41f094a4b2d5280cca5f9ddf147d68ade2eda6aba",
+    "baseline": {
+      "heap_alloc_bytes": 21093136,
+      "heap_inuse_bytes": 21897216,
+      "heap_objects": 2358,
+      "rss_bytes": 73859072,
+      "process_peak_rss_bytes": 73990144,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 29685224,
+      "heap_inuse_bytes": 30736384,
+      "heap_objects": 93995,
+      "rss_bytes": 78135296,
+      "process_peak_rss_bytes": 78151680,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 23851176,
+      "heap_inuse_bytes": 27172864,
+      "heap_objects": 17959,
+      "rss_bytes": 78495744,
+      "process_peak_rss_bytes": 78495744,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 23856768,
+      "heap_inuse_bytes": 27189248,
+      "heap_objects": 17967,
+      "rss_bytes": 78495744,
+      "process_peak_rss_bytes": 78495744,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21283112,
+      "heap_inuse_bytes": 22921216,
+      "heap_objects": 6268,
+      "rss_bytes": 78528512,
+      "process_peak_rss_bytes": 78528512,
+      "goroutines": 2
+    },
+    "repeat": 2
+  },
+  {
+    "engine": "moejs",
+    "extension": "twitter",
+    "mode": "retained",
+    "count": 1,
+    "user_cpu_ns": 9907000,
+    "system_cpu_ns": 1510000,
+    "wall_ns": 11399333,
+    "allocated_bytes": 8540848,
+    "gc_cycles": 0,
+    "gc_pause_ns": 0,
+    "output_sha256": "9703ef25e194d7c4ea8514d41f094a4b2d5280cca5f9ddf147d68ade2eda6aba",
+    "baseline": {
+      "heap_alloc_bytes": 21093136,
+      "heap_inuse_bytes": 21897216,
+      "heap_objects": 2358,
+      "rss_bytes": 73924608,
+      "process_peak_rss_bytes": 74055680,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 29685208,
+      "heap_inuse_bytes": 30728192,
+      "heap_objects": 93999,
+      "rss_bytes": 78020608,
+      "process_peak_rss_bytes": 78020608,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 23851272,
+      "heap_inuse_bytes": 27164672,
+      "heap_objects": 17965,
+      "rss_bytes": 78364672,
+      "process_peak_rss_bytes": 78364672,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 23856864,
+      "heap_inuse_bytes": 27181056,
+      "heap_objects": 17973,
+      "rss_bytes": 78364672,
+      "process_peak_rss_bytes": 78364672,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21283208,
+      "heap_inuse_bytes": 22896640,
+      "heap_objects": 6274,
+      "rss_bytes": 78381056,
+      "process_peak_rss_bytes": 78381056,
+      "goroutines": 2
+    },
+    "repeat": 3
+  },
+  {
+    "engine": "goja",
+    "extension": "twitter",
+    "mode": "retained",
+    "count": 1,
+    "user_cpu_ns": 13248000,
+    "system_cpu_ns": 1798000,
+    "wall_ns": 15031666,
+    "allocated_bytes": 11578632,
+    "gc_cycles": 0,
+    "gc_pause_ns": 0,
+    "output_sha256": "9703ef25e194d7c4ea8514d41f094a4b2d5280cca5f9ddf147d68ade2eda6aba",
+    "baseline": {
+      "heap_alloc_bytes": 21093136,
+      "heap_inuse_bytes": 21897216,
+      "heap_objects": 2358,
+      "rss_bytes": 74039296,
+      "process_peak_rss_bytes": 74153984,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 32722992,
+      "heap_inuse_bytes": 33808384,
+      "heap_objects": 189219,
+      "rss_bytes": 79003648,
+      "process_peak_rss_bytes": 79003648,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 23749968,
+      "heap_inuse_bytes": 29237248,
+      "heap_objects": 30500,
+      "rss_bytes": 79298560,
+      "process_peak_rss_bytes": 79298560,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 23755528,
+      "heap_inuse_bytes": 29237248,
+      "heap_objects": 30507,
+      "rss_bytes": 79298560,
+      "process_peak_rss_bytes": 79298560,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21131120,
+      "heap_inuse_bytes": 22298624,
+      "heap_objects": 2534,
+      "rss_bytes": 79462400,
+      "process_peak_rss_bytes": 79462400,
+      "goroutines": 2
+    },
+    "repeat": 3
+  },
+  {
+    "engine": "goja",
+    "extension": "twitter",
+    "mode": "retained",
+    "count": 1,
+    "user_cpu_ns": 13513000,
+    "system_cpu_ns": 1672000,
+    "wall_ns": 15174750,
+    "allocated_bytes": 11578424,
+    "gc_cycles": 0,
+    "gc_pause_ns": 0,
+    "output_sha256": "9703ef25e194d7c4ea8514d41f094a4b2d5280cca5f9ddf147d68ade2eda6aba",
+    "baseline": {
+      "heap_alloc_bytes": 21093296,
+      "heap_inuse_bytes": 21897216,
+      "heap_objects": 2359,
+      "rss_bytes": 73990144,
+      "process_peak_rss_bytes": 74121216,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 32722944,
+      "heap_inuse_bytes": 33808384,
+      "heap_objects": 189217,
+      "rss_bytes": 78839808,
+      "process_peak_rss_bytes": 78839808,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 23749952,
+      "heap_inuse_bytes": 29237248,
+      "heap_objects": 30498,
+      "rss_bytes": 79134720,
+      "process_peak_rss_bytes": 79134720,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 23755512,
+      "heap_inuse_bytes": 29237248,
+      "heap_objects": 30505,
+      "rss_bytes": 79134720,
+      "process_peak_rss_bytes": 79134720,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21130944,
+      "heap_inuse_bytes": 22306816,
+      "heap_objects": 2531,
+      "rss_bytes": 79331328,
+      "process_peak_rss_bytes": 79331328,
+      "goroutines": 2
+    },
+    "repeat": 4
+  },
+  {
+    "engine": "moejs",
+    "extension": "twitter",
+    "mode": "retained",
+    "count": 1,
+    "user_cpu_ns": 10500000,
+    "system_cpu_ns": 1536000,
+    "wall_ns": 12011416,
+    "allocated_bytes": 8540112,
+    "gc_cycles": 0,
+    "gc_pause_ns": 0,
+    "output_sha256": "9703ef25e194d7c4ea8514d41f094a4b2d5280cca5f9ddf147d68ade2eda6aba",
+    "baseline": {
+      "heap_alloc_bytes": 21093136,
+      "heap_inuse_bytes": 21897216,
+      "heap_objects": 2358,
+      "rss_bytes": 73940992,
+      "process_peak_rss_bytes": 74072064,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 29684472,
+      "heap_inuse_bytes": 30728192,
+      "heap_objects": 93990,
+      "rss_bytes": 77807616,
+      "process_peak_rss_bytes": 77824000,
+      "goroutines": 3
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 23850488,
+      "heap_inuse_bytes": 27164672,
+      "heap_objects": 17955,
+      "rss_bytes": 78135296,
+      "process_peak_rss_bytes": 78135296,
+      "goroutines": 3
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 23856080,
+      "heap_inuse_bytes": 27181056,
+      "heap_objects": 17963,
+      "rss_bytes": 78135296,
+      "process_peak_rss_bytes": 78135296,
+      "goroutines": 3
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21282424,
+      "heap_inuse_bytes": 22904832,
+      "heap_objects": 6264,
+      "rss_bytes": 78151680,
+      "process_peak_rss_bytes": 78151680,
+      "goroutines": 2
+    },
+    "repeat": 4
+  },
+  {
+    "engine": "goja",
+    "extension": "twitter",
+    "mode": "retained",
+    "count": 8,
+    "user_cpu_ns": 147489000,
+    "system_cpu_ns": 7081000,
+    "wall_ns": 154517291,
+    "allocated_bytes": 92017360,
+    "gc_cycles": 2,
+    "gc_pause_ns": 112291,
+    "output_sha256": "9703ef25e194d7c4ea8514d41f094a4b2d5280cca5f9ddf147d68ade2eda6aba",
+    "baseline": {
+      "heap_alloc_bytes": 21093136,
+      "heap_inuse_bytes": 21897216,
+      "heap_objects": 2358,
+      "rss_bytes": 73711616,
+      "process_peak_rss_bytes": 73842688,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 78401448,
+      "heap_inuse_bytes": 80863232,
+      "heap_objects": 876136,
+      "rss_bytes": 111869952,
+      "process_peak_rss_bytes": 111869952,
+      "goroutines": 10
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 42128680,
+      "heap_inuse_bytes": 67936256,
+      "heap_objects": 226364,
+      "rss_bytes": 112148480,
+      "process_peak_rss_bytes": 112148480,
+      "goroutines": 10
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 42134320,
+      "heap_inuse_bytes": 67936256,
+      "heap_objects": 226373,
+      "rss_bytes": 112148480,
+      "process_peak_rss_bytes": 112148480,
+      "goroutines": 10
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21137104,
+      "heap_inuse_bytes": 22503424,
+      "heap_objects": 2574,
+      "rss_bytes": 112361472,
+      "process_peak_rss_bytes": 112361472,
+      "goroutines": 2
+    },
+    "repeat": 0
+  },
+  {
+    "engine": "moejs",
+    "extension": "twitter",
+    "mode": "retained",
+    "count": 8,
+    "user_cpu_ns": 92162000,
+    "system_cpu_ns": 6507000,
+    "wall_ns": 98751917,
+    "allocated_bytes": 65301584,
+    "gc_cycles": 2,
+    "gc_pause_ns": 123084,
+    "output_sha256": "9703ef25e194d7c4ea8514d41f094a4b2d5280cca5f9ddf147d68ade2eda6aba",
+    "baseline": {
+      "heap_alloc_bytes": 21093136,
+      "heap_inuse_bytes": 21897216,
+      "heap_objects": 2358,
+      "rss_bytes": 73859072,
+      "process_peak_rss_bytes": 73973760,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 65266008,
+      "heap_inuse_bytes": 67403776,
+      "heap_objects": 423551,
+      "rss_bytes": 97845248,
+      "process_peak_rss_bytes": 97845248,
+      "goroutines": 10
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 41515416,
+      "heap_inuse_bytes": 54657024,
+      "heap_objects": 93141,
+      "rss_bytes": 98058240,
+      "process_peak_rss_bytes": 98058240,
+      "goroutines": 10
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 41521008,
+      "heap_inuse_bytes": 54665216,
+      "heap_objects": 93149,
+      "rss_bytes": 98058240,
+      "process_peak_rss_bytes": 98074624,
+      "goroutines": 10
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21290776,
+      "heap_inuse_bytes": 23076864,
+      "heap_objects": 6319,
+      "rss_bytes": 98091008,
+      "process_peak_rss_bytes": 98091008,
+      "goroutines": 2
+    },
+    "repeat": 0
+  },
+  {
+    "engine": "moejs",
+    "extension": "twitter",
+    "mode": "retained",
+    "count": 8,
+    "user_cpu_ns": 91061000,
+    "system_cpu_ns": 6088000,
+    "wall_ns": 97138167,
+    "allocated_bytes": 65300080,
+    "gc_cycles": 2,
+    "gc_pause_ns": 130458,
+    "output_sha256": "9703ef25e194d7c4ea8514d41f094a4b2d5280cca5f9ddf147d68ade2eda6aba",
+    "baseline": {
+      "heap_alloc_bytes": 21093296,
+      "heap_inuse_bytes": 21897216,
+      "heap_objects": 2359,
+      "rss_bytes": 74219520,
+      "process_peak_rss_bytes": 74334208,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 63904672,
+      "heap_inuse_bytes": 66256896,
+      "heap_objects": 397700,
+      "rss_bytes": 97878016,
+      "process_peak_rss_bytes": 97878016,
+      "goroutines": 10
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 41515112,
+      "heap_inuse_bytes": 54706176,
+      "heap_objects": 93135,
+      "rss_bytes": 98091008,
+      "process_peak_rss_bytes": 98091008,
+      "goroutines": 10
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 41520704,
+      "heap_inuse_bytes": 54714368,
+      "heap_objects": 93143,
+      "rss_bytes": 98091008,
+      "process_peak_rss_bytes": 98091008,
+      "goroutines": 10
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21290472,
+      "heap_inuse_bytes": 23126016,
+      "heap_objects": 6313,
+      "rss_bytes": 98107392,
+      "process_peak_rss_bytes": 98107392,
+      "goroutines": 2
+    },
+    "repeat": 1
+  },
+  {
+    "engine": "goja",
+    "extension": "twitter",
+    "mode": "retained",
+    "count": 8,
+    "user_cpu_ns": 147114000,
+    "system_cpu_ns": 7243000,
+    "wall_ns": 154326500,
+    "allocated_bytes": 92017104,
+    "gc_cycles": 3,
+    "gc_pause_ns": 150750,
+    "output_sha256": "9703ef25e194d7c4ea8514d41f094a4b2d5280cca5f9ddf147d68ade2eda6aba",
+    "baseline": {
+      "heap_alloc_bytes": 21093136,
+      "heap_inuse_bytes": 21897216,
+      "heap_objects": 2358,
+      "rss_bytes": 73924608,
+      "process_peak_rss_bytes": 74039296,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 80677768,
+      "heap_inuse_bytes": 83116032,
+      "heap_objects": 917431,
+      "rss_bytes": 114294784,
+      "process_peak_rss_bytes": 114294784,
+      "goroutines": 10
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 42128408,
+      "heap_inuse_bytes": 68321280,
+      "heap_objects": 226360,
+      "rss_bytes": 114606080,
+      "process_peak_rss_bytes": 114606080,
+      "goroutines": 10
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 42128424,
+      "heap_inuse_bytes": 68321280,
+      "heap_objects": 226361,
+      "rss_bytes": 114606080,
+      "process_peak_rss_bytes": 114606080,
+      "goroutines": 10
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21131208,
+      "heap_inuse_bytes": 22470656,
+      "heap_objects": 2562,
+      "rss_bytes": 114819072,
+      "process_peak_rss_bytes": 114819072,
+      "goroutines": 2
+    },
+    "repeat": 1
+  },
+  {
+    "engine": "goja",
+    "extension": "twitter",
+    "mode": "retained",
+    "count": 8,
+    "user_cpu_ns": 140883000,
+    "system_cpu_ns": 6360000,
+    "wall_ns": 147271375,
+    "allocated_bytes": 92017536,
+    "gc_cycles": 3,
+    "gc_pause_ns": 156543,
+    "output_sha256": "9703ef25e194d7c4ea8514d41f094a4b2d5280cca5f9ddf147d68ade2eda6aba",
+    "baseline": {
+      "heap_alloc_bytes": 21093136,
+      "heap_inuse_bytes": 21897216,
+      "heap_objects": 2358,
+      "rss_bytes": 74055680,
+      "process_peak_rss_bytes": 74186752,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 69619944,
+      "heap_inuse_bytes": 71770112,
+      "heap_objects": 724703,
+      "rss_bytes": 103006208,
+      "process_peak_rss_bytes": 103006208,
+      "goroutines": 10
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 42128712,
+      "heap_inuse_bytes": 62447616,
+      "heap_objects": 226360,
+      "rss_bytes": 103202816,
+      "process_peak_rss_bytes": 103202816,
+      "goroutines": 10
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 42134304,
+      "heap_inuse_bytes": 62447616,
+      "heap_objects": 226368,
+      "rss_bytes": 103202816,
+      "process_peak_rss_bytes": 103202816,
+      "goroutines": 10
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21137248,
+      "heap_inuse_bytes": 22503424,
+      "heap_objects": 2570,
+      "rss_bytes": 103366656,
+      "process_peak_rss_bytes": 103366656,
+      "goroutines": 2
+    },
+    "repeat": 2
+  },
+  {
+    "engine": "moejs",
+    "extension": "twitter",
+    "mode": "retained",
+    "count": 8,
+    "user_cpu_ns": 90092000,
+    "system_cpu_ns": 5885000,
+    "wall_ns": 95951417,
+    "allocated_bytes": 65299536,
+    "gc_cycles": 2,
+    "gc_pause_ns": 115959,
+    "output_sha256": "9703ef25e194d7c4ea8514d41f094a4b2d5280cca5f9ddf147d68ade2eda6aba",
+    "baseline": {
+      "heap_alloc_bytes": 21093136,
+      "heap_inuse_bytes": 21897216,
+      "heap_objects": 2358,
+      "rss_bytes": 74022912,
+      "process_peak_rss_bytes": 74153984,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 64947856,
+      "heap_inuse_bytes": 67239936,
+      "heap_objects": 416412,
+      "rss_bytes": 97746944,
+      "process_peak_rss_bytes": 97746944,
+      "goroutines": 10
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 41514952,
+      "heap_inuse_bytes": 54706176,
+      "heap_objects": 93140,
+      "rss_bytes": 97992704,
+      "process_peak_rss_bytes": 97992704,
+      "goroutines": 10
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 41520544,
+      "heap_inuse_bytes": 54714368,
+      "heap_objects": 93148,
+      "rss_bytes": 97992704,
+      "process_peak_rss_bytes": 97992704,
+      "goroutines": 10
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21290312,
+      "heap_inuse_bytes": 23085056,
+      "heap_objects": 6318,
+      "rss_bytes": 98009088,
+      "process_peak_rss_bytes": 98009088,
+      "goroutines": 2
+    },
+    "repeat": 2
+  },
+  {
+    "engine": "moejs",
+    "extension": "twitter",
+    "mode": "retained",
+    "count": 8,
+    "user_cpu_ns": 91607000,
+    "system_cpu_ns": 6799000,
+    "wall_ns": 98371625,
+    "allocated_bytes": 65298960,
+    "gc_cycles": 2,
+    "gc_pause_ns": 125500,
+    "output_sha256": "9703ef25e194d7c4ea8514d41f094a4b2d5280cca5f9ddf147d68ade2eda6aba",
+    "baseline": {
+      "heap_alloc_bytes": 21093136,
+      "heap_inuse_bytes": 21897216,
+      "heap_objects": 2358,
+      "rss_bytes": 73777152,
+      "process_peak_rss_bytes": 73908224,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 65163720,
+      "heap_inuse_bytes": 67305472,
+      "heap_objects": 420375,
+      "rss_bytes": 97681408,
+      "process_peak_rss_bytes": 97681408,
+      "goroutines": 10
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 41514120,
+      "heap_inuse_bytes": 54747136,
+      "heap_objects": 93128,
+      "rss_bytes": 97845248,
+      "process_peak_rss_bytes": 97845248,
+      "goroutines": 10
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 41519712,
+      "heap_inuse_bytes": 54755328,
+      "heap_objects": 93136,
+      "rss_bytes": 97845248,
+      "process_peak_rss_bytes": 97845248,
+      "goroutines": 10
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21289480,
+      "heap_inuse_bytes": 23060480,
+      "heap_objects": 6306,
+      "rss_bytes": 97861632,
+      "process_peak_rss_bytes": 97861632,
+      "goroutines": 2
+    },
+    "repeat": 3
+  },
+  {
+    "engine": "goja",
+    "extension": "twitter",
+    "mode": "retained",
+    "count": 8,
+    "user_cpu_ns": 147658000,
+    "system_cpu_ns": 7818000,
+    "wall_ns": 155483625,
+    "allocated_bytes": 92016912,
+    "gc_cycles": 2,
+    "gc_pause_ns": 112332,
+    "output_sha256": "9703ef25e194d7c4ea8514d41f094a4b2d5280cca5f9ddf147d68ade2eda6aba",
+    "baseline": {
+      "heap_alloc_bytes": 21093136,
+      "heap_inuse_bytes": 21897216,
+      "heap_objects": 2358,
+      "rss_bytes": 73891840,
+      "process_peak_rss_bytes": 74022912,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 78242760,
+      "heap_inuse_bytes": 80723968,
+      "heap_objects": 873800,
+      "rss_bytes": 111869952,
+      "process_peak_rss_bytes": 111869952,
+      "goroutines": 10
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 42128376,
+      "heap_inuse_bytes": 67911680,
+      "heap_objects": 226357,
+      "rss_bytes": 112082944,
+      "process_peak_rss_bytes": 112082944,
+      "goroutines": 10
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 42128392,
+      "heap_inuse_bytes": 67911680,
+      "heap_objects": 226358,
+      "rss_bytes": 112132096,
+      "process_peak_rss_bytes": 112132096,
+      "goroutines": 10
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21131176,
+      "heap_inuse_bytes": 22470656,
+      "heap_objects": 2559,
+      "rss_bytes": 112377856,
+      "process_peak_rss_bytes": 112377856,
+      "goroutines": 2
+    },
+    "repeat": 3
+  },
+  {
+    "engine": "goja",
+    "extension": "twitter",
+    "mode": "retained",
+    "count": 8,
+    "user_cpu_ns": 140695000,
+    "system_cpu_ns": 6625000,
+    "wall_ns": 147311416,
+    "allocated_bytes": 92016992,
+    "gc_cycles": 3,
+    "gc_pause_ns": 147584,
+    "output_sha256": "9703ef25e194d7c4ea8514d41f094a4b2d5280cca5f9ddf147d68ade2eda6aba",
+    "baseline": {
+      "heap_alloc_bytes": 21093296,
+      "heap_inuse_bytes": 21897216,
+      "heap_objects": 2359,
+      "rss_bytes": 73875456,
+      "process_peak_rss_bytes": 74006528,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 69957576,
+      "heap_inuse_bytes": 72048640,
+      "heap_objects": 724478,
+      "rss_bytes": 103137280,
+      "process_peak_rss_bytes": 103137280,
+      "goroutines": 10
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 42128520,
+      "heap_inuse_bytes": 62726144,
+      "heap_objects": 226359,
+      "rss_bytes": 103366656,
+      "process_peak_rss_bytes": 103366656,
+      "goroutines": 10
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 42134112,
+      "heap_inuse_bytes": 62726144,
+      "heap_objects": 226367,
+      "rss_bytes": 103366656,
+      "process_peak_rss_bytes": 103366656,
+      "goroutines": 10
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21136896,
+      "heap_inuse_bytes": 22470656,
+      "heap_objects": 2568,
+      "rss_bytes": 103563264,
+      "process_peak_rss_bytes": 103563264,
+      "goroutines": 2
+    },
+    "repeat": 4
+  },
+  {
+    "engine": "moejs",
+    "extension": "twitter",
+    "mode": "retained",
+    "count": 8,
+    "user_cpu_ns": 93125000,
+    "system_cpu_ns": 6814000,
+    "wall_ns": 99978791,
+    "allocated_bytes": 65301040,
+    "gc_cycles": 2,
+    "gc_pause_ns": 121916,
+    "output_sha256": "9703ef25e194d7c4ea8514d41f094a4b2d5280cca5f9ddf147d68ade2eda6aba",
+    "baseline": {
+      "heap_alloc_bytes": 21093136,
+      "heap_inuse_bytes": 21897216,
+      "heap_objects": 2358,
+      "rss_bytes": 74055680,
+      "process_peak_rss_bytes": 74170368,
+      "goroutines": 2
+    },
+    "after_work": {
+      "heap_alloc_bytes": 65007672,
+      "heap_inuse_bytes": 67076096,
+      "heap_objects": 414966,
+      "rss_bytes": 97402880,
+      "process_peak_rss_bytes": 97402880,
+      "goroutines": 10
+    },
+    "after_gc": {
+      "heap_alloc_bytes": 41515464,
+      "heap_inuse_bytes": 54870016,
+      "heap_objects": 93144,
+      "rss_bytes": 97583104,
+      "process_peak_rss_bytes": 97583104,
+      "goroutines": 10
+    },
+    "after_os_release": {
+      "heap_alloc_bytes": 41521056,
+      "heap_inuse_bytes": 54878208,
+      "heap_objects": 93152,
+      "rss_bytes": 97583104,
+      "process_peak_rss_bytes": 97583104,
+      "goroutines": 10
+    },
+    "after_close_os_release": {
+      "heap_alloc_bytes": 21290824,
+      "heap_inuse_bytes": 23126016,
+      "heap_objects": 6322,
+      "rss_bytes": 97599488,
+      "process_peak_rss_bytes": 97599488,
+      "goroutines": 2
+    },
+    "repeat": 4
+  }
+]

@@ -4,7 +4,9 @@
 
 ## 判断
 
-**值得继续做完整宿主移植，但目前不足以批准直接替换生产 goja。**
+**CPU/内存补测后，建议维持 goja，暂不投入完整替换。**
+
+新增的 [CPU 与内存测量](RESOURCES.md) 表明：当前冷路径 B 站/YouTube 的实际 CPU 时间只降低约 12% / 15%，驻留内存没有一致改善，连续解析的进程峰值 RSS 还更高。结合迁移成本和包体结果，收益不足以推进替换。
 
 三个真实扩展的完整 bundle 已在 moejs 中跑通离线解析和公开网站联网解析，结果与 goja 相同。热运行 CPU 收益明显；当前 Gopeed 的事件路径每次新建引擎、编译并加载 bundle，冷启动的收益远小于热运行倍数。压缩体积基本没有显著收益。
 
@@ -121,6 +123,6 @@ moejs 的 mutable runtime 创建在本机反而明显更贵。shared frozen 模�
 1. 在实验构建中跑完整 Downloader → extension → Go task/resource → Blob/FFmpeg/WebView 路径，实测 B 站与 YouTube 下载输出文件、取消、断点恢复、重试；不再依赖本次模拟宿主。
 2. 新引擎跑现有扩展、Fetch/Stream、WebView、FFmpeg、事件取消测试；验证无 pending promise、session 泄漏及并发访问错误。
 3. 在实际每事件新建 runtime 的方式下比较总耗时、CPU、峰值/常驻内存和最终安装包；增加至少一台 Windows、一台 Android/iOS 目标以及真实大型 player/playlist。
-4. 再决定冷路径与实际解析体验的提升是否足以抵消桥接成本。热 CPU 已有继续投入的依据，**最终包体和完整下载性能目前没有“大幅提升”的证据**。
+4. 再决定冷路径与实际解析体验的提升是否足以抵消桥接成本。新增资源测量不支持在当前架构下继续完整移植；未来若有真实的长时间计算/环境复用场景，再重新评估。**最终包体和完整下载性能目前没有“大幅提升”的证据**。
 
 本 PR 仅交付可复现的调研/原型，不切换默认引擎。生产 engine 原有测试通过，记录在 [production-engine-tests.txt](results/production-engine-tests.txt)。复现命令见 [README.md](README.md)。

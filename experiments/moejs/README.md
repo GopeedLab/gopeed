@@ -17,6 +17,8 @@ GOPEED_MOEJS_LIVE=1 go test -run TestLiveResolve -v -timeout 4m
 GOMAXPROCS=1 go test -pgo=off -run '^$' -bench . -benchmem -benchtime=500ms -count=5 -timeout 8m > results/bench.txt
 python3 summarize.py
 python3 measure_size.py
+# macOS/Linux：独立进程的 CPU、峰值 RSS、存活堆和关闭后内存。默认 5 轮。
+python3 measure_resources.py > results/resources-run.txt
 ```
 
 `fetch_sources.py` 只取固定提交的原始 `dist/index.js`，校验已记录的 SHA-256，不执行 npm 安装或构建。下载文件和二进制不入库。`results/sources.json` 是来源清单。
@@ -32,6 +34,7 @@ python3 measure_size.py
 - `TestAsyncHTTP` 使用本地 HTTP server，验证异步 JSON 和 AbortController 请求取消。
 - `BenchmarkBufferedTransport` 在两个引擎中使用同一段 JS 的 buffered Response，检查速度差是否主要来自原生 Response/Stream 实现。
 - `BenchmarkExtension/*/cold` 包含建引擎、polyfill、编译和加载完整 bundle、一次 resolve 及关闭；`warm` 复用已加载的 runtime。冷启动更接近当前 `doTrigger` 路径。
+- `measure_resources.py` 为每个样本启动独立 worker，交替引擎顺序，以进程 user+system CPU 时间比较相同工作量；另测保留 1/8 个 runtime 的内存。解释与结果见 [RESOURCES.md](RESOURCES.md)。两个引擎都链接在同一个测量程序中，RSS 是原型 worker 的占用，不是最终 Gopeed 应用占用。
 - `measure_size.py` 实测独立解释器程序和真实 CLI 的双引擎共存成本；没有伪造“已经完全替换”的安装包大小。CLI 构建可能临时补充本实验 module 的依赖，最后执行 tidy。
 
 测试只覆盖本报告所列路径。未指定 `GOPEED_MOEJS_LIVE=1` 时，扩展回放不访问外网；固定 bundle 需要事先下载。
