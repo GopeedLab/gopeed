@@ -107,7 +107,14 @@ func TestFetcher_SizeHintPreservesHTTPIntegrity(t *testing.T) {
 		for _, broken := range []bool{false, true} {
 			t.Run(fmt.Sprintf("chunked=%v/broken=%v", chunked, broken), func(t *testing.T) {
 				payload := []byte("0123456789")
+				var requests atomic.Int64
 				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+					// Only the first (Resolve) response is broken: one that is
+					// always valid but short would reset the retry allowances for good.
+					if broken && requests.Add(1) > 1 {
+						w.WriteHeader(http.StatusServiceUnavailable)
+						return
+					}
 					if chunked && broken {
 						conn, rw, err := w.(http.Hijacker).Hijack()
 						if err != nil {

@@ -522,34 +522,6 @@ func slowCopyNWithDelay(sl *shutdownListener, dst io.Writer, src io.Reader, n in
 	}
 }
 
-// StartTestConLimitServer connections limit server
-func StartTestConLimitServer(maxConnections int32) net.Listener {
-	var connections atomic.Int32
-
-	return startTestServer(func(sl *shutdownListener) http.Handler {
-		mux := http.NewServeMux()
-		mux.HandleFunc("/"+BuildName, func(writer http.ResponseWriter, request *http.Request) {
-			defer func() {
-				connections.Add(-1)
-			}()
-			connections.Add(1)
-			if maxConnections != 0 && connections.Load() > maxConnections {
-				writer.WriteHeader(403)
-				return
-			}
-			rangeFileHandle(
-				writer,
-				request,
-				nil,
-				func(file *os.File, n int64) {
-					slowCopyN(sl, writer, file, n, 0)
-				},
-			)
-		})
-		return mux
-	})
-}
-
 // StartTestTimeoutOnceServer creates a server that times out on first request, then works normally
 func StartTestTimeoutOnceServer(delay int64) net.Listener {
 	var timeoutOnce atomic.Bool
@@ -629,8 +601,8 @@ func StartTestTemporary500Server(errorDuration time.Duration) net.Listener {
 // Parameters:
 //   - failedRequestsBeforeRecover: number of requests that will fail before server recovers
 //
-// Note: Uses 416 (Range Not Satisfiable) instead of 500 because 5xx errors are exempt
-// from failure counting and will retry indefinitely. 416 is counted as a failure.
+// Failed requests use 416 (Range Not Satisfiable); every status is retried the
+// same way, within the fetcher's retries.
 func StartTestFailThenRecoverServer(failedRequestsBeforeRecover int32) net.Listener {
 	var requestCount atomic.Int32
 

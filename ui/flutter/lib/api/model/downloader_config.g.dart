@@ -101,12 +101,18 @@ HttpConfig _$HttpConfigFromJson(Map<String, dynamic> json) => HttpConfig(
   userAgent: json['userAgent'] as String? ?? '',
   connections: (json['connections'] as num?)?.toInt() ?? 0,
   useServerCtime: json['useServerCtime'] as bool? ?? false,
+  maxRetries: (json['maxRetries'] as num?)?.toInt() ?? 5,
+  maxRetryDelaySeconds: (json['maxRetryDelaySeconds'] as num?)?.toInt() ?? 5,
+  unlimitedRetries: json['unlimitedRetries'] as bool? ?? false,
 );
 
 Map<String, dynamic> _$HttpConfigToJson(HttpConfig instance) => <String, dynamic>{
   'userAgent': instance.userAgent,
   'connections': instance.connections,
   'useServerCtime': instance.useServerCtime,
+  'maxRetries': instance.maxRetries,
+  'maxRetryDelaySeconds': instance.maxRetryDelaySeconds,
+  'unlimitedRetries': instance.unlimitedRetries,
 };
 
 TrackerSubscriptionStatus _$TrackerSubscriptionStatusFromJson(Map<String, dynamic> json) => TrackerSubscriptionStatus(
