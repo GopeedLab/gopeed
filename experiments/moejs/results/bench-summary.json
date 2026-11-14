@@ -1,0 +1,170 @@
+{
+  "BenchmarkExtension/bilibili/goja/warm": {
+    "samples": 5,
+    "ns_median": 21188099.0,
+    "ns_min": 19941715.0,
+    "ns_max": 21722030.0,
+    "bytes_median": 8340744.0,
+    "allocs_median": 143394.0
+  },
+  "BenchmarkExtension/bilibili/goja/cold": {
+    "samples": 5,
+    "ns_median": 118861317.0,
+    "ns_min": 117766708.0,
+    "ns_max": 119968958.0,
+    "bytes_median": 76348716.0,
+    "allocs_median": 1292863.0
+  },
+  "BenchmarkExtension/bilibili/moejs/warm": {
+    "samples": 5,
+    "ns_median": 3389193.0,
+    "ns_min": 3263242.0,
+    "ns_max": 3448471.0,
+    "bytes_median": 1305526.0,
+    "allocs_median": 11007.0
+  },
+  "BenchmarkExtension/bilibili/moejs/cold": {
+    "samples": 5,
+    "ns_median": 104827183.0,
+    "ns_min": 104022715.0,
+    "ns_max": 106050611.0,
+    "bytes_median": 62157413.0,
+    "allocs_median": 752967.0
+  },
+  "BenchmarkExtension/youtube/goja/warm": {
+    "samples": 5,
+    "ns_median": 3193004.0,
+    "ns_min": 3146585.0,
+    "ns_max": 3260717.0,
+    "bytes_median": 1201206.0,
+    "allocs_median": 25233.0
+  },
+  "BenchmarkExtension/youtube/goja/cold": {
+    "samples": 5,
+    "ns_median": 283412271.0,
+    "ns_min": 283191208.0,
+    "ns_max": 297033125.0,
+    "bytes_median": 164280012.0,
+    "allocs_median": 4518344.0
+  },
+  "BenchmarkExtension/youtube/moejs/warm": {
+    "samples": 5,
+    "ns_median": 276599.0,
+    "ns_min": 269731.0,
+    "ns_max": 286438.0,
+    "bytes_median": 153548.0,
+    "allocs_median": 1289.0
+  },
+  "BenchmarkExtension/youtube/moejs/cold": {
+    "samples": 5,
+    "ns_median": 239646417.0,
+    "ns_min": 238944375.0,
+    "ns_max": 253687520.0,
+    "bytes_median": 150780424.0,
+    "allocs_median": 1628650.0
+  },
+  "BenchmarkExtension/twitter/goja/warm": {
+    "samples": 5,
+    "ns_median": 3574601.0,
+    "ns_min": 3518603.0,
+    "ns_max": 3591739.0,
+    "bytes_median": 1682900.0,
+    "allocs_median": 32486.0
+  },
+  "BenchmarkExtension/twitter/goja/cold": {
+    "samples": 5,
+    "ns_median": 17238709.0,
+    "ns_min": 16791614.0,
+    "ns_max": 17428731.0,
+    "bytes_median": 11428458.0,
+    "allocs_median": 195739.0
+  },
+  "BenchmarkExtension/twitter/moejs/warm": {
+    "samples": 5,
+    "ns_median": 505147.0,
+    "ns_min": 497912.0,
+    "ns_max": 507563.0,
+    "bytes_median": 253665.0,
+    "allocs_median": 2799.0
+  },
+  "BenchmarkExtension/twitter/moejs/cold": {
+    "samples": 5,
+    "ns_median": 11849345.0,
+    "ns_min": 11735946.0,
+    "ns_max": 11875913.0,
+    "bytes_median": 8040679.0,
+    "allocs_median": 89924.0
+  },
+  "BenchmarkBufferedTransport/bilibili/goja": {
+    "samples": 5,
+    "ns_median": 22076250.0,
+    "ns_min": 20500819.0,
+    "ns_max": 22754704.0,
+    "bytes_median": 8228846.0,
+    "allocs_median": 141672.0
+  },
+  "BenchmarkBufferedTransport/bilibili/moejs": {
+    "samples": 5,
+    "ns_median": 3528287.0,
+    "ns_min": 3421821.0,
+    "ns_max": 3572089.0,
+    "bytes_median": 1297568.0,
+    "allocs_median": 10838.0
+  },
+  "BenchmarkBufferedTransport/youtube/goja": {
+    "samples": 5,
+    "ns_median": 2895027.0,
+    "ns_min": 2554084.0,
+    "ns_max": 2944065.0,
+    "bytes_median": 1096766.0,
+    "allocs_median": 22358.0
+  },
+  "BenchmarkBufferedTransport/youtube/moejs": {
+    "samples": 5,
+    "ns_median": 289619.0,
+    "ns_min": 274739.0,
+    "ns_max": 290746.0,
+    "bytes_median": 154919.0,
+    "allocs_median": 1299.0
+  },
+  "BenchmarkBufferedTransport/twitter/goja": {
+    "samples": 5,
+    "ns_median": 3450359.0,
+    "ns_min": 3359477.0,
+    "ns_max": 3460980.0,
+    "bytes_median": 1564097.0,
+    "allocs_median": 30491.0
+  },
+  "BenchmarkBufferedTransport/twitter/moejs": {
+    "samples": 5,
+    "ns_median": 491075.0,
+    "ns_min": 480354.0,
+    "ns_max": 495429.0,
+    "bytes_median": 243989.0,
+    "allocs_median": 2633.0
+  },
+  "BenchmarkBareRuntime/goja": {
+    "samples": 5,
+    "ns_median": 2847.0,
+    "ns_min": 2823.0,
+    "ns_max": 2893.0,
+    "bytes_median": 5216.0,
+    "allocs_median": 50.0
+  },
+  "BenchmarkBareRuntime/moejs-mutable": {
+    "samples": 5,
+    "ns_median": 48417.0,
+    "ns_min": 48202.0,
+    "ns_max": 50930.0,
+    "bytes_median": 106053.0,
+    "allocs_median": 145.0
+  },
+  "BenchmarkBareRuntime/moejs-shared": {
+    "samples": 5,
+    "ns_median": 3857.0,
+    "ns_min": 3839.0,
+    "ns_max": 3874.0,
+    "bytes_median": 5307.0,
+    "allocs_median": 42.0
+  }
+}
