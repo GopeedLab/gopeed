@@ -182,6 +182,18 @@ func TestAppendFilenameExtension(t *testing.T) {
 			want:        "download",
 		},
 		{
+			name:        "keeps name for generic binary type",
+			filename:    "kubectl",
+			contentType: "application/octet-stream",
+			want:        "kubectl",
+		},
+		{
+			name:        "keeps name for plain text",
+			filename:    "README",
+			contentType: "text/plain; charset=utf-8",
+			want:        "README",
+		},
+		{
 			name:        "ignores unknown content type",
 			filename:    "download",
 			contentType: "application/x-gopeed-unknown",
