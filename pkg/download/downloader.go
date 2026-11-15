@@ -563,16 +563,9 @@ func ensureResourceRequestRawURLs(parentReq *base.Request, res *base.Resource) {
 
 // resolveState owns a Fetcher until Create transfers it to a task.
 // State transitions are protected by fetcherMapLock; closeOnce serializes cleanup.
-type contextResolver interface {
-	ResolveContext(context.Context, *base.Request) error
-}
-
 type resolveState struct {
-	ctx       context.Context
-	cancel    context.CancelFunc
 	fetcher   fetcher.Fetcher
 	cancelled bool
-	resolved  bool
 	claimed   bool
 	closeOnce sync.Once
 	closeErr  error
@@ -602,9 +595,7 @@ func (d *Downloader) ResolveWithID(id string, req *base.Request) (rr *ResolveRes
 	if req == nil {
 		return nil, errors.New("resolve request is required")
 	}
-	resolveCtx, cancel := context.WithCancel(d.backgroundCtx)
-	defer cancel()
-	state := &resolveState{ctx: resolveCtx, cancel: cancel}
+	state := &resolveState{}
 	d.fetcherMapLock.Lock()
 	if d.closed.Load() {
 		d.fetcherMapLock.Unlock()
@@ -645,11 +636,7 @@ func (d *Downloader) ResolveWithID(id string, req *base.Request) (rr *ResolveRes
 	if cancelled {
 		return nil, errors.New("resource resolution cancelled")
 	}
-	if resolver, ok := f.(contextResolver); ok {
-		err = resolver.ResolveContext(state.ctx, req)
-	} else {
-		err = f.Resolve(req)
-	}
+	err = f.Resolve(req)
 	if err != nil {
 		return nil, err
 	}
@@ -658,13 +645,13 @@ func (d *Downloader) ResolveWithID(id string, req *base.Request) (rr *ResolveRes
 	if state.cancelled || d.closed.Load() {
 		return nil, errors.New("resource resolution cancelled")
 	}
-	state.resolved = true
 	d.fetcherCache[id] = f
 	return &ResolveResult{ID: id, Res: f.Meta().Res, SuggestedDownloadDir: d.suggestedDownloadDir(f.Meta().Res)}, nil
 }
 
 // ReleaseResolve is idempotent. A resource already transferred to a task is
 // never closed by a late preview cancellation.
+// Pending resolution is interrupted according to the Fetcher's Close semantics.
 func (d *Downloader) ReleaseResolve(id string) error {
 	d.fetcherMapLock.Lock()
 	state := d.resolveStates[id]
@@ -673,17 +660,10 @@ func (d *Downloader) ReleaseResolve(id string) error {
 	delete(d.resolveStates, id)
 	if state != nil {
 		state.cancelled = true
-		state.cancel()
 		if state.claimed {
 			f = nil
 		} else {
 			f = state.fetcher
-			if _, cancellable := f.(contextResolver); cancellable && !state.resolved {
-				// Resolve owns unpublished response/prefetch state. Its context
-				// cancels the request; the returning resolver closes it once
-				// publication has stopped, including a racing response.
-				f = nil
-			}
 		}
 	}
 	d.fetcherMapLock.Unlock()

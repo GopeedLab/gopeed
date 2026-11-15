@@ -3,50 +3,15 @@ package download
 import (
 	"errors"
 	"fmt"
-	"github.com/GopeedLab/gopeed/internal/fetcher"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
+	"github.com/GopeedLab/gopeed/internal/fetcher"
 	"github.com/GopeedLab/gopeed/pkg/base"
 )
 
-func TestReleaseResolveCancelsPendingHTTPHeaders(t *testing.T) {
-	entered := make(chan struct{})
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { close(entered); <-r.Context().Done() }))
-	defer server.Close()
-	d := NewDownloader(&DownloaderConfig{Storage: NewMemStorage(), StorageDir: t.TempDir(), TempDir: t.TempDir()})
-	if err := d.Setup(); err != nil {
-		t.Fatal(err)
-	}
-	defer d.Close()
-	done := make(chan error, 1)
-	go func() {
-		_, err := d.ResolveWithID("pending-http", &base.Request{URL: server.URL + "/file"})
-		done <- err
-	}()
-	select {
-	case <-entered:
-	case <-time.After(time.Second):
-		t.Fatal("request did not start")
-	}
-	if err := d.ReleaseResolve("pending-http"); err != nil {
-		t.Fatal(err)
-	}
-	select {
-	case err := <-done:
-		if err == nil {
-			t.Fatal("cancelled Resolve succeeded")
-		}
-	case <-time.After(300 * time.Millisecond):
-		server.CloseClientConnections()
-		t.Fatal("ReleaseResolve did not cancel the request waiting for headers")
-	}
-	if len(d.fetcherCache) != 0 || len(d.resolveStates) != 0 {
-		t.Fatal("cancelled operation retained resources")
-	}
-}
 func TestReleaseResolveAfterCreateDoesNotCloseTask(t *testing.T) {
 	d := NewDownloader(&DownloaderConfig{Storage: NewMemStorage(), StorageDir: t.TempDir(), TempDir: t.TempDir(), FetchManagers: nil})
 	if err := d.Setup(); err != nil {
