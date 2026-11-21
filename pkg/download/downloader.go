@@ -116,6 +116,7 @@ type Downloader struct {
 
 	cfg            *DownloaderConfig
 	fetcherCache   map[string]fetcher.Fetcher
+	resolveStates  map[string]*resolveState
 	storage        Storage
 	tasks          []*Task
 	waitTasks      []*Task
@@ -153,6 +154,7 @@ func NewDownloader(cfg *DownloaderConfig) *Downloader {
 		cancelBackground: cancelBackground,
 		cfg:              cfg,
 		fetcherCache:     make(map[string]fetcher.Fetcher),
+		resolveStates:    make(map[string]*resolveState),
 		waitTasks:        make([]*Task, 0),
 		groups:           make(map[string]*TaskGroup),
 		creatingGroups:   make(map[string]struct{}),
@@ -595,42 +597,136 @@ func ensureResourceRequestRawURLs(parentReq *base.Request, res *base.Resource) {
 	}
 }
 
-func (d *Downloader) Resolve(req *base.Request) (rr *ResolveResult, err error) {
-	rrId, err := gonanoid.New()
-	if err != nil {
-		return
-	}
-	ensureRequestRawURL(req)
+// resolveState owns a Fetcher until Create transfers it to a task.
+// State transitions are protected by fetcherMapLock; closeOnce serializes cleanup.
+type resolveState struct {
+	fetcher   fetcher.Fetcher
+	cancelled bool
+	claimed   bool
+	closeOnce sync.Once
+	closeErr  error
+}
 
+func (s *resolveState) close(f fetcher.Fetcher) error {
+	if f == nil {
+		return nil
+	}
+	s.closeOnce.Do(func() { s.closeErr = f.Close() })
+	return s.closeErr
+}
+
+func (d *Downloader) Resolve(req *base.Request) (*ResolveResult, error) {
+	return d.ResolveWithID("", req)
+}
+
+// ResolveWithID lets a preview cancel before metadata is available. Clients
+// that do not supply an ID retain the server-generated resource ID behavior.
+func (d *Downloader) ResolveWithID(id string, req *base.Request) (rr *ResolveResult, err error) {
+	if id == "" {
+		id, err = gonanoid.New()
+		if err != nil {
+			return nil, err
+		}
+	}
+	if req == nil {
+		return nil, errors.New("resolve request is required")
+	}
+	state := &resolveState{}
+	d.fetcherMapLock.Lock()
+	if d.closed.Load() {
+		d.fetcherMapLock.Unlock()
+		return nil, errors.New("downloader is closed")
+	}
+	if d.resolveStates[id] != nil || d.fetcherCache[id] != nil {
+		d.fetcherMapLock.Unlock()
+		return nil, errors.New("resource id is already in use")
+	}
+	d.resolveStates[id] = state
+	d.fetcherMapLock.Unlock()
+	defer func() {
+		if err != nil || state.fetcher == nil {
+			d.fetcherMapLock.Lock()
+			if d.resolveStates[id] == state {
+				delete(d.resolveStates, id)
+			}
+			d.fetcherMapLock.Unlock()
+			_ = state.close(state.fetcher)
+		}
+	}()
+	ensureRequestRawURL(req)
 	res, err := d.triggerOnResolve(req)
 	if err != nil {
-		return
+		return nil, err
 	}
 	if res != nil && len(res.Files) > 0 {
-		rr = &ResolveResult{
-			Res:                  res,
-			SuggestedDownloadDir: d.suggestedDownloadDir(res),
-		}
-		return
+		return &ResolveResult{Res: res, SuggestedDownloadDir: d.suggestedDownloadDir(res)}, nil
 	}
-
-	fetcher, err := d.buildFetcher(req.URL)
+	f, err := d.buildFetcher(req.URL)
 	if err != nil {
-		return
-	}
-	err = fetcher.Resolve(req)
-	if err != nil {
-		return
+		return nil, err
 	}
 	d.fetcherMapLock.Lock()
-	d.fetcherCache[rrId] = fetcher
+	state.fetcher = f
+	cancelled := state.cancelled || d.closed.Load()
 	d.fetcherMapLock.Unlock()
-	rr = &ResolveResult{
-		ID:                   rrId,
-		Res:                  fetcher.Meta().Res,
-		SuggestedDownloadDir: d.suggestedDownloadDir(fetcher.Meta().Res),
+	if cancelled {
+		return nil, errors.New("resource resolution cancelled")
 	}
-	return
+	err = f.Resolve(req)
+	if err != nil {
+		return nil, err
+	}
+	d.fetcherMapLock.Lock()
+	defer d.fetcherMapLock.Unlock()
+	if state.cancelled || d.closed.Load() {
+		return nil, errors.New("resource resolution cancelled")
+	}
+	d.fetcherCache[id] = f
+	return &ResolveResult{ID: id, Res: f.Meta().Res, SuggestedDownloadDir: d.suggestedDownloadDir(f.Meta().Res)}, nil
+}
+
+// ReleaseResolve is idempotent. A resource already transferred to a task is
+// never closed by a late preview cancellation.
+// Pending resolution is interrupted according to the Fetcher's Close semantics.
+func (d *Downloader) ReleaseResolve(id string) error {
+	d.fetcherMapLock.Lock()
+	state := d.resolveStates[id]
+	f := d.fetcherCache[id]
+	delete(d.fetcherCache, id)
+	delete(d.resolveStates, id)
+	if state != nil {
+		state.cancelled = true
+		if state.claimed {
+			f = nil
+		} else {
+			f = state.fetcher
+		}
+	}
+	d.fetcherMapLock.Unlock()
+	if state != nil {
+		return state.close(f)
+	}
+	if f != nil {
+		return f.Close()
+	}
+	return nil
+}
+
+func (d *Downloader) closeResolvedResources() {
+	d.fetcherMapLock.Lock()
+	ids := make(map[string]struct{}, len(d.resolveStates)+len(d.fetcherCache))
+	for id := range d.resolveStates {
+		ids[id] = struct{}{}
+	}
+	for id := range d.fetcherCache {
+		ids[id] = struct{}{}
+	}
+	d.fetcherMapLock.Unlock()
+	for id := range ids {
+		if err := d.ReleaseResolve(id); err != nil {
+			d.Logger.Warn().Err(err).Msg("close resolved resource failed")
+		}
+	}
 }
 
 func (d *Downloader) notifyRunning() {
@@ -904,18 +1000,34 @@ func (d *Downloader) CreateWithOptions(rrId string, opts *base.Options) (string,
 func (d *Downloader) createResolved(rrId string, opts *base.Options, groupID string) (taskId string, err error) {
 	d.fetcherMapLock.Lock()
 	fetcher, ok := d.fetcherCache[rrId]
+	state := d.resolveStates[rrId]
+	if ok && state != nil {
+		state.claimed = true
+	}
 	delete(d.fetcherCache, rrId)
 	d.fetcherMapLock.Unlock()
 	if !ok {
 		return "", errors.New("invalid resource id")
 	}
-	// Only one creator may use a resolved fetcher. Failed creation makes it
-	// available again; a persisted task consumes it even if starting fails.
+	// Failed creation returns ownership to the preview unless it was cancelled.
 	defer func() {
-		if taskId == "" {
-			d.fetcherMapLock.Lock()
+		d.fetcherMapLock.Lock()
+		cancelled := d.closed.Load() || (state != nil && state.cancelled)
+		if taskId == "" && !cancelled {
 			d.fetcherCache[rrId] = fetcher
-			d.fetcherMapLock.Unlock()
+			if state != nil {
+				state.claimed = false
+			}
+		} else if d.resolveStates[rrId] == state {
+			delete(d.resolveStates, rrId)
+		}
+		d.fetcherMapLock.Unlock()
+		if taskId == "" && cancelled {
+			if state != nil {
+				_ = state.close(fetcher)
+			} else {
+				_ = fetcher.Close()
+			}
 		}
 	}()
 	if opts == nil {
@@ -1630,6 +1742,7 @@ func (d *Downloader) Close() error {
 		return nil
 	}
 	d.cancelBackground()
+	d.closeResolvedResources()
 	d.waitForExtensionGit()
 	if d.protocolJobs != nil {
 		d.protocolJobs.close()
