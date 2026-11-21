@@ -86,6 +86,23 @@ jobs:
           flutter pub get
           flutter gen-l10n
           flutter test test/api/downloader_config_test.dart
+  test-flutter-auto-shutdown:
+    # The auto quit rests on policy choices that nothing else in the suite
+    # pins down: a failed batch keeps the window open, a seeding torrent keeps
+    # the app alive, a paused task does not. Only these cases exercise them.
+    name: Test the auto quit on task completion
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+      - name: Run the auto shutdown controller tests
+        working-directory: ui/flutter
+        run: |
+          flutter pub get
+          flutter gen-l10n
+          flutter test test/app/application/app_auto_shutdown_controller_test.dart
   test-flutter-task-context-menu:
     name: Test task context menus and text inputs
     runs-on: ubuntu-latest

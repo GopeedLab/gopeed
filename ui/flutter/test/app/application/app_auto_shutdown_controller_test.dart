@@ -38,7 +38,6 @@ void main() {
     addTearDown(container.dispose);
     await container.read(appRuntimeControllerProvider.future);
     await container.read(appAutoShutdownControllerProvider.future);
-    await container.pump();
     return controller;
   }
 
