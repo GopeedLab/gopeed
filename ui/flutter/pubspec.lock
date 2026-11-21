@@ -967,12 +967,13 @@ packages:
     source: hosted
     version: "0.0.2"
   open_dir_windows:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      name: open_dir_windows
-      sha256: ec48df32ce61adb6f6cede0330d13b0d89714d2ee2df198f32ecd520e3a5d250
-      url: "https://pub.dev"
-    source: hosted
+      path: open_dir_windows
+      ref: "4d6263da123772e19ae11dba50e0ca2858c86c55"
+      resolved-ref: "4d6263da123772e19ae11dba50e0ca2858c86c55"
+      url: "https://github.com/GopeedLab/open_dir.git"
+    source: git
     version: "0.0.2+1"
   open_filex:
     dependency: "direct main"

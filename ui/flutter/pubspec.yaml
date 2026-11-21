@@ -84,6 +84,12 @@ dependencies:
   go_router: ^16.2.1
 
 dependency_overrides:
+  # Keep this fork until https://github.com/NetShareOSS/open_dir/issues/15 is fixed and released.
+  open_dir_windows:
+    git:
+      url: https://github.com/GopeedLab/open_dir.git
+      ref: 4d6263da123772e19ae11dba50e0ca2858c86c55
+      path: open_dir_windows
   # Public persistent-profile and proxy APIs; keep all packages on one commit.
   flutter_inappwebview:
     git:
