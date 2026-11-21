@@ -4,7 +4,7 @@ class AppDesignTokens {
   const AppDesignTokens._();
 
   static const Size childWindowSize = Size(820, 620);
-  static const Size downloadProgressWindowSize = Size(500, 260);
+  static const Size downloadProgressWindowSize = Size(500, 224);
   static const double downloadProgressExpandedHeight = 620;
   static const double downloadProgressConnectionsHeight = 340;
   static const double windowHeaderHeight = 30;
@@ -23,6 +23,7 @@ class AppDesignTokens {
   static const double taskDetailsDrawerViewportRatio = 0.42;
   static const double taskDetailsDesktopPadding = 24;
   static const double taskDetailsMobilePadding = 16;
+  static const double desktopMenuFontSize = 14;
   static const double settingsContentMaxWidth = 920;
   static const double settingsFormControlWidth = 420;
   static const double settingsNumberControlWidth = 168;

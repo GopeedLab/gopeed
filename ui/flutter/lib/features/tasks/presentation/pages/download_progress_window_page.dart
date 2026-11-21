@@ -1,9 +1,12 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 
+import '../../../../core/capabilities/app_capabilities.dart';
 import '../../../../core/utils/file_explorer.dart';
-import '../../../../core/window/app_window_bounds.dart';
 import '../../../../core/window/app_window_chrome.dart';
 import '../../../../l10n/l10n.dart';
 import '../../../../shared/theme/app_design_tokens.dart';
@@ -27,9 +30,21 @@ class DownloadProgressWindowPage extends ConsumerStatefulWidget {
 
 class _DownloadProgressWindowPageState extends ConsumerState<DownloadProgressWindowPage> {
   bool _acting = false;
+  bool _closing = false;
   bool _detailsExpanded = false;
   bool _resizing = false;
-  double? _compactHeight;
+  double _compactHeight = AppDesignTokens.downloadProgressWindowSize.height;
+  double _targetHeight = AppDesignTokens.downloadProgressWindowSize.height;
+
+  @override
+  void initState() {
+    super.initState();
+    ref.listenManual(tasksControllerProvider, (_, next) async {
+      final snapshot = next.asData?.value;
+      if (next.isLoading || next.hasError || snapshot == null || snapshot.lastError != null) return;
+      if (snapshot.findTask(widget.taskId) == null) await _closeWindow();
+    }, fireImmediately: true);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +53,7 @@ class _DownloadProgressWindowPageState extends ConsumerState<DownloadProgressWin
     final error = tasks.error ?? tasks.value?.lastError;
     final palette = AppPalette.of(context);
     final controller = ref.read(tasksControllerProvider.notifier);
-    return Scaffold(
+    final content = Scaffold(
       child: SafeArea(
         child: Padding(
           padding: EdgeInsets.only(top: AppWindowChrome.reservesHeaderInset ? AppDesignTokens.windowHeaderHeight : 0),
@@ -71,69 +86,67 @@ class _DownloadProgressWindowPageState extends ConsumerState<DownloadProgressWin
                   ),
                 ),
               Expanded(
-                child: task == null
-                    ? Center(
-                        child: tasks.isLoading
-                            ? const CircularProgressIndicator()
-                            : Text(error == null ? context.l10n.taskNotFound : context.l10n.failed),
-                      )
-                    : ScrollConfiguration(
-                        behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-                        child: CustomScrollView(
-                          slivers: [
-                            SliverPadding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: AppDesignTokens.space16,
-                                vertical: AppDesignTokens.space12,
-                              ),
-                              sliver: SliverToBoxAdapter(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                                  children: [
-                                    DownloadProgressHeader(task: task),
-                                    const SizedBox(height: AppDesignTokens.space8),
-                                    DownloadProgressActions(
-                                      task: task,
-                                      busy: _acting,
-                                      connectionsExpanded: _detailsExpanded,
-                                      onToggleConnections: _resizing ? null : _toggleDetails,
-                                      onCancel: () => _runAction(() => _cancel(task)),
-                                      onPause: () => _runAction(() => controller.pause(task.id)),
-                                      onResume: () => _runAction(() => controller.resume(task.id)),
-                                      onOpenFile: () => _openPath(task.storagePath),
-                                      onOpenDirectory: () => _openPath(task.storagePath, reveal: true),
+                child: task == null && error != null && !tasks.isLoading
+                    ? Center(child: Text(context.l10n.failed))
+                    : LayoutBuilder(
+                        builder: (context, constraints) {
+                          final expanded = task != null && _detailsExpanded && !task.isGroup;
+                          final bodyHeight = constraints.maxHeight;
+                          final inset = MediaQuery.sizeOf(context).height - bodyHeight;
+                          final summaryHeight = expanded
+                              ? math.min(math.max(0.0, _compactHeight - inset), math.max(0.0, bodyHeight - 96))
+                              : bodyHeight;
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: AppDesignTokens.space16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                SizedBox(
+                                  height: summaryHeight,
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: AppDesignTokens.space8),
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                                      children: [
+                                        Flexible(
+                                          child: DownloadProgressHeader(
+                                            task: task,
+                                            onHeightDelta: (delta) {
+                                              if (task != null) _fitWindow(inset + summaryHeight + delta, expanded);
+                                            },
+                                          ),
+                                        ),
+                                        const SizedBox(height: AppDesignTokens.space12),
+                                        if (task != null)
+                                          DownloadProgressActions(
+                                            task: task,
+                                            busy: _acting,
+                                            connectionsExpanded: _detailsExpanded,
+                                            onToggleConnections: () =>
+                                                setState(() => _detailsExpanded = !_detailsExpanded),
+                                            onCancel: () => _runAction(() => _cancel(task)),
+                                            onPause: () => _runAction(() => controller.pause(task.id)),
+                                            onResume: () => _runAction(() => controller.resume(task.id)),
+                                            onOpenFile: () => _openPath(task.storagePath),
+                                            onOpenDirectory: () => _openPath(task.storagePath, reveal: true),
+                                          ),
+                                      ],
                                     ),
-                                  ],
+                                  ),
                                 ),
-                              ),
+                                if (expanded)
+                                  SizedBox(
+                                    height: math.min(
+                                      AppDesignTokens.downloadProgressConnectionsHeight,
+                                      math.max(0.0, bodyHeight - summaryHeight - AppDesignTokens.space8),
+                                    ),
+                                    child: DownloadProgressConnections(task: task),
+                                  ),
+                              ],
                             ),
-                            if (_detailsExpanded && !task.isGroup)
-                              SliverLayoutBuilder(
-                                builder: (context, constraints) {
-                                  final available =
-                                      constraints.viewportMainAxisExtent -
-                                      constraints.precedingScrollExtent -
-                                      AppDesignTokens.space12;
-                                  return SliverPadding(
-                                    padding: const EdgeInsets.fromLTRB(
-                                      AppDesignTokens.space16,
-                                      0,
-                                      AppDesignTokens.space16,
-                                      AppDesignTokens.space12,
-                                    ),
-                                    sliver: SliverToBoxAdapter(
-                                      child: SizedBox(
-                                        height: available
-                                            .clamp(96.0, AppDesignTokens.downloadProgressConnectionsHeight)
-                                            .toDouble(),
-                                        child: DownloadProgressConnections(task: task),
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                          ],
-                        ),
+                          );
+                        },
                       ),
               ),
             ],
@@ -141,57 +154,74 @@ class _DownloadProgressWindowPageState extends ConsumerState<DownloadProgressWin
         ),
       ),
     );
+    final media = MediaQuery.of(context);
+    return MediaQuery(
+      data: media.copyWith(textScaler: _ProgressTextScaler(media.textScaler)),
+      child: ScrollConfiguration(behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false), child: content),
+    );
   }
 
-  Future<void> _toggleDetails() async {
-    if (_resizing) return;
-    final expanded = !_detailsExpanded;
-    setState(() {
-      _detailsExpanded = expanded;
-      _resizing = true;
-      if (expanded) _compactHeight = null;
-    });
-    try {
-      if (!AppWindowChrome.isDesktopWindow || await windowManager.isMaximized() || await windowManager.isFullScreen()) {
-        return;
+  void _fitWindow(double measuredHeight, bool expanded) {
+    if (!AppWindowChrome.isDesktopWindow || _closing) return;
+    final compact = math.max(AppDesignTokens.downloadProgressWindowSize.height, measuredHeight.ceilToDouble());
+    if (compact != _compactHeight) setState(() => _compactHeight = compact);
+    final detailsHeight = (AppDesignTokens.downloadProgressExpandedHeight - compact).clamp(
+      96.0,
+      AppDesignTokens.downloadProgressConnectionsHeight + AppDesignTokens.space8,
+    );
+    final height = expanded ? compact + detailsHeight : compact;
+    if (height == _targetHeight) return;
+    _targetHeight = height;
+    if (!_resizing) unawaited(_resizeWindow());
+  }
+
+  Future<void> _resizeWindow() async {
+    _resizing = true;
+    double target;
+    do {
+      target = _targetHeight;
+      try {
+        if (await windowManager.isMaximized() || await windowManager.isFullScreen()) break;
+        final size = await windowManager.getSize();
+        if (mounted && !_closing && target == _targetHeight && (size.height - target).abs() >= 1) {
+          await windowManager.setSize(Size(size.width, target));
+        }
+      } catch (error) {
+        debugPrint('Unable to resize the download progress window: $error');
       }
-      if (expanded) {
-        final compact = await windowManager.getBounds();
-        final height = await expandedWindowHeight(compact, AppDesignTokens.downloadProgressExpandedHeight);
-        if (!mounted || compact.height == height) return;
-        await windowManager.setSize(Size(compact.width, height));
-        _compactHeight = compact.height;
-      } else if (_compactHeight case final compactHeight?) {
-        final current = await windowManager.getSize();
-        if (!mounted) return;
-        await windowManager.setSize(Size(current.width, compactHeight));
-        _compactHeight = null;
-      }
-    } catch (error) {
-      debugPrint('Unable to resize the download progress window: $error');
-    } finally {
-      if (mounted) setState(() => _resizing = false);
-    }
+    } while (mounted && !_closing && target != _targetHeight);
+    _resizing = false;
   }
 
   Future<void> _cancel(TaskRecord task) async {
-    final keepFiles = await showTaskDeleteDialog(
+    final keepFiles = await showRememberedTaskDeleteDialog(
       context,
+      storage: ref.read(appStorageServiceProvider),
       taskCount: 1,
-      keepFiles: true,
       memberCount: task.isGroup ? task.members.length : null,
       fileCount: task.isGroup ? task.files.length : null,
     );
     if (keepFiles == null || !mounted) return;
     await ref.read(tasksControllerProvider.notifier).deleteSelected([task.id], force: !keepFiles);
-    if (mounted) await windowManager.close();
+    if (mounted) await _closeWindow();
+  }
+
+  Future<void> _closeWindow() async {
+    if (_closing) return;
+    _closing = true;
+    try {
+      await windowManager.close();
+    } catch (error) {
+      _closing = false;
+      if (mounted) showAppToast(context, error.toString(), type: AppToastType.error);
+    }
   }
 
   Future<void> _openPath(String path, {bool reveal = false}) => _runAction(() async {
     final opened = reveal ? await FileExplorer.reveal(path) : await FileExplorer.open(path);
     if (!mounted) return;
     if (opened) {
-      await windowManager.close();
+      await _closeWindow();
     } else {
       showAppToast(
         context,
@@ -212,4 +242,17 @@ class _DownloadProgressWindowPageState extends ConsumerState<DownloadProgressWin
       if (mounted) setState(() => _acting = false);
     }
   }
+}
+
+/// Use the desktop menu size as the minimum while preserving system text scaling.
+class _ProgressTextScaler extends TextScaler {
+  const _ProgressTextScaler(this.system);
+  final TextScaler system;
+
+  @override
+  double scale(double fontSize) =>
+      fontSize == 0 ? 0 : system.scale(math.max(fontSize, AppDesignTokens.desktopMenuFontSize));
+
+  @override
+  double get textScaleFactor => system.scale(AppDesignTokens.desktopMenuFontSize) / AppDesignTokens.desktopMenuFontSize;
 }

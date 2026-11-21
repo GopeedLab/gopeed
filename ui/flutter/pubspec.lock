@@ -1216,7 +1216,7 @@ packages:
     source: hosted
     version: "0.28.0"
   screen_retriever:
-    dependency: "direct main"
+    dependency: transitive
     description:
       name: screen_retriever
       sha256: ace919117a7520c13a50a6259e60c4a0d4cbe98809468792a91b5c5adada2aa6

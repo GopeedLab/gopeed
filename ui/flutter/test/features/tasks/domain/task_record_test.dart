@@ -30,6 +30,14 @@ void main() {
     'progress': {'used': 0, 'speed': 0, 'downloaded': 10, 'uploadSpeed': 0, 'uploaded': 0},
   });
 
+  test('the displayed download link prefers the original request URL', () {
+    final task = groupTestTask('redirect');
+    final request = task.meta.req;
+    expect(TaskRecord.fromApi(task).url, request.url);
+    request.rawUrl = 'https://example.com/original';
+    expect(TaskRecord.fromApi(task).url, request.rawUrl);
+  });
+
   test('browser capture label survives API and grouped task mapping', () {
     final task = groupTestTask('browser', parentId: 'group');
     expect(TaskRecord.fromApi(task).browserCaptureSession, isNull);

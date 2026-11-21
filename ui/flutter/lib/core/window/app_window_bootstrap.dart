@@ -66,11 +66,14 @@ class AppWindowBootstrap {
       ),
     };
 
-    windowManager.waitUntilReadyToShow(options, () async {
+    await windowManager.waitUntilReadyToShow(options, () async {
       if (AppWindowChrome.usesCustomChrome) {
         await windowManager.setAsFrameless();
       }
-      await windowManager.setTitle(title);
+      if (type == AppWindowType.downloadProgress) {
+        await windowManager.setResizable(false);
+        await windowManager.setMaximizable(false);
+      }
       await windowManager.setHasShadow(true);
       await _showSubWindowInForeground();
     });

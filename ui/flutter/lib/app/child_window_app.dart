@@ -1,4 +1,6 @@
 import 'package:flutter/widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:window_manager/window_manager.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
 import '../app/application/app_appearance_controller.dart';
@@ -7,22 +9,23 @@ import '../core/window/app_window_frame.dart';
 import '../core/window/app_window_payload.dart';
 import '../core/window/window_capability_transport.dart';
 import 'router/app_window_content.dart';
+import '../features/tasks/application/tasks_controller.dart';
 import '../l10n/l10n.dart';
 import '../shared/theme/app_component_themes.dart';
 import '../shared/theme/app_theme.dart';
 import '../shared/theme/app_theme_color.dart';
 
-class ChildWindowApp extends StatefulWidget {
+class ChildWindowApp extends ConsumerStatefulWidget {
   const ChildWindowApp({super.key, required this.payload, required this.session});
 
   final AppWindowPayload payload;
   final ChildWindowSession session;
 
   @override
-  State<ChildWindowApp> createState() => _ChildWindowAppState();
+  ConsumerState<ChildWindowApp> createState() => _ChildWindowAppState();
 }
 
-class _ChildWindowAppState extends State<ChildWindowApp> with WidgetsBindingObserver {
+class _ChildWindowAppState extends ConsumerState<ChildWindowApp> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
@@ -64,9 +67,17 @@ class _ChildWindowAppState extends State<ChildWindowApp> with WidgetsBindingObse
     };
     final locale = supportedLocaleFromConfig(appearance.locale);
 
+    String? taskName;
+    if (widget.payload.type == AppWindowType.downloadProgress) {
+      final name = tasksControllerProvider.select((tasks) => tasks.value?.findTask(widget.payload.taskId)?.name);
+      ref.listen(name, (_, next) async {
+        if (next != null) await windowManager.setTitle(next);
+      });
+      taskName = ref.watch(name);
+    }
     return shad.ShadcnApp(
       debugShowCheckedModeBanner: false,
-      onGenerateTitle: (context) => AppWindowBootstrap.subWindowTitle(widget.payload.type, context.l10n),
+      onGenerateTitle: (context) => taskName ?? AppWindowBootstrap.subWindowTitle(widget.payload.type, context.l10n),
       theme: AppTheme.light(themeColor),
       darkTheme: AppTheme.dark(themeColor),
       materialTheme: isLightTheme ? AppTheme.materialLight(themeColor) : AppTheme.materialDark(themeColor),
@@ -75,7 +86,11 @@ class _ChildWindowAppState extends State<ChildWindowApp> with WidgetsBindingObse
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       builder: (context, child) => AppComponentThemes(child: child ?? const SizedBox.shrink()),
-      home: AppWindowFrame(child: Builder(builder: _buildPage)),
+      home: AppWindowFrame(
+        title: widget.payload.type == AppWindowType.downloadProgress ? taskName ?? '' : null,
+        resizable: widget.payload.type != AppWindowType.downloadProgress,
+        child: Builder(builder: _buildPage),
+      ),
     );
   }
 

@@ -1,29 +1,45 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gopeed/api/model/task_stats.dart';
+import 'package:gopeed/core/capabilities/app_capabilities.dart';
+import 'package:gopeed/core/capabilities/capability_rpc.dart';
+import 'package:gopeed/core/capabilities/storage_capability.dart';
 import 'package:gopeed/features/tasks/application/tasks_controller.dart';
 import 'package:gopeed/features/tasks/application/task_stats_provider.dart';
 import 'package:gopeed/features/tasks/domain/task_record.dart';
 import 'package:gopeed/features/tasks/presentation/pages/download_progress_window_page.dart';
 import 'package:gopeed/features/tasks/presentation/widgets/download_progress_connections.dart';
 import 'package:gopeed/features/tasks/presentation/widgets/task_progress_bar.dart';
+import 'package:gopeed/features/tasks/presentation/widgets/task_info_row.dart';
 import 'package:gopeed/features/tasks/presentation/widgets/task_statistics/task_statistics_tab.dart';
 import 'package:gopeed/l10n/l10n.dart';
 import 'package:gopeed/shared/theme/app_theme.dart';
 import 'package:gopeed/shared/theme/app_design_tokens.dart';
 
 void main() {
+  setUpAll(() async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    final font = FontLoader('packages/shadcn_flutter/GeistSans');
+    for (final weight in ['Regular', 'Medium', 'Bold']) {
+      font.addFont(rootBundle.load('packages/shadcn_flutter/lib/fonts/Geist-$weight.otf'));
+    }
+    await font.load();
+  });
+
   Future<_Tasks> mount(
     WidgetTester tester, {
     Size size = AppDesignTokens.downloadProgressWindowSize,
     VoidCallback? onClose,
     bool dark = false,
     TaskStats? stats,
+    Future<TasksState>? firstSnapshot,
+    CapabilityRegistry? registry,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -31,7 +47,9 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     final container = ProviderContainer(
       overrides: [
-        tasksControllerProvider.overrideWith(_Tasks.new),
+        if (registry != null)
+          appCapabilitiesProvider.overrideWithValue(AppCapabilities(LocalCapabilityInvoker(registry))),
+        tasksControllerProvider.overrideWith(() => _Tasks(firstSnapshot)),
         taskStatsProvider.overrideWith((ref, request) async => stats),
       ],
     );
@@ -61,6 +79,34 @@ void main() {
     return container.read(tasksControllerProvider.notifier) as _Tasks;
   }
 
+  testWidgets('renders the field labels before the first snapshot and fills them in place', (tester) async {
+    final first = Completer<TasksState>();
+    final tasks = await mount(tester, firstSnapshot: first.future);
+    final rows = find.byType(TaskInfoRow);
+    final emptyValues = find.descendant(of: rows, matching: find.text(''));
+    final labels = ['Status', 'Size', 'Speed', 'Remaining'];
+    for (final label in labels) {
+      expect(find.text(label), findsOneWidget);
+    }
+    expect(emptyValues, findsNWidgets(4));
+    final initialPositions = [for (final label in labels) tester.getTopLeft(find.text(label))];
+    first.complete(TasksState(tasks: [_task(TaskStatus.downloading, speed: null, remainingSeconds: null)]));
+    await tester.idle();
+    await tester.pump();
+    expect(find.text('1 MB / 4 MB'), findsOneWidget);
+    expect(emptyValues, findsNWidgets(2));
+    tasks.emit(TaskStatus.downloading);
+    await tester.pump();
+    expect(find.text('128 KB/s'), findsOneWidget);
+    expect(find.text('30 seconds remaining'), findsOneWidget);
+    expect([for (final label in labels) tester.getTopLeft(find.text(label))], initialPositions);
+    tasks.emit(TaskStatus.completed);
+    await tester.pump();
+    expect(find.text('Remaining'), findsNothing);
+    expect(find.text('Download duration'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   for (final width in [320.0, 768.0, 1024.0]) {
     for (final dark in [false, true]) {
       testWidgets('download window adapts to width $width, dark=$dark', (tester) async {
@@ -71,9 +117,22 @@ void main() {
         expect(progress.height, 3);
         expect(progress.shimmer, isTrue);
         expect(find.text('128 KB/s'), findsOneWidget);
-        expect(find.text('archive.zip'), findsOneWidget);
+        expect(find.text('archive.zip'), findsNothing);
+        expect(find.text('Download Link'), findsNothing);
+        expect(find.text('https://example.com/archive.zip'), findsNothing);
+        final speed = tester.element(find.text('128 KB/s'));
+        expect(MediaQuery.textScalerOf(speed).scale(12), AppDesignTokens.desktopMenuFontSize);
         expect(find.text('1 MB / 4 MB'), findsOneWidget);
-        expect(find.text('30 seconds remaining'), findsOneWidget);
+        final remaining = find.text('30 seconds remaining');
+        expect(remaining, findsOneWidget);
+        final barTop = tester.getTopLeft(find.byType(TaskProgressBar)).dy;
+        await tester.drag(
+          find.ancestor(of: remaining, matching: find.byType(SingleChildScrollView)),
+          const Offset(0, -160),
+        );
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(tester.getTopLeft(find.byType(TaskProgressBar)).dy, barTop);
+        expect(barTop - tester.getBottomLeft(remaining).dy, greaterThanOrEqualTo(AppDesignTokens.space12));
         expect(find.text('Connection Status'), findsOneWidget);
         expect(find.byType(TaskStatisticsTab), findsNothing);
         expect(tester.takeException(), isNull);
@@ -120,7 +179,7 @@ void main() {
     await tester.pump(const Duration(seconds: 6));
   });
 
-  testWidgets('unknown size, download error, polling error and deletion are visible', (tester) async {
+  testWidgets('unknown size, download error and polling error are visible', (tester) async {
     final tasks = await mount(tester);
     tasks.emit(TaskStatus.downloading, unknownSize: true);
     await tester.pump();
@@ -134,27 +193,59 @@ void main() {
     await tester.pump();
     expect(find.textContaining('offline'), findsOneWidget);
     expect(find.text('Retry'), findsOneWidget);
-    tasks.remove();
-    await tester.pump();
-    expect(find.text('Task not found'), findsOneWidget);
-    expect(find.byKey(const ValueKey('download-progress-pause')), findsNothing);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });
 
-  for (final width in [320.0, AppDesignTokens.downloadProgressWindowSize.width]) {
+  testWidgets('only removing the displayed task closes the window', (tester) async {
+    var closes = 0;
+    final other = _task(TaskStatus.downloading, id: 'other');
+    final tasks = await mount(
+      tester,
+      onClose: () => closes++,
+      firstSnapshot: Future.value(TasksState(tasks: [other, _task(TaskStatus.downloading)])),
+    );
+    tasks.emit(TaskStatus.paused);
+    await tester.pump();
+    tasks.emit(TaskStatus.completed);
+    await tester.pump();
+    expect(closes, 0);
+    tasks.replace(TasksState(tasks: [other]));
+    await tester.pump();
+    tasks.remove();
+    await tester.pump();
+    expect(closes, 1);
+    expect(tasks.actions, isEmpty);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('a task removed during startup closes after the first successful refresh', (tester) async {
+    var closes = 0;
+    final first = Completer<TasksState>();
+    final tasks = await mount(tester, firstSnapshot: first.future, onClose: () => closes++);
+    expect(closes, 0);
+    first.completeError(StateError('offline'));
+    await tester.pump();
+    tasks.replace(TasksState(tasks: const [], lastError: StateError('offline')));
+    await tester.pump();
+    expect(closes, 0);
+    tasks.remove();
+    await tester.pump();
+    expect(closes, 1);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  for (final width in [320.0, 500.0]) {
     testWidgets(
-      'connection list scrolls inside an anchored native window at width $width',
+      'progress and connections grow past the screen edge in place at width $width',
       (tester) async {
         const windowChannel = MethodChannel('window_manager');
         const screenChannel = MethodChannel('dev.leanflutter.plugins/screen_retriever');
         final messenger = tester.binding.defaultBinaryMessenger;
-        final compactHeight = width == 320 ? 320.0 : AppDesignTokens.downloadProgressWindowSize.height;
-        final compact = Rect.fromLTWH(820, 210, width, compactHeight);
-        final displayHeight = width == 320 ? 900.0 : 570.0;
-        final expandedHeight = width == 320 ? AppDesignTokens.downloadProgressExpandedHeight : 400.0;
-        final expanded = compact.topLeft & Size(width, expandedHeight);
-        var bounds = compact;
+        const screenBottom = 900.0;
+        final initialHeight = AppDesignTokens.downloadProgressWindowSize.height;
+        var bounds = Rect.fromLTWH(80, screenBottom - initialHeight, width, initialHeight);
+        var displayQueries = 0;
         final resizes = <Rect>[];
         messenger.setMockMethodCallHandler(windowChannel, (call) async {
           switch (call.method) {
@@ -175,19 +266,13 @@ void main() {
           throw MissingPluginException(call.method);
         });
         messenger.setMockMethodCallHandler(screenChannel, (call) async {
-          expect(call.method, 'getAllDisplays');
+          displayQueries++;
           return {
             'displays': [
               {
                 'id': 'primary',
-                'size': {'width': 800.0, 'height': 900.0},
+                'size': {'width': 800.0, 'height': screenBottom},
                 'visiblePosition': {'dx': 0.0, 'dy': 0.0},
-              },
-              {
-                'id': 'secondary',
-                'size': {'width': 800.0, 'height': displayHeight + 40},
-                'visiblePosition': {'dx': 800.0, 'dy': 40.0},
-                'visibleSize': {'width': 800.0, 'height': displayHeight},
               },
             ],
           };
@@ -203,25 +288,65 @@ void main() {
             const HttpConnectionStats(downloaded: 2, total: 5, completed: false, failed: false, retryTimes: 0),
           ),
         );
-        await mount(tester, size: compact.size, stats: stats);
+        final tasks = await mount(tester, size: bounds.size, stats: stats);
+        await tester.pump();
+        final compact = bounds;
+        resizes.clear();
         final details = find.byKey(const ValueKey('download-progress-details'));
         final pause = find.byKey(const ValueKey('download-progress-pause'));
         final cancel = find.byKey(const ValueKey('download-progress-cancel'));
+        final bar = find.byType(TaskProgressBar);
+        if (width == 500) {
+          expect(compact.height, 224);
+          tasks.replace(TasksState(tasks: [_task(TaskStatus.downloading, uploading: true)]));
+          await tester.pump();
+          await tester.pump();
+          final fields = find.ancestor(of: find.text('Upload speed'), matching: find.byType(SingleChildScrollView));
+          final fieldViewport = tester.getRect(fields);
+          expect(tester.getRect(bar).top, greaterThan(fieldViewport.bottom));
+          expect(tester.getRect(bar).bottom, lessThan(tester.getRect(details).top));
+          expect(bounds.topLeft, compact.topLeft);
+          expect(bounds.bottom, greaterThan(screenBottom));
+          expect(tester.getRect(find.text('30 seconds remaining')).bottom, lessThanOrEqualTo(fieldViewport.bottom));
+          tasks.emit(TaskStatus.downloading);
+          await tester.pump();
+          await tester.pump();
+          expect(bounds, compact);
+          resizes.clear();
+        }
         expect(tester.getCenter(pause).dx, greaterThan(tester.getCenter(details).dx));
         expect(tester.getCenter(cancel).dx, greaterThan(tester.getCenter(details).dx));
         if (width == AppDesignTokens.downloadProgressWindowSize.width) {
           expect(tester.getCenter(details).dy, tester.getCenter(pause).dy);
           expect(tester.getCenter(details).dy, tester.getCenter(cancel).dy);
+          final controlsBottom = math.max(tester.getBottomLeft(details).dy, tester.getBottomLeft(pause).dy);
+          expect(compact.height - controlsBottom, closeTo(AppDesignTokens.space8, 2));
         }
         final controlsTop = tester.getTopLeft(details).dy;
         await tester.tap(details);
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 250));
-        expect(resizes, [expanded]);
+        final expanded = bounds;
+        expect(expanded.topLeft, compact.topLeft);
+        expect(expanded.width, compact.width);
+        final expectedHeight = math.min(
+          AppDesignTokens.downloadProgressExpandedHeight,
+          compact.height + AppDesignTokens.downloadProgressConnectionsHeight + AppDesignTokens.space8,
+        );
+        expect(expanded.height, expectedHeight);
+        expect(expanded.bottom, greaterThan(screenBottom));
         expect(find.byType(TaskStatisticsTab), findsOneWidget);
         expect(find.text('Download Link'), findsNothing);
         expect(find.text('Storage Path'), findsNothing);
         final connections = find.byType(DownloadProgressConnections);
+        expect(tester.getBottomLeft(connections).dy, expanded.height - AppDesignTokens.space8);
+        expect(
+          tester.getSize(connections).height,
+          lessThanOrEqualTo(AppDesignTokens.downloadProgressConnectionsHeight),
+        );
+        if (width == 500) {
+          expect(tester.getSize(connections).height, AppDesignTokens.downloadProgressConnectionsHeight);
+        }
         final scrollbar = find.descendant(of: connections, matching: find.byType(Scrollbar));
         expect(tester.widget<Scrollbar>(scrollbar).thumbVisibility, isFalse);
         final scrollable = find.descendant(of: connections, matching: find.byType(Scrollable));
@@ -236,50 +361,58 @@ void main() {
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 250));
         expect(resizes, [expanded, compact]);
+        expect(displayQueries, 0);
         expect(find.byType(TaskStatisticsTab), findsNothing);
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox());
       },
-      variant: TargetPlatformVariant({TargetPlatform.macOS}),
+      variant: TargetPlatformVariant({TargetPlatform.windows, TargetPlatform.macOS, TargetPlatform.linux}),
     );
   }
 
   for (final deleteFiles in [false, true]) {
-    testWidgets('cancel confirms file deletion=$deleteFiles before closing', (tester) async {
-      var closed = false;
-      final tasks = await mount(tester, onClose: () => closed = true);
-      await tester.tap(find.byKey(const ValueKey('download-progress-cancel')));
+    testWidgets('cancel restores the shared switch and remembers file deletion=$deleteFiles', (tester) async {
+      var closes = 0;
+      var keepFiles = deleteFiles;
+      final registry = CapabilityRegistry(createAppCapabilityCodecs())
+        ..bind(StorageMethods.getLastDeleteTaskKeep, (_) => keepFiles)
+        ..bind(StorageMethods.saveLastDeleteTaskKeep, (value) {
+          keepFiles = value;
+          return const RpcUnit();
+        });
+      final tasks = await mount(tester, onClose: () => closes++, registry: registry);
+      final cancel = find.byKey(const ValueKey('download-progress-cancel'));
+      final deleteSwitch = find.byKey(const ValueKey('task-delete-files-switch'));
+      await tester.tap(cancel);
       await tester.pump(const Duration(milliseconds: 300));
+      expect(tester.widget<Switch>(deleteSwitch).value, !deleteFiles);
+      await tester.tap(deleteSwitch);
+      await tester.pump();
+      await tester.tap(find.byType(SecondaryButton));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(keepFiles, deleteFiles);
       expect(tasks.actions, isEmpty);
-      if (deleteFiles) {
-        await tester.tap(find.byKey(const ValueKey('task-delete-files-switch')));
-        await tester.pump();
-      }
+      expect(closes, 0);
+
+      await tester.tap(cancel);
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(tester.widget<Switch>(deleteSwitch).value, !deleteFiles);
+      await tester.tap(deleteSwitch);
+      await tester.pump();
       await tester.tap(find.byType(DestructiveButton));
       await tester.pump(const Duration(milliseconds: 300));
+      expect(keepFiles, !deleteFiles);
       expect(tasks.actions, ['delete:download:$deleteFiles']);
-      expect(closed, isTrue);
+      expect(closes, 1);
       await tester.pumpWidget(const SizedBox());
     });
   }
-
-  testWidgets('dismissing cancellation keeps the task and window', (tester) async {
-    var closed = false;
-    final tasks = await mount(tester, onClose: () => closed = true);
-    await tester.tap(find.byKey(const ValueKey('download-progress-cancel')));
-    await tester.pump(const Duration(milliseconds: 300));
-    await tester.tap(find.byType(SecondaryButton));
-    await tester.pump(const Duration(milliseconds: 300));
-    expect(tasks.actions, isEmpty);
-    expect(closed, isFalse);
-    await tester.pumpWidget(const SizedBox());
-  });
 
   for (final width in [320.0, 520.0]) {
     testWidgets(
       'completed file actions stay visible at compact width $width',
       (tester) async {
-        final tasks = await mount(tester, size: Size(width, 440));
+        final tasks = await mount(tester, size: Size(width, AppDesignTokens.downloadProgressWindowSize.height));
         final openFile = find.byKey(const ValueKey('download-progress-open-file'));
         final openFolder = find.byKey(const ValueKey('download-progress-open-folder'));
         expect(openFile, findsNothing);
@@ -373,6 +506,9 @@ void main() {
 }
 
 class _Tasks extends TasksController {
+  _Tasks(this.firstSnapshot);
+
+  final Future<TasksState>? firstSnapshot;
   final actions = <String>[];
   Completer<void>? pauseRequest;
   @override
@@ -382,7 +518,7 @@ class _Tasks extends TasksController {
   }
 
   @override
-  Future<TasksState> build() async => TasksState(tasks: [_task(TaskStatus.downloading)]);
+  Future<TasksState> build() async => await firstSnapshot ?? TasksState(tasks: [_task(TaskStatus.downloading)]);
   void emit(
     TaskStatus status, {
     bool unknownSize = false,
@@ -394,7 +530,8 @@ class _Tasks extends TasksController {
       tasks: [_task(status, unknownSize: unknownSize, error: error, isFolder: isFolder, isGroup: isGroup)],
     ),
   );
-  void remove() => state = const AsyncData(TasksState(tasks: []));
+  void replace(TasksState snapshot) => state = AsyncData(snapshot);
+  void remove() => replace(const TasksState(tasks: []));
   void pollFailure() => state = AsyncData(state.requireValue.copyWith(lastError: StateError('offline')));
   @override
   Future<void> pause(String id) async {
@@ -412,12 +549,16 @@ class _Tasks extends TasksController {
 
 TaskRecord _task(
   TaskStatus status, {
+  String id = 'download',
   bool unknownSize = false,
+  String? speed = '128 KB/s',
+  int? remainingSeconds = 30,
   String? error,
   bool isFolder = false,
   bool isGroup = false,
+  bool uploading = false,
 }) => TaskRecord(
-  id: 'download',
+  id: id,
   name: 'archive.zip',
   status: status,
   isFolder: isFolder,
@@ -425,14 +566,15 @@ TaskRecord _task(
   downloaded: '1 MB',
   total: unknownSize ? null : '4 MB',
   progress: unknownSize ? null : 0.25,
-  speed: '128 KB/s',
+  speed: speed,
   speedBytes: 131072,
   downloadedBytes: 1048576,
   downloadDuration: const Duration(seconds: 16),
-  remainingSeconds: 30,
+  remainingSeconds: remainingSeconds,
   error: error,
   url: 'https://example.com/archive.zip',
   storagePath: '/downloads/archive.zip',
   files: const [],
-  uploading: false,
+  uploading: uploading,
+  uploadSpeed: uploading ? '64 KB/s' : null,
 );
