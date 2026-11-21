@@ -1,0 +1,5 @@
+go version go1.26.0 darwin/arm64
+ProductName:		macOS
+ProductVersion:		14.6.1
+BuildVersion:		23G93
+8589934592

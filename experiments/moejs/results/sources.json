@@ -1,0 +1,20 @@
+{
+  "bilibili": {
+    "repo": "monkeyWie/gopeed-extension-bilibili",
+    "commit": "b91db1ea52e975d8de9823f01a7af5f9ea83792f",
+    "bytes": 920556,
+    "sha256": "47d78e7596dfac5524bfaa7c24ff802350432c4cc22ec2e5047380212afed1e0"
+  },
+  "youtube": {
+    "repo": "monkeyWie/gopeed-extension-youtube",
+    "commit": "eeb78d168e053e9a2aad1dbaa309fc11f6992f7c",
+    "bytes": 3409614,
+    "sha256": "d0716f768216ea6764d474115db15303b842a6e39eec3bde75db2b6175bd6aec"
+  },
+  "twitter": {
+    "repo": "monkeyWie/gopeed-extension-twitter",
+    "commit": "a963428bbfdbee9510bf224b00b384e37514ce77",
+    "bytes": 66243,
+    "sha256": "19cfc174be730fbd6129be3877cde46de00da40deb20684b8279af593a75bc86"
+  }
+}
