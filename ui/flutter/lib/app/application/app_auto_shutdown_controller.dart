@@ -28,7 +28,31 @@ const _pendingExtractStatuses = {
 class TaskActivity {
   const TaskActivity({required this.activeDownloads, required this.pendingExtractions});
 
-  /// Tasks in the running or waiting state.
+  /// Reads a task list into one sample.
+  ///
+  /// A task counts as active while it downloads (`running` / `wait`) or while a
+  /// torrent still seeds. The backend marks a finished BT task as `done` and
+  /// leaves `uploading` set for as long as the seed runs, so the status alone
+  /// would report an idle queue in the middle of a seed. A paused task is a
+  /// deliberate stop that never finishes on its own, so it must not block the
+  /// exit; a task paused while seeding is paused, not seeding.
+  factory TaskActivity.of(Iterable<api_task.Task> tasks) {
+    var activeDownloads = 0;
+    var pendingExtractions = 0;
+    for (final task in tasks) {
+      final downloading = task.status == api_task.Status.running || task.status == api_task.Status.wait;
+      final seeding = task.uploading && task.status == api_task.Status.done;
+      if (downloading || seeding) {
+        activeDownloads++;
+      }
+      if (_pendingExtractStatuses.contains(task.progress.extractStatus)) {
+        pendingExtractions++;
+      }
+    }
+    return TaskActivity(activeDownloads: activeDownloads, pendingExtractions: pendingExtractions);
+  }
+
+  /// Tasks that are still downloading or seeding.
   final int activeDownloads;
 
   /// Archives that are queued for, or still in, extraction.
@@ -52,6 +76,7 @@ class AppAutoShutdownController extends AsyncNotifier<AppAutoShutdownState> {
   StreamSubscription<TaskEvent>? _subscription;
   Timer? _timer;
   bool _exiting = false;
+  bool _batchEndedWithFailure = false;
   int _pollAttempts = 0;
 
   @override
@@ -65,6 +90,9 @@ class AppAutoShutdownController extends AsyncNotifier<AppAutoShutdownState> {
     );
     ref.onDispose(_stop);
     _stop();
+    // A rebuild means the switch was toggled, which starts a fresh watch: a
+    // failure recorded before it was turned off must not block the next exit.
+    _batchEndedWithFailure = false;
     if (!enabled || kIsWeb || !Util.isDesktop()) {
       return const AppAutoShutdownState();
     }
@@ -75,6 +103,7 @@ class AppAutoShutdownController extends AsyncNotifier<AppAutoShutdownState> {
   void _onTaskEvent(TaskEvent event) {
     if (_exiting) return;
     if (event.type != TaskEventType.done && event.type != TaskEventType.error) return;
+    _batchEndedWithFailure = event.type == TaskEventType.error;
     _pollAttempts = 0;
     _schedule(settleDelay);
   }
@@ -102,6 +131,13 @@ class AppAutoShutdownController extends AsyncNotifier<AppAutoShutdownState> {
       _schedule(pollInterval);
       return;
     }
+    if (_batchEndedWithFailure) {
+      // The switch promises a quit once the downloads are done, and a failed
+      // one is not done: keep the window so the error stays visible. A later
+      // successful task clears the flag and the next idle check exits.
+      logger.i('auto shutdown: the batch ended with a failure, keep the app open');
+      return;
+    }
     await shutdown();
   }
 
@@ -120,17 +156,7 @@ class AppAutoShutdownController extends AsyncNotifier<AppAutoShutdownState> {
   @visibleForTesting
   Future<TaskActivity> readActivity() async {
     final tasks = await ref.read(gopeedServiceProvider).getTasks(api_task.Status.values);
-    var activeDownloads = 0;
-    var pendingExtractions = 0;
-    for (final task in tasks) {
-      if (task.status == api_task.Status.running || task.status == api_task.Status.wait) {
-        activeDownloads++;
-      }
-      if (_pendingExtractStatuses.contains(task.progress.extractStatus)) {
-        pendingExtractions++;
-      }
-    }
-    return TaskActivity(activeDownloads: activeDownloads, pendingExtractions: pendingExtractions);
+    return TaskActivity.of(tasks);
   }
 
   /// Exits through the same path as the tray menu, which stops the services
