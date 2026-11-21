@@ -10,7 +10,8 @@ ResolveTask _$ResolveTaskFromJson(Map<String, dynamic> json) => ResolveTask(
   req: json['req'] == null
       ? null
       : Request.fromJson(json['req'] as Map<String, dynamic>),
+  id: json['id'] as String?,
 );
 
 Map<String, dynamic> _$ResolveTaskToJson(ResolveTask instance) =>
-    <String, dynamic>{'req': ?instance.req};
+    <String, dynamic>{'req': ?instance.req, 'id': ?instance.id};

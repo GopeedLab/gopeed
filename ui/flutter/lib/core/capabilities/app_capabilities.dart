@@ -93,6 +93,10 @@ void _bindGopeed(CapabilityRegistry registry, _ConfigStore configStore) {
       (p) => api.getMirrorCandidates(p['provider'] as String, p['url'] as String),
     )
     ..bind(GopeedMethods.resolve, api.resolve)
+    ..bind(GopeedMethods.releaseResolve, (id) async {
+      await api.releaseResolve(id);
+      return const RpcUnit();
+    })
     ..bind(GopeedMethods.createTask, api.createTask)
     ..bind(GopeedMethods.createTaskBatch, api.createTaskBatch)
     ..bind(GopeedMethods.patchTask, (params) async {
