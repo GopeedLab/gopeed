@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../api/model/create_task.dart';
+import '../../application/app_auto_shutdown_controller.dart';
 import '../../application/app_deep_link_controller.dart';
 import '../../application/app_notification_controller.dart';
 import '../../application/app_runtime_controller.dart';
@@ -62,6 +63,7 @@ class _MainShellState extends ConsumerState<MainShell> {
       ref.watch(appPlatformControllerProvider);
       ref.watch(appDeepLinkControllerProvider);
       ref.watch(appNotificationControllerProvider);
+      ref.watch(appAutoShutdownControllerProvider);
     }
     // Keep the nested Navigator mounted even while the runtime is starting.
     return widget.child;

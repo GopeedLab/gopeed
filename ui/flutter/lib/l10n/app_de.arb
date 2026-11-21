@@ -50,6 +50,8 @@
   "autoTorrentEnable": "BT-Aufgaben automatisch aus .torrent-Dateien erstellen",
   "autoTorrentDeleteAfterDownload": ".torrent-Datei nach BT-Aufgabenerstellung löschen",
   "autoDeleteMissingFileTasks": "Fehlende Dateiaufgaben automatisch löschen",
+  "autoCloseWhenAllTasksDone": "App beenden, wenn alle Aufgaben fertig sind",
+  "autoCloseWhenAllTasksDoneDescription": "Beendet Gopeed, sobald alle Download-Aufgaben abgeschlossen sind. Pausierte Aufgaben bleiben für den nächsten Start erhalten.",
   "items": "{count} Artikel",
   "subscribeTracker": "Abonnement-Tracker",
   "subscribeFail": "Anmeldung fehlgeschlagen. Bitte überprüfen Sie das Netzwerk oder versuchen Sie es später erneut",

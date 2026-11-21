@@ -50,6 +50,8 @@
   "autoTorrentEnable": ".torrent 파일로 BT 작업 자동 생성",
   "autoTorrentDeleteAfterDownload": "BT 작업 생성 후 .torrent 파일 삭제",
   "autoDeleteMissingFileTasks": "파일이 없는 작업 자동 삭제",
+  "autoCloseWhenAllTasksDone": "모든 작업이 끝나면 앱 종료",
+  "autoCloseWhenAllTasksDoneDescription": "모든 다운로드 작업이 끝나면 Gopeed를 종료합니다. 일시 중지된 작업은 다음 실행까지 유지됩니다.",
   "items": "{count}개 항목",
   "subscribeTracker": "트래커 구독",
   "subscribeFail": "구독에 실패했습니다. 네트워크를 확인하거나 나중에 다시 시도해 주세요",
