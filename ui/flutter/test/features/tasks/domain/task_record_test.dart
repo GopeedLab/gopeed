@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gopeed/api/model/task.dart' as api;
+import 'package:gopeed/api/model/request.dart';
 import 'package:gopeed/core/icons/gopeed_icons.dart';
 import 'package:gopeed/features/tasks/domain/task_record.dart';
 
@@ -27,6 +28,22 @@ void main() {
       },
     },
     'progress': {'used': 0, 'speed': 0, 'downloaded': 10, 'uploadSpeed': 0, 'uploaded': 0},
+  });
+
+  test('the displayed download link prefers the original request URL', () {
+    final task = groupTestTask('redirect');
+    final request = task.meta.req;
+    expect(TaskRecord.fromApi(task).url, request.url);
+    request.rawUrl = 'https://example.com/original';
+    expect(TaskRecord.fromApi(task).url, request.rawUrl);
+  });
+
+  test('browser capture label survives API and grouped task mapping', () {
+    final task = groupTestTask('browser', parentId: 'group');
+    expect(TaskRecord.fromApi(task).browserCaptureSession, isNull);
+    task.meta.req.labels = {Request.browserCaptureLabel: 'session-id'};
+    expect(TaskRecord.fromApi(task).browserCaptureSession, 'session-id');
+    expect(taskRecordsFromApi([task]).single.browserCaptureSession, 'session-id');
   });
 
   test('members aggregate through parentId without a parent task', () {

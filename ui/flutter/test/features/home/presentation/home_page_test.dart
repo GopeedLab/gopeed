@@ -24,7 +24,7 @@ import 'package:gopeed/core/common/start_config.dart';
 import 'package:gopeed/core/common/api_server_state.dart';
 import 'package:gopeed/core/capabilities/app_capabilities.dart';
 import 'package:gopeed/core/capabilities/capability_rpc.dart';
-import 'package:gopeed/core/capabilities/gopeed_capability.dart';
+import 'package:gopeed/core/capabilities/storage_capability.dart';
 import 'package:gopeed/features/tasks/presentation/widgets/task_file_manager.dart';
 import 'package:gopeed/shared/theme/app_theme.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
@@ -155,7 +155,8 @@ Future<({GroupTasks controller, GoRouter router})> showHome(WidgetTester tester,
   addTearDown(router.dispose);
   late GroupTasks controller;
   final registry = CapabilityRegistry(createAppCapabilityCodecs())
-    ..bind(GopeedMethods.putConfig, (_) => const RpcUnit());
+    ..bind(StorageMethods.getLastDeleteTaskKeep, (_) => true)
+    ..bind(StorageMethods.saveLastDeleteTaskKeep, (_) => const RpcUnit());
   await tester.pumpWidget(
     ProviderScope(
       overrides: [

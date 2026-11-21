@@ -169,8 +169,7 @@ void _bindGopeed(CapabilityRegistry registry, _ConfigStore configStore) {
     });
 }
 
-// Shared by local and child-window handlers. History owns its config field;
-// full config snapshots must preserve the latest history inside the same queue.
+// Preserve fields owned by storage capabilities when saving a full config snapshot.
 class _ConfigStore {
   Future<void> _tail = Future<void>.value();
 
@@ -187,21 +186,31 @@ class _ConfigStore {
     return _run(() async {
       final latest = await api.getConfig();
       snapshot.extra.createHistory = latest.extra.createHistory;
+      snapshot.extra.lastDeleteTaskKeep = latest.extra.lastDeleteTaskKeep;
       await api.putConfig(snapshot);
     });
   }
 
-  Future<void> updateHistory(void Function(List<String>) mutation) => _run(() async {
+  Future<void> updateExtra(void Function(ExtraConfig) mutation) => _run(() async {
     final config = await api.getConfig();
-    final history = List<String>.of(config.extra.createHistory);
-    mutation(history);
-    config.extra.createHistory = history;
+    mutation(config.extra);
     await api.putConfig(config);
+  });
+
+  Future<void> updateHistory(void Function(List<String>) mutation) => updateExtra((extra) {
+    final history = List<String>.of(extra.createHistory);
+    mutation(history);
+    extra.createHistory = history;
   });
 }
 
 void _bindStorage(CapabilityRegistry registry, _ConfigStore configStore) {
   registry
+    ..bind(StorageMethods.getLastDeleteTaskKeep, (_) async => (await configStore.get()).extra.lastDeleteTaskKeep)
+    ..bind(StorageMethods.saveLastDeleteTaskKeep, (keepFiles) async {
+      await configStore.updateExtra((extra) => extra.lastDeleteTaskKeep = keepFiles);
+      return const RpcUnit();
+    })
     ..bind(StorageMethods.getCreateHistory, (_) async {
       final config = await configStore.get();
       return config.extra.createHistory;

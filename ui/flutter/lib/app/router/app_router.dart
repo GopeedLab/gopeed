@@ -33,24 +33,24 @@ class AppRouter {
   static bool get _isMobile =>
       !kIsWeb && (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS);
 
-  static Future<void> openCreateTask({CreateTask? createTask}) =>
-      openWindow(AppWindowPayload.createTask(createTask: createTask?.toJson()));
+  static Future<bool> openDownloadProgress(String taskId) =>
+      AppWindowLauncher.open(AppWindowPayload.downloadProgress(taskId));
 
-  /// Opens a desktop child window, a Web modal, or a native mobile page.
-  /// Callers never need to choose a presentation or implement a fallback.
-  static Future<void> openWindow(AppWindowPayload payload) async {
-    final location = AppWindowContent.location(payload.type);
+  /// Opens the task form as a desktop child window, Web modal, or mobile page.
+  static Future<void> openCreateTask({CreateTask? createTask}) async {
+    const location = '/create';
+    final payload = AppWindowPayload.createTask(createTask: createTask?.toJson());
     if (AppWindowChrome.isDesktopWindow && await AppWindowLauncher.open(payload)) return;
     final context = rootNavigatorKey.currentContext;
     if (context == null || !context.mounted) return;
     final router = GoRouter.of(context);
     if (router.state.uri.path == location) {
       // Native share intents may arrive while the creation page is already open.
-      if (payload.type == AppWindowType.createTask && payload.createTask != null) {
+      if (payload.createTask case final data?) {
         ProviderScope.containerOf(
           context,
           listen: false,
-        ).read(pendingCreateTaskProvider.notifier).set(CreateTask.fromJson(payload.createTask!));
+        ).read(pendingCreateTaskProvider.notifier).set(CreateTask.fromJson(data));
       }
       return;
     }

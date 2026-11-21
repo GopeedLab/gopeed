@@ -6,6 +6,23 @@ import 'package:gopeed/core/window/app_window_payload.dart';
 import 'package:gopeed/l10n/l10n.dart';
 
 void main() {
+  test('download progress payload round-trips only a task ID', () {
+    final raw = AppWindowPayload.downloadProgress('task-123').toRaw();
+    expect(jsonDecode(raw), {'type': 'download_progress', 'taskId': 'task-123'});
+    final payload = AppWindowPayload.fromRaw(raw);
+    expect(payload.type, AppWindowType.downloadProgress);
+    expect(payload.taskId, 'task-123');
+    expect(AppWindowBootstrap.subWindowTitle(payload.type, appLocalizationsFor('zh')), 'Gopeed - 下载进度弹窗');
+  });
+
+  test('invalid progress window task IDs are rejected', () {
+    for (final taskId in [null, '', 42, <String>[]]) {
+      final payload = AppWindowPayload.fromRaw(jsonEncode({'type': 'download_progress', 'taskId': taskId}));
+      expect(payload.type, AppWindowType.main);
+      expect(payload.taskId, isEmpty);
+    }
+  });
+
   test('create-task child window has a localized native title', () {
     expect(
       AppWindowBootstrap.subWindowTitle(AppWindowType.createTask, appLocalizationsFor('en')),

@@ -47,6 +47,29 @@ class AppWindowBootstrap {
     await windowManager.ensureInitialized();
     final title = subWindowTitle(type, appLocalizationsFor(localeConfig));
 
+    if (type == AppWindowType.downloadProgress) {
+      final progressOptions = WindowOptions(
+        size: AppDesignTokens.downloadProgressWindowSize,
+        center: true,
+        skipTaskbar: false,
+        backgroundColor: Colors.transparent,
+        title: title,
+        titleBarStyle: TitleBarStyle.hidden,
+      );
+      await windowManager.waitUntilReadyToShow(progressOptions, () async {
+        if (AppWindowChrome.usesCustomChrome) {
+          await windowManager.setAsFrameless();
+        }
+        await windowManager.setResizable(false);
+        await windowManager.setMaximizable(false);
+        if (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.macOS) {
+          await windowManager.setHasShadow(true);
+        }
+        await _showSubWindowInForeground();
+      });
+      return;
+    }
+
     final options = switch (type) {
       AppWindowType.createTask => WindowOptions(
         size: AppDesignTokens.childWindowSize,
@@ -81,6 +104,7 @@ class AppWindowBootstrap {
   static String subWindowTitle(AppWindowType type, AppLocalizations l10n) {
     return switch (type) {
       AppWindowType.createTask => 'Gopeed - ${l10n.create}',
+      AppWindowType.downloadProgress => 'Gopeed - ${l10n.downloadProgressWindow}',
       _ => 'Gopeed',
     };
   }

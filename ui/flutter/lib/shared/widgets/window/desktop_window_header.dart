@@ -8,20 +8,58 @@ import '../../theme/app_design_tokens.dart';
 import '../../theme/app_palette.dart';
 
 class DesktopWindowHeader extends StatelessWidget {
-  const DesktopWindowHeader({super.key});
+  const DesktopWindowHeader({super.key, this.title, this.maximizable = true});
+
+  final String? title;
+  final bool maximizable;
 
   @override
   Widget build(BuildContext context) {
-    if (!AppWindowChrome.usesCustomChrome) {
+    if (!AppWindowChrome.usesCustomChrome && title == null) {
       return const SizedBox.shrink();
     }
 
+    final caption = title == null
+        ? const SizedBox.expand()
+        : Padding(
+            padding: EdgeInsetsDirectional.only(
+              start: defaultTargetPlatform == TargetPlatform.macOS
+                  ? AppDesignTokens.railWidth
+                  : AppDesignTokens.space12,
+              end: AppDesignTokens.space8,
+            ),
+            child: Row(
+              children: [
+                Image.asset('assets/icon/icon_512.png', width: 16, height: 16, excludeFromSemantics: true),
+                const SizedBox(width: AppDesignTokens.space8),
+                Expanded(
+                  child: Text(
+                    title!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: AppPalette.of(context).textPrimary,
+                      fontSize: AppDesignTokens.desktopMenuFontSize,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
     return SizedBox(
       height: AppDesignTokens.windowHeaderHeight,
-      child: const Row(
+      child: Row(
         children: [
-          Expanded(child: DragToMoveArea(child: SizedBox.expand())),
-          WindowCaptionControls(),
+          Expanded(
+            child: maximizable
+                ? DragToMoveArea(child: caption)
+                : GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onPanStart: (_) => windowManager.startDragging(),
+                    child: caption,
+                  ),
+          ),
+          if (AppWindowChrome.usesCustomChrome) WindowCaptionControls(maximizable: maximizable),
         ],
       ),
     );
@@ -29,7 +67,9 @@ class DesktopWindowHeader extends StatelessWidget {
 }
 
 class WindowCaptionControls extends StatefulWidget {
-  const WindowCaptionControls({super.key});
+  const WindowCaptionControls({super.key, this.maximizable = true});
+
+  final bool maximizable;
 
   @override
   State<WindowCaptionControls> createState() => _WindowCaptionControlsState();
@@ -59,6 +99,7 @@ class _WindowCaptionControlsState extends State<WindowCaptionControls> with Wind
   void onWindowUnmaximize() => _refreshState();
 
   Future<void> _refreshState() async {
+    if (!widget.maximizable) return;
     final value = await windowManager.isMaximized();
     if (mounted) {
       setState(() => _isMaximized = value);
@@ -98,7 +139,7 @@ class _WindowCaptionControlsState extends State<WindowCaptionControls> with Wind
           background: isLinux ? const Color(0x0DFFFFFF) : Colors.transparent,
           hoverBackground: isLinux ? const Color(0x1AE95420) : palette.captionButtonHover,
           hoverForeground: textColor,
-          onPressed: _isMaximized ? windowManager.unmaximize : windowManager.maximize,
+          onPressed: !widget.maximizable ? null : (_isMaximized ? windowManager.unmaximize : windowManager.maximize),
         ),
         SizedBox(width: isLinux ? 8 : 4),
         _CaptionControlButton(
@@ -130,7 +171,7 @@ class _CaptionControlButton extends StatefulWidget {
 
   final Widget icon;
   final Color foreground;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
   final double size;
   final double radius;
   final Color background;
@@ -147,13 +188,17 @@ class _CaptionControlButtonState extends State<_CaptionControlButton> {
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
-    final background = _hovered ? (widget.hoverBackground ?? palette.captionButtonHover) : widget.background;
-    final foreground = _hovered ? (widget.hoverForeground ?? widget.foreground) : widget.foreground;
+    final enabled = widget.onPressed != null;
+    final hovered = enabled && _hovered;
+    final background = hovered ? (widget.hoverBackground ?? palette.captionButtonHover) : widget.background;
+    final foreground = !enabled
+        ? palette.textMuted
+        : (hovered ? widget.hoverForeground ?? widget.foreground : widget.foreground);
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
-      cursor: SystemMouseCursors.click,
+      cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
       child: GestureDetector(
         onTap: widget.onPressed,
         child: Container(

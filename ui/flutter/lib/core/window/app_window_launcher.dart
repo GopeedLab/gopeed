@@ -33,12 +33,13 @@ class AppWindowLauncher {
       } catch (_) {
         debugPrint('child window failed: $error');
       }
-      // A tray/deep-link request can arrive while the main window is hidden.
-      // Bring the in-app fallback into view if the child engine cannot start.
-      try {
-        await windowManager.show();
-        await windowManager.focus();
-      } catch (_) {}
+      if (payload.type == AppWindowType.createTask) {
+        // A tray or deep-link request may need to show the creation form in-app.
+        try {
+          await windowManager.show();
+          await windowManager.focus();
+        } catch (_) {}
+      }
       return false;
     }
   }
