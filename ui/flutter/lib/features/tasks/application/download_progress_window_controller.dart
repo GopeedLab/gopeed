@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../app/application/app_runtime_controller.dart';
 import '../../../app/router/app_router.dart';
@@ -14,24 +15,26 @@ final downloadProgressWindowControllerProvider = NotifierProvider<DownloadProgre
 
 /// Observes the main window's task list, including tasks created by external clients.
 class DownloadProgressWindowController extends Notifier<void> {
+  // Captures from this run can already be present in the first task snapshot.
+  final String captureSession = const Uuid().v4();
+
   @override
   void build() {
     if (!AppWindowChrome.isDesktopWindow) return;
     final seen = <String>{};
-    var initialized = false;
     ref.listen(tasksControllerProvider, (_, next) {
       final tasks = next.value;
       if (tasks == null || next.isLoading || next.hasError || tasks.lastError != null) return;
-      final newTasks = tasks.tasks.where((task) => task.browserCaptured && !seen.contains(task.id)).toList();
-      seen.addAll(tasks.allTasks.map((task) => task.id));
-      // Establish a baseline so restarting the app never opens windows for old tasks.
+      final newTasks = tasks.tasks
+          .where((task) => task.browserCaptureSession == captureSession && !seen.contains(task.id))
+          .toList();
+      seen.addAll(tasks.allTasks.where((task) => task.browserCaptureSession == captureSession).map((task) => task.id));
       final enabled = ref.read(appRuntimeControllerProvider).value?.downloaderConfig.extra.showDownloadProgressWindow;
-      if (initialized && enabled == true) {
+      if (enabled == true) {
         for (final task in newTasks) {
           unawaited(_open(task.id));
         }
       }
-      initialized = true;
     }, fireImmediately: true);
   }
 

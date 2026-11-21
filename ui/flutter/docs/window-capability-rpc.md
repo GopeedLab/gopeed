@@ -180,9 +180,9 @@ the latest task snapshot with the current speed, remaining time and progress.
 Connection statistics are fetched when the connection section is expanded.
 The child uses the existing task APIs through the main window capability host.
 
-The main shell owns `DownloadProgressWindowController`. On desktop it observes
-successful task-list snapshots and opens one window per new browser-captured
-top-level task (one per group). The first snapshot establishes a baseline; existing tasks and
-subsequent status changes do not open windows. The persisted
-`extra.showDownloadProgressWindow` preference defaults to false and controls
-future automatic openings without closing windows already in use.
+On desktop, `DownloadProgressWindowController` observes successful task-list
+snapshots and opens one window per top-level task captured by the browser
+extension in the current app session (one per group). The session label allows
+captures in the first snapshot to open after a cold start while keeping older
+captures quiet. The `extra.showDownloadProgressWindow` preference defaults to
+true and controls future automatic openings without closing windows already in use.

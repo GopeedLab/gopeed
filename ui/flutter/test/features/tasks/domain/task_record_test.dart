@@ -32,10 +32,10 @@ void main() {
 
   test('browser capture label survives API and grouped task mapping', () {
     final task = groupTestTask('browser', parentId: 'group');
-    expect(TaskRecord.fromApi(task).browserCaptured, isFalse);
-    task.meta.req.labels = {Request.browserCaptureLabel: 'true'};
-    expect(TaskRecord.fromApi(task).browserCaptured, isTrue);
-    expect(taskRecordsFromApi([task]).single.browserCaptured, isTrue);
+    expect(TaskRecord.fromApi(task).browserCaptureSession, isNull);
+    task.meta.req.labels = {Request.browserCaptureLabel: 'session-id'};
+    expect(TaskRecord.fromApi(task).browserCaptureSession, 'session-id');
+    expect(taskRecordsFromApi([task]).single.browserCaptureSession, 'session-id');
   });
 
   test('members aggregate through parentId without a parent task', () {

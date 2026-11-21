@@ -228,7 +228,7 @@ class ExtraConfig {
     this.defaultBtClient = true,
     this.notifyWhenNewVersion = true,
     this.desktopNotification = true,
-    this.showDownloadProgressWindow = false,
+    this.showDownloadProgressWindow = true,
     this.backgroundLocationKeepAlive = false,
     this.backgroundContinuedProcessing = false,
     WindowStateConfig? windowState,

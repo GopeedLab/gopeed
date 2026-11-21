@@ -99,7 +99,7 @@ class TaskRecord {
     this.updatedAt,
     this.remainingSeconds,
     this.waiting = false,
-    this.browserCaptured = false,
+    this.browserCaptureSession,
   }) : assert(!uploading || uploadSpeed != null);
 
   final String id;
@@ -126,7 +126,7 @@ class TaskRecord {
   final DateTime? updatedAt;
   final int? remainingSeconds;
   final bool waiting;
-  final bool browserCaptured;
+  final String? browserCaptureSession;
   final List<TaskFileNode> files;
   final bool uploading;
   final bool isFolder;
@@ -168,7 +168,7 @@ class TaskRecord {
 
     return TaskRecord(
       id: task.id,
-      browserCaptured: task.meta.req.labels?[Request.browserCaptureLabel] == 'true',
+      browserCaptureSession: task.meta.req.labels?[Request.browserCaptureLabel],
       name: fileName,
       status: status,
       downloaded: _formatBytes(downloadedBytes),
@@ -325,7 +325,7 @@ TaskRecord _groupRecord(api_task.TaskGroup group, List<TaskRecord> members) {
   final downloadDuration = doneAt != null && doneAt.isAfter(createdAt) ? doneAt.difference(createdAt) : null;
   return TaskRecord(
     id: group.id,
-    browserCaptured: members.any((task) => task.browserCaptured),
+    browserCaptureSession: members.map((task) => task.browserCaptureSession).nonNulls.firstOrNull,
     name: group.name,
     status: status,
     downloaded: _formatBytes(downloaded),

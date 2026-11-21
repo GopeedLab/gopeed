@@ -36,8 +36,11 @@ GopeedService service(CapabilityRegistry registry) => GopeedService(LocalCapabil
 void main() {
   test('browser capture label reaches resolved member requests', () {
     final captured = source('browser');
-    captured.request.labels = {Request.browserCaptureLabel: 'true'};
-    expect(captured.creationItems().every((item) => item.req!.labels?[Request.browserCaptureLabel] == 'true'), isTrue);
+    captured.request.labels = {Request.browserCaptureLabel: 'session-id'};
+    expect(
+      captured.creationItems().map((item) => item.req!.labels?[Request.browserCaptureLabel]),
+      everyElement('session-id'),
+    );
     expect(source('manual').creationItems().every((item) => item.req!.labels == null), isTrue);
   });
 
