@@ -324,6 +324,11 @@ func appendFilenameExtension(filename, contentType string) string {
 	if err != nil {
 		return filename
 	}
+	// These say nothing about the file type: an extensionless binary or
+	// text file (kubectl, README) would become .bin or .asc.
+	if mediaType == "application/octet-stream" || mediaType == "text/plain" {
+		return filename
+	}
 
 	extensions, err := mime.ExtensionsByType(mediaType)
 	if err != nil || len(extensions) == 0 {
