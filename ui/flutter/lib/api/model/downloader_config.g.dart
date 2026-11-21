@@ -18,6 +18,8 @@ DownloaderConfig _$DownloaderConfigFromJson(Map<String, dynamic> json) =>
                 .toList() ??
             const [],
         autoCategorize: json['autoCategorize'] as bool? ?? false,
+        downloadSpeedLimit: (json['downloadSpeedLimit'] as num?)?.toInt() ?? 0,
+        uploadSpeedLimit: (json['uploadSpeedLimit'] as num?)?.toInt() ?? 0,
       )
       ..protocolConfig = ProtocolConfig.fromJson(json['protocolConfig'] as Map<String, dynamic>?)
       ..extra = ExtraConfig.fromJson(json['extra'] as Map<String, dynamic>?)
@@ -45,6 +47,8 @@ Map<String, dynamic> _$DownloaderConfigToJson(DownloaderConfig instance) => <Str
   'autoDeleteMissingFileTasks': instance.autoDeleteMissingFileTasks,
   'categories': instance.categories.map((e) => e.toJson()).toList(),
   'autoCategorize': instance.autoCategorize,
+  'downloadSpeedLimit': instance.downloadSpeedLimit,
+  'uploadSpeedLimit': instance.uploadSpeedLimit,
 };
 
 ApiServerConfig _$ApiServerConfigFromJson(Map<String, dynamic> json) => ApiServerConfig(
