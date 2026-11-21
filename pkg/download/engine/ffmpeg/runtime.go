@@ -151,7 +151,9 @@ func RunAcquired(ctx context.Context, video, audio Input, out io.Writer, format 
 	files := &inputFS{files: map[string]Input{"video": video, "audio": audio}}
 	fsconfig := wazero.NewFSConfig().(sysfs.FSConfig).WithSysFSMount(files, "/inputs")
 	logs := &tailLog{}
-	rc, err := wasm.Run(ctx, shared.runtime, shared.module, wasm.Args{
+	runCtx, freeMemory := withLinearMemory(ctx)
+	defer freeMemory()
+	rc, err := wasm.Run(runCtx, shared.runtime, shared.module, wasm.Args{
 		Name: "ffmpeg", Args: args, Stdout: out, Stderr: logs,
 		Config: func(c wazero.ModuleConfig) wazero.ModuleConfig { return c.WithFSConfig(fsconfig) },
 	})

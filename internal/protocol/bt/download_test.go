@@ -290,6 +290,82 @@ func TestBTDownloadSelectedFiles(t *testing.T) {
 	if f.Meta().Res.Size != 48*1024 {
 		t.Fatal("selected resource size is incorrect")
 	}
+	if downloaded := f.Progress().TotalDownloaded(); downloaded != 48*1024 || f.ReceivedBytes() <= downloaded {
+		t.Fatalf("selected progress = %d, received traffic = %d; want 48 KiB of progress and traffic across the shared piece", downloaded, f.ReceivedBytes())
+	}
+}
+
+func TestBTProgressOnlyCountsVerifiedFileBytes(t *testing.T) {
+	const fileSize = 56 * 1024
+	fixture := makeBTFixtureWithPieceSize(t, map[string][]byte{
+		"a.bin": btPayload(fileSize, "verified-a"),
+		"b.bin": btPayload(fileSize, "verified-b"),
+	}, 16*1024, false, true, 64*1024)
+	f := btDownloadFetcher(t, nil)
+	btResolve(t, f, fixture.Magnet)
+	dir := t.TempDir()
+	f.Meta().Opts = &base.Options{Path: dir}
+	btStart(t, f)
+	deadline := time.Now().Add(8 * time.Second)
+	for f.torrent.Files()[0].BytesCompleted() == 0 && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	btPause(t, f)
+	if f.torrent.Files()[0].BytesCompleted() == 0 || f.torrent.Piece(0).State().Complete {
+		t.Fatal("expected some received bytes in a piece that is still incomplete")
+	}
+	if f.ReceivedBytes() == 0 {
+		t.Fatal("received traffic must be visible before a piece is verified")
+	}
+	if progress := f.Progress(); len(progress) != 2 || progress[0] != 0 {
+		t.Errorf("progress before the first file's piece is verified = %v, want zero for the first file", progress)
+	}
+	fixture.Limiter.SetLimit(rate.Inf)
+	btStart(t, f)
+	btAwaitDone(t, f)
+	fixture.AssertFiles(t, dir)
+	progress := f.Progress()
+	if len(progress) != 2 || progress[0] != fileSize || progress[1] != fileSize {
+		t.Fatalf("verified progress at completion = %v, want %d for each file", progress, fileSize)
+	}
+}
+
+func TestBTUploadedBytesSamplesLiveTraffic(t *testing.T) {
+	payload := btPayload(48*1024, "upload-counter")
+	fixture := newBTFixture(t, map[string][]byte{"": payload}, 0)
+	const saved = 1024
+	f := &Fetcher{
+		torrent:       fixture.Torrent,
+		data:          &fetcherData{SeedBytes: saved},
+		seedBaseBytes: saved,
+	}
+	f.torrentReady.Store(true)
+	f.torrentUpload.Store(true)
+
+	cfg := torrent.TestingConfig(t)
+	cfg.DataDir = t.TempDir()
+	cfg.DisableTrackers = true
+	cfg.DisableUTP = true
+	cfg.DisableIPv6 = true
+	peer, err := torrent.NewClient(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { peer.Close() })
+	download, _, err := peer.AddTorrentSpec(torrent.TorrentSpecFromMetaInfo(fixture.MetaInfo))
+	if err != nil {
+		t.Fatal(err)
+	}
+	download.AddPeers([]torrent.PeerInfo{{Addr: fixture.Seeder.ListenAddrs()[0]}})
+	download.DownloadAll()
+	select {
+	case <-download.Complete().On():
+	case <-time.After(10 * time.Second):
+		t.Fatal("loopback peer did not complete")
+	}
+	if got, want := f.UploadedBytes(), int64(saved+len(payload)); got != want {
+		t.Fatalf("uploaded bytes = %d, want %d including the saved bytes", got, want)
+	}
 }
 
 func TestBTPauseAndResume(t *testing.T) {

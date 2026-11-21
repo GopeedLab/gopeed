@@ -81,6 +81,9 @@ Future<ResolveResult> resolve(ResolveTask resolveTask) {
   );
 }
 
+Future<void> releaseResolve(String id) =>
+    _parse<void>(() => _request('api/v1/resolve/${Uri.encodeComponent(id)}', method: 'DELETE'), null);
+
 Future<String> createTask(CreateTask createTask) {
   return _parse<String>(() => _request('api/v1/tasks', method: 'POST', data: createTask), (data) => data as String);
 }

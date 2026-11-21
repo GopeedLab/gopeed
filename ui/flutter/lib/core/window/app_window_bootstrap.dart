@@ -29,7 +29,9 @@ class AppWindowBootstrap {
       if (AppWindowChrome.usesCustomChrome) {
         await windowManager.setAsFrameless();
       }
-      await windowManager.setHasShadow(true);
+      if (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.macOS) {
+        await windowManager.setHasShadow(true);
+      }
       if (!hidden) {
         await windowManager.show();
         await windowManager.focus();
@@ -45,11 +47,32 @@ class AppWindowBootstrap {
     await windowManager.ensureInitialized();
     final title = subWindowTitle(type, appLocalizationsFor(localeConfig));
 
+    if (type == AppWindowType.downloadProgress) {
+      final progressOptions = WindowOptions(
+        size: AppDesignTokens.downloadProgressWindowSize,
+        center: true,
+        skipTaskbar: false,
+        backgroundColor: Colors.transparent,
+        title: title,
+        titleBarStyle: TitleBarStyle.hidden,
+      );
+      await windowManager.waitUntilReadyToShow(progressOptions, () async {
+        if (AppWindowChrome.usesCustomChrome) {
+          await windowManager.setAsFrameless();
+        }
+        await windowManager.setResizable(false);
+        await windowManager.setMaximizable(false);
+        if (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.macOS) {
+          await windowManager.setHasShadow(true);
+        }
+        await _showSubWindowInForeground();
+      });
+      return;
+    }
+
     final options = switch (type) {
-      AppWindowType.createTask || AppWindowType.downloadProgress => WindowOptions(
-        size: type == AppWindowType.downloadProgress
-            ? AppDesignTokens.downloadProgressWindowSize
-            : AppDesignTokens.childWindowSize,
+      AppWindowType.createTask => WindowOptions(
+        size: AppDesignTokens.childWindowSize,
         center: true,
         skipTaskbar: false,
         backgroundColor: Colors.transparent,
@@ -66,15 +89,14 @@ class AppWindowBootstrap {
       ),
     };
 
-    await windowManager.waitUntilReadyToShow(options, () async {
+    windowManager.waitUntilReadyToShow(options, () async {
       if (AppWindowChrome.usesCustomChrome) {
         await windowManager.setAsFrameless();
       }
-      if (type == AppWindowType.downloadProgress) {
-        await windowManager.setResizable(false);
-        await windowManager.setMaximizable(false);
+      await windowManager.setTitle(title);
+      if (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.macOS) {
+        await windowManager.setHasShadow(true);
       }
-      await windowManager.setHasShadow(true);
       await _showSubWindowInForeground();
     });
   }

@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+import 'package:uuid/uuid.dart';
 import 'package:path/path.dart' as path;
 
 import '../../../api/model/create_task_batch.dart';
@@ -16,6 +18,8 @@ class PendingDownload {
   final Request request;
   final Options options;
   ResolveResult? result;
+  String? _resolveID;
+  bool _cancelled = false;
   String? resolveError;
   String? createError;
   final Set<int> selected = {};
@@ -50,16 +54,38 @@ class PendingDownload {
   bool get hasSelection => !created && result != null && selected.isNotEmpty;
 
   Future<void> resolve(GopeedService service) async {
-    if (result != null || resolving) return;
+    if (_cancelled || result != null || resolving) return;
     resolving = true;
     resolveError = null;
     try {
-      result = await service.resolve(ResolveTask(req: request));
+      _resolveID = const Uuid().v4();
+      result = await service.resolve(ResolveTask(req: request, id: _resolveID));
+      if (_cancelled) {
+        await _release(service, result!.id);
+        return;
+      }
       selected.addAll(List.generate(files.isEmpty ? 1 : files.length, (index) => index));
     } catch (error) {
       resolveError = error.toString();
     } finally {
       resolving = false;
+    }
+  }
+
+  /// Stop an outstanding preview and release any resource it already owns.
+  /// A response arriving after cancellation is released by resolve() as well.
+  Future<void> cancel(GopeedService service) async {
+    if (_cancelled || created) return;
+    _cancelled = true;
+    await _release(service, result?.id.isNotEmpty == true ? result!.id : _resolveID);
+  }
+
+  Future<void> _release(GopeedService service, String? id) async {
+    if (id == null || id.isEmpty) return;
+    try {
+      await service.releaseResolve(id);
+    } catch (error, stack) {
+      developer.log('Failed to release resolved resource', name: 'gopeed.resolve', error: error, stackTrace: stack);
     }
   }
 

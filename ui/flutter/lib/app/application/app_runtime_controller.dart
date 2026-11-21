@@ -53,6 +53,7 @@ class AppRuntimeState {
 class AppRuntimeController extends AsyncNotifier<AppRuntimeState> {
   static StartConfig? _defaultStartConfig;
   Future<void> _preferenceWrites = Future<void>.value();
+  bool _analyticsStarted = false;
 
   @override
   Future<AppRuntimeState> build() async {
@@ -73,6 +74,7 @@ class AppRuntimeController extends AsyncNotifier<AppRuntimeState> {
       startConfig
         ..apiEnable = true
         ..mcpEnable = config.api.mcpEnable;
+      await _initAnalytics(config);
     } else {
       startConfig
         ..apiEnable = config.api.enable
@@ -253,7 +255,8 @@ class AppRuntimeController extends AsyncNotifier<AppRuntimeState> {
   }
 
   Future<void> _initAnalytics(DownloaderConfig config) async {
-    if (!AnalyticsConfig.isConfigured || !config.extra.analyticsEnabled) return;
+    if (_analyticsStarted || !AnalyticsConfig.isConfigured || !config.extra.analyticsEnabled) return;
+    _analyticsStarted = true;
     try {
       final generatedClientId = await Analytics.instance.init(fallbackClientId: config.extra.deviceId);
       if (generatedClientId != null) {
@@ -262,6 +265,7 @@ class AppRuntimeController extends AsyncNotifier<AppRuntimeState> {
       }
       unawaited(Analytics.instance.logAppOpen());
     } catch (error, stackTrace) {
+      _analyticsStarted = false;
       logger.w('GA4 init failed', error, stackTrace);
     }
   }

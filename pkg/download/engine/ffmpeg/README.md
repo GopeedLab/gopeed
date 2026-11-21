@@ -174,3 +174,12 @@ compilation memory, host buffers and JS allocations are additional to the
 linear-memory limit. Playback support depends on the selected codecs, not just
 the `.mp4` suffix. Platform execution and performance must be tested on target
 devices, especially mobile/32-bit devices.
+
+On 64-bit Windows, instance linear memory uses a reserved virtual address range with
+pages committed as it grows. Module completion, errors and cancellation release
+this range directly through `VirtualFree`, rather than waiting for Go's garbage
+collector to reclaim large buffers. Growing an instance preserves its address
+without copying the previous buffer. The 512 MiB limit is unchanged; reservation
+does not commit that entire amount. Shared compilation remains resident after
+the first merge, so process memory is not expected to return exactly to the
+pre-FFmpeg baseline. This does not diagnose unrelated idle memory growth.

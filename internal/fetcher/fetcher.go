@@ -46,6 +46,10 @@ type Uploader interface {
 	WaitUpload() error
 }
 
+type DownloadCounter interface {
+	ReceivedBytes() int64
+}
+
 // FetcherMeta defines the meta information of a fetcher.
 type FetcherMeta struct {
 	Req  *base.Request  `json:"req"`

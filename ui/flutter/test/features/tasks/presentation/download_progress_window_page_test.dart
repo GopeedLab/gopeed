@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:shadcn_flutter/shadcn_flutter.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -10,6 +11,8 @@ import 'package:gopeed/api/model/task_stats.dart';
 import 'package:gopeed/core/capabilities/app_capabilities.dart';
 import 'package:gopeed/core/capabilities/capability_rpc.dart';
 import 'package:gopeed/core/capabilities/storage_capability.dart';
+import 'package:gopeed/core/window/app_window_bootstrap.dart';
+import 'package:gopeed/core/window/app_window_payload.dart';
 import 'package:gopeed/features/tasks/application/tasks_controller.dart';
 import 'package:gopeed/features/tasks/application/task_stats_provider.dart';
 import 'package:gopeed/features/tasks/domain/task_record.dart';
@@ -31,6 +34,62 @@ void main() {
     }
     await font.load();
   });
+
+  testWidgets(
+    'the native progress window disables resizing and skips unsupported shadows',
+    (tester) async {
+      const window = MethodChannel('window_manager');
+      const screen = MethodChannel('dev.leanflutter.plugins/screen_retriever');
+      const display = {
+        'id': 'primary',
+        'size': {'width': 1920.0, 'height': 1080.0},
+        'visiblePosition': {'dx': 0.0, 'dy': 0.0},
+      };
+      final messenger = tester.binding.defaultBinaryMessenger;
+      final calls = <MethodCall>[];
+      messenger.setMockMethodCallHandler(window, (call) async {
+        calls.add(call);
+        return switch (call.method) {
+          'isFullScreen' || 'isMaximized' || 'isMinimized' => false,
+          'getBounds' => {'x': 0.0, 'y': 0.0, 'width': 500.0, 'height': 224.0},
+          _ => null,
+        };
+      });
+      messenger.setMockMethodCallHandler(
+        screen,
+        (call) async => switch (call.method) {
+          'getAllDisplays' => {
+            'displays': [display],
+          },
+          'getCursorScreenPoint' => {'dx': 0.0, 'dy': 0.0},
+          'getPrimaryDisplay' => display,
+          _ => null,
+        },
+      );
+      addTearDown(() {
+        messenger.setMockMethodCallHandler(window, null);
+        messenger.setMockMethodCallHandler(screen, null);
+      });
+
+      await AppWindowBootstrap.setupSubWindow(AppWindowType.downloadProgress, localeConfig: 'en');
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 180));
+      Iterable<dynamic> arguments(String method) =>
+          calls.where((call) => call.method == method).map((call) => call.arguments);
+      expect(arguments('setResizable').single, {'isResizable': false});
+      expect(arguments('setMaximizable').single, {'isMaximizable': false});
+      expect(
+        arguments('setHasShadow'),
+        defaultTargetPlatform == TargetPlatform.linux
+            ? isEmpty
+            : [
+                {'hasShadow': true},
+              ],
+      );
+      expect(calls.map((call) => call.method), containsAllInOrder(['setMaximizable', 'show', 'focus']));
+    },
+    variant: TargetPlatformVariant({TargetPlatform.linux, TargetPlatform.windows, TargetPlatform.macOS}),
+  );
 
   Future<_Tasks> mount(
     WidgetTester tester, {
