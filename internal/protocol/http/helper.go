@@ -75,28 +75,6 @@ func (re *RequestError) Error() string {
 	return fmt.Sprintf("http request fail, code:%d", re.Code)
 }
 
-func isFailureExemptHTTPCode(code int) bool {
-	if code >= 500 && code <= 599 {
-		return true
-	}
-
-	switch code {
-	case 429, 408, 440, 499:
-		return true
-	default:
-		return false
-	}
-}
-
-func shouldCountHTTPFailure(err error) bool {
-	var re *RequestError
-	if !errors.As(err, &re) {
-		return false
-	}
-
-	return !isFailureExemptHTTPCode(re.Code)
-}
-
 func extractRequestError(err error) *RequestError {
 	var re *RequestError
 	if errors.As(err, &re) {
@@ -206,7 +184,7 @@ func isRedirectExpiredError(err error) bool {
 
 // tryFallbackToOriginalURL attempts to make a request using the original URL
 // when the redirect URL has expired. Returns the response if successful.
-func (f *Fetcher) tryFallbackToOriginalURL(ctx context.Context, client *http.Client, rangeStart int64, rangeEnd *int64, rangeRequested bool, ifRange string) (*http.Response, error) {
+func (f *Fetcher) tryFallbackToOriginalURL(ctx context.Context, cancel context.CancelFunc, client *http.Client, rangeStart int64, rangeEnd *int64, rangeRequested bool, ifRange string) (*http.Response, error) {
 	httpReq, err := f.buildRequestWithOriginalURL(ctx, f.meta.Req)
 	if err != nil {
 		return nil, err
@@ -219,7 +197,7 @@ func (f *Fetcher) tryFallbackToOriginalURL(ctx context.Context, client *http.Cli
 		}
 	}
 
-	resp, err := client.Do(httpReq)
+	resp, err := f.doRequest(client, httpReq, cancel)
 	if err != nil {
 		return nil, err
 	}
@@ -230,6 +208,30 @@ func (f *Fetcher) tryFallbackToOriginalURL(ctx context.Context, client *http.Cli
 	}
 
 	return resp, nil
+}
+
+// doRequest sends req and waits for its response headers at most the
+// response header timeout. cancel must cancel req's context; it is called only
+// if the headers do not arrive in time, so the body is not affected and stays
+// under the read timeout. The timeout covers the whole exchange, including
+// redirects and the browser impersonation retry of internal/httpclient, which
+// reuses the request context. A timed-out request fails like any other and is
+// left to the retry policy.
+func (f *Fetcher) doRequest(client *http.Client, req *http.Request, cancel context.CancelFunc) (*http.Response, error) {
+	timeout := f.headerTimeout
+	if timeout <= 0 {
+		timeout = responseHeaderTimeout
+	}
+	timer := time.AfterFunc(timeout, cancel)
+	resp, err := client.Do(req)
+	if timer.Stop() {
+		return resp, err
+	}
+	// The timer fired: the request was cancelled while waiting for headers.
+	if resp != nil {
+		resp.Body.Close()
+	}
+	return nil, fmt.Errorf("%w after %v", errResponseHeaderTimeout, timeout)
 }
 
 func formatRangeHeader(start int64, end *int64) string {

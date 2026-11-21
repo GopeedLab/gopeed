@@ -114,8 +114,18 @@ class HttpConfig {
   String userAgent;
   int connections;
   bool useServerCtime;
+  int maxRetries;
+  int maxRetryDelaySeconds;
+  bool unlimitedRetries;
 
-  HttpConfig({this.userAgent = '', this.connections = 0, this.useServerCtime = false});
+  HttpConfig({
+    this.userAgent = '',
+    this.connections = 0,
+    this.useServerCtime = false,
+    this.maxRetries = 5,
+    this.maxRetryDelaySeconds = 5,
+    this.unlimitedRetries = false,
+  });
 
   factory HttpConfig.fromJson(Map<String, dynamic> json) => _$HttpConfigFromJson(json);
 
