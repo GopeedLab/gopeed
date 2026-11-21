@@ -83,6 +83,12 @@ func (f *Fetcher) initClient() (err error) {
 	cfg.NoDHT = f.config.DisableDHT
 	cfg.DisablePEX = f.config.DisablePEX
 	cfg.HTTPProxy = f.ctl.GetProxy(f.meta.Req.Proxy)
+	if f.ctl.DownloadLimiter != nil {
+		cfg.DownloadRateLimiter = f.ctl.DownloadLimiter
+	}
+	if f.ctl.UploadLimiter != nil {
+		cfg.UploadRateLimiter = f.ctl.UploadLimiter
+	}
 	dnsResolver := &DnsCacheResolver{RefreshTimeout: 5 * time.Minute}
 	cfg.TrackerDialContext = dnsResolver.DialContext
 	client, err = torrent.NewClient(cfg)

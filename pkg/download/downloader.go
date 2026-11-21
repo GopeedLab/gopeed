@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/GopeedLab/gopeed/internal/speedlimit"
 	"math"
 	gohttp "net/http"
 	"net/url"
@@ -103,6 +104,8 @@ type Progress struct {
 }
 
 type Downloader struct {
+	// speedLimits are the downloader-wide speed limits shared by all tasks.
+	speedLimits         *speedlimit.Limits
 	backgroundCtx       context.Context
 	cancelBackground    context.CancelFunc
 	protocolJobs        *protocolScheduler
@@ -150,6 +153,7 @@ func NewDownloader(cfg *DownloaderConfig) *Downloader {
 
 	backgroundCtx, cancelBackground := context.WithCancel(context.Background())
 	d := &Downloader{
+		speedLimits:      speedlimit.New(),
 		backgroundCtx:    backgroundCtx,
 		cancelBackground: cancelBackground,
 		cfg:              cfg,
@@ -214,6 +218,7 @@ func (d *Downloader) Setup() error {
 	if err := d.initProtocolConfigs(); err != nil {
 		return err
 	}
+	d.speedLimits.Set(d.cfg.DownloadSpeedLimit, d.cfg.UploadSpeedLimit)
 	// Attach optional protocol state stores after configuration initialization.
 	for _, fm := range d.cfg.FetchManagers {
 		protocol := fm.Name()
@@ -487,6 +492,8 @@ func (d *Downloader) setupFetcher(fm fetcher.FetcherManager, fetcher fetcher.Fet
 	ctl := controller.NewController()
 	ctl.TempDir = d.cfg.TempDir
 	ctl.TempFiles = d.tempFiles
+	ctl.DownloadLimiter = d.speedLimits.Download
+	ctl.UploadLimiter = d.speedLimits.Upload
 	ctl.ManagedProduction = func(raw string) bool { return d.blob.Production(raw) != nil }
 	ctl.GetConfig = func(v any) {
 		d.getProtocolConfig(fm.Name(), v)
@@ -1922,6 +1929,9 @@ func (d *Downloader) PutConfig(v *base.DownloaderStoreConfig) error {
 	if v == nil {
 		return errors.New("config is nil")
 	}
+	if v.DownloadSpeedLimit < 0 || v.UploadSpeedLimit < 0 {
+		return errors.New("speed limit must not be negative")
+	}
 	next := util.DeepClone(v)
 	changedProtocols := []string{}
 	d.configLock.Lock()
@@ -1971,6 +1981,7 @@ func (d *Downloader) PutConfig(v *base.DownloaderStoreConfig) error {
 		return err
 	}
 	d.cfg.DownloaderStoreConfig = next
+	d.speedLimits.Set(next.DownloadSpeedLimit, next.UploadSpeedLimit)
 	d.configLock.Unlock()
 	if d.protocolJobs != nil {
 		for _, name := range changedProtocols {

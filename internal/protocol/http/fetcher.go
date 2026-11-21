@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/GopeedLab/gopeed/internal/speedlimit"
 	"hash"
 	"io"
 	"net/http"
@@ -2626,7 +2627,13 @@ func (f *Fetcher) responseReader(resp *http.Response, cancel context.CancelFunc)
 	if f.ctl != nil && f.ctl.ManagedProduction != nil && resp.Request != nil && f.ctl.ManagedProduction(resp.Request.URL.String()) {
 		return resp.Body
 	}
-	return NewTimeoutReader(resp.Body, readTimeout, cancel)
+	// The limiter waits outside the timeout reader, so a low speed limit is
+	// not mistaken for a stalled connection.
+	reader := io.Reader(NewTimeoutReader(resp.Body, readTimeout, cancel))
+	if f.ctl != nil && resp.Request != nil {
+		reader = speedlimit.Reader(resp.Request.Context(), reader, f.ctl.DownloadLimiter)
+	}
+	return reader
 }
 
 // closeResolveRespLocked closes the kept Resolve response, if any, and

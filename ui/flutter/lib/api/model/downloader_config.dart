@@ -20,6 +20,9 @@ class DownloaderConfig {
   bool autoDeleteMissingFileTasks;
   List<DownloadCategory> categories;
   bool autoCategorize;
+  // Total speed limits of all tasks in bytes per second; 0 means unlimited.
+  int downloadSpeedLimit;
+  int uploadSpeedLimit;
 
   DownloaderConfig({
     this.downloadDir = '',
@@ -28,6 +31,8 @@ class DownloaderConfig {
     this.autoDeleteMissingFileTasks = false,
     this.categories = const [],
     this.autoCategorize = false,
+    this.downloadSpeedLimit = 0,
+    this.uploadSpeedLimit = 0,
   });
 
   factory DownloaderConfig.fromJson(Map<String, dynamic> json) => _$DownloaderConfigFromJson(json);

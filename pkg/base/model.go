@@ -231,6 +231,8 @@ type DownloaderStoreConfig struct {
 	API                        *APIServerConfig       `json:"api"`                        // API is the optional REST server configuration
 	AutoStartTasks             bool                   `json:"autoStartTasks"`             // AutoStartTasks continues all unfinished tasks when the backend starts
 	AutoDeleteMissingFileTasks bool                   `json:"autoDeleteMissingFileTasks"` // AutoDeleteMissingFileTasks enables automatic deletion of tasks with missing files
+	DownloadSpeedLimit         int64                  `json:"downloadSpeedLimit"`         // DownloadSpeedLimit caps the total download speed of all tasks in bytes per second; 0 means unlimited
+	UploadSpeedLimit           int64                  `json:"uploadSpeedLimit"`           // UploadSpeedLimit caps the total upload (seeding) speed of all tasks in bytes per second; 0 means unlimited
 }
 
 func (cfg *DownloaderStoreConfig) Init() *DownloaderStoreConfig {

@@ -4,6 +4,7 @@ import (
 	"github.com/GopeedLab/gopeed/internal/tempfiles"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/rs/zerolog"
+	"golang.org/x/time/rate"
 	"net/http"
 	"net/url"
 	"os"
@@ -19,6 +20,10 @@ type Controller struct {
 	// Logger is the downloader's core logger. It may be nil, in which case
 	// fetchers log nothing.
 	Logger *zerolog.Logger
+	// DownloadLimiter and UploadLimiter are the downloader-wide speed limits
+	// shared by all tasks and protocols. Nil means unlimited.
+	DownloadLimiter *rate.Limiter
+	UploadLimiter   *rate.Limiter
 	FileController
 	//ContextDialer() (proxy.Dialer, error)
 }
