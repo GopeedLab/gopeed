@@ -190,14 +190,14 @@ func TestWebhook_NoWebhookConfigured(t *testing.T) {
 }
 
 func TestWebhook_MultipleUrls(t *testing.T) {
-	count := 0
+	received := make(chan string, 2)
 	server1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		count++
+		received <- "server1"
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer server1.Close()
 	server2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		count++
+		received <- "server2"
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer server2.Close()
@@ -219,11 +219,21 @@ func TestWebhook_MultipleUrls(t *testing.T) {
 		// Trigger webhook
 		downloader.triggerWebhooks(WebhookEventDownloadDone, task, nil)
 
-		// Wait for webhooks
-		time.Sleep(500 * time.Millisecond)
-
-		if count != 2 {
-			t.Errorf("Expected 2 webhook calls, got %d", count)
+		// Wait for each destination, rather than racing on a shared counter or
+		// assuming that both requests finish within a fixed sleep.
+		timer := time.NewTimer(2 * time.Second)
+		defer timer.Stop()
+		seen := make(map[string]bool)
+		for len(seen) < 2 {
+			select {
+			case server := <-received:
+				if seen[server] {
+					t.Fatalf("Duplicate webhook call to %s", server)
+				}
+				seen[server] = true
+			case <-timer.C:
+				t.Fatalf("Timeout waiting for both webhook destinations; received: %v", seen)
+			}
 		}
 	})
 }
@@ -629,9 +639,9 @@ func TestWebhook_SendWebhookToUrl_VariousStatusCodes(t *testing.T) {
 }
 
 func TestWebhook_TriggerWebhooks_EmptyUrlSkipped(t *testing.T) {
-	requestCount := 0
+	received := make(chan struct{}, 2)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requestCount++
+		received <- struct{}{}
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()
@@ -650,10 +660,14 @@ func TestWebhook_TriggerWebhooks_EmptyUrlSkipped(t *testing.T) {
 
 		downloader.triggerWebhooks(WebhookEventDownloadDone, task, nil)
 
-		time.Sleep(500 * time.Millisecond)
-
-		if requestCount != 2 {
-			t.Errorf("Expected 2 requests (empty URL should be skipped), got %d", requestCount)
+		timer := time.NewTimer(2 * time.Second)
+		defer timer.Stop()
+		for count := 0; count < 2; count++ {
+			select {
+			case <-received:
+			case <-timer.C:
+				t.Fatalf("Expected 2 requests (empty URL should be skipped), got %d", count)
+			}
 		}
 	})
 }

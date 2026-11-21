@@ -3,6 +3,7 @@ package download
 import (
 	"encoding/json"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/GopeedLab/gopeed/internal/controller"
@@ -41,6 +42,16 @@ type TaskGroup struct {
 type CreateTaskBatchResult struct {
 	TaskIDs  []string `json:"taskIds"`
 	ParentID string   `json:"parentId,omitempty"`
+}
+
+// taskLifetime is shared with preparation candidates. Its mutex serializes
+// physical starts and persistence with deletion; the tombstone also invalidates
+// work that is currently outside that mutex (for example Resolve).
+type taskLifetime struct {
+	mu      sync.Mutex
+	deleted atomic.Bool
+	// Close can make a fetcher unusable even when a later deletion step fails.
+	restoreFetcher atomic.Bool
 }
 
 // Task represents a download unit.
@@ -87,6 +98,7 @@ type Task struct {
 	blobRefLock       *sync.Mutex
 	blobURL           string
 	runGeneration     uint64
+	lifetime          *taskLifetime
 	speedArr          []speedSample
 	uploadSpeedArr    []speedSample
 	downloadSampledAt time.Time
@@ -126,6 +138,7 @@ func NewTask() *Task {
 	}
 	return &Task{
 		ID:        id,
+		lifetime:  &taskLifetime{},
 		Status:    base.DownloadStatusReady,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
@@ -249,12 +262,15 @@ type DownloaderConfig struct {
 	Controller    *controller.Controller
 	FetchManagers []fetcher.FetcherManager
 
-	RefreshInterval   int // RefreshInterval time duration to refresh task progress(ms)
-	Storage           Storage
-	StorageDir        string
-	TempDir           string
-	WhiteDownloadDirs []string
-	WebViewProvider   enginewebview.Provider
+	// ExtensionEventTimeout bounds one script load and its awaited event handler.
+	// Zero uses one minute. Embedders may increase it for long-running handlers.
+	ExtensionEventTimeout time.Duration
+	RefreshInterval       int // RefreshInterval time duration to refresh task progress(ms)
+	Storage               Storage
+	StorageDir            string
+	TempDir               string
+	WhiteDownloadDirs     []string
+	WebViewProvider       enginewebview.Provider
 
 	ProductionMode bool
 
@@ -276,6 +292,9 @@ func (cfg *DownloaderConfig) Init() *DownloaderConfig {
 			new(bt.FetcherManager),
 			new(ed2k.FetcherManager),
 		}
+	}
+	if cfg.ExtensionEventTimeout <= 0 {
+		cfg.ExtensionEventTimeout = time.Minute
 	}
 	if cfg.RefreshInterval == 0 {
 		cfg.RefreshInterval = 350

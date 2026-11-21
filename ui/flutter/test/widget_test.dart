@@ -1636,6 +1636,46 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('BT settings show a restart message only after an affected auto-save', (tester) async {
+    await _setTestSize(tester, const Size(1024, 900));
+    final controller = FakeSettingsController()..btRestartRequired = true;
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appRuntimeControllerProvider.overrideWith(FakeRuntimeController.new),
+          appPlatformControllerProvider.overrideWith(FakePlatformController.new),
+          settingsControllerProvider.overrideWith(() => controller),
+        ],
+        child: const _SettingsTestApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Downloads'));
+    await tester.pumpAndSettle();
+    const message = 'This setting takes effect after restarting the app';
+    expect(find.text(message), findsNothing);
+    final port = find.byKey(const ValueKey('bt-listen-port-input'));
+    await tester.ensureVisible(port);
+    await tester.pumpAndSettle();
+    await tester.enterText(port, '6881');
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text(message), findsNothing);
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text(message), findsOneWidget);
+    expect(tester.widget<AppToastContent>(find.byType(AppToastContent)).type, AppToastType.info);
+    await tester.pump(const Duration(seconds: 6));
+    await tester.pumpAndSettle();
+    controller.btRestartRequired = false;
+    final seedRatio = find.byKey(const ValueKey('bt-seed-ratio-input'));
+    await tester.ensureVisible(seedRatio);
+    await tester.enterText(seedRatio, '2');
+    await tester.pump(const Duration(milliseconds: 700));
+    await tester.pumpAndSettle();
+    expect(find.text(message), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('settings FTP connections save into the FTP protocol config', (WidgetTester tester) async {
     await _setTestSize(tester, const Size(1024, 900));
     final settingsController = FakeSettingsController();
@@ -6181,12 +6221,15 @@ ApiServerState _testApiServerState({
 }
 
 class FakeSettingsController extends SettingsController {
+  bool btRestartRequired = false;
+
   @override
   Future<SettingsState> build() async => SettingsState(config: DownloaderConfig());
 
   @override
-  Future<void> save(DownloaderConfig config) async {
+  Future<SettingsSaveResult> save(DownloaderConfig config) async {
     state = AsyncValue.data(SettingsState(config: config));
+    return SettingsSaveResult(btRestartRequired: btRestartRequired);
   }
 }
 
