@@ -1833,6 +1833,39 @@ void _ftpTests() {
     expect(byUrl['ftpes://files.example/b.iso']!.containsKey('tls'), isFalse);
     expect(submitted.single.reqs!.map((item) => item.req!.extra), everyElement(isNull));
   });
+  testWidgets('the adaptive connections switch is offered for HTTP links only', (tester) async {
+    const adaptiveSwitch = ValueKey('create-task-adaptive');
+    CreateTaskBatch? submitted;
+    final registry = CapabilityRegistry(createAppCapabilityCodecs())
+      ..bind(
+        GopeedMethods.getConfig,
+        (_) => DownloaderConfig(downloadDir: '/downloads')..extra.defaultDirectDownload = true,
+      )
+      ..bind(GopeedMethods.createTaskBatch, (batch) {
+        submitted = batch;
+        return CreateTaskBatchResult(taskIds: ['http-task']);
+      })
+      ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
+    await _pumpCreateRoute(tester, registry);
+    await tester.tap(find.text('Advanced'));
+    await tester.pumpAndSettle();
+
+    // FTP links get OptsExtraFtp, which has no adaptive mode.
+    await tester.enterText(find.byKey(urlInput), 'ftp://files.example/pub/big.iso');
+    await tester.pump();
+    expect(find.byKey(const ValueKey('create-task-skip-verify-cert')), findsOneWidget);
+    expect(find.byKey(adaptiveSwitch), findsNothing);
+
+    await tester.enterText(find.byKey(urlInput), 'https://example.com/a.zip');
+    await tester.pump();
+    await tester.ensureVisible(find.byKey(adaptiveSwitch));
+    await tester.pumpAndSettle();
+    await tester.tap(find.descendant(of: find.byKey(adaptiveSwitch), matching: find.byType(shad.Switch)));
+    await tester.pump();
+    await tester.tap(find.text('Confirm'));
+    await tester.pumpAndSettle();
+    expect((submitted?.reqs?.single.opts?.extra as Map)['adaptive'], isTrue);
+  });
   testWidgets('mixed resolved HTTP and FTP resources share one batch with separate options', (tester) async {
     final resolvedUrls = <String>[];
     CreateTaskBatch? submitted;
