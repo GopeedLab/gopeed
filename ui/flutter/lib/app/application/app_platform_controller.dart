@@ -14,9 +14,11 @@ import '../../api/api.dart' as api;
 import '../../api/model/downloader_config.dart';
 import '../../core/libgopeed_boot.dart';
 import '../../core/capabilities/app_capabilities.dart';
+import '../../core/utils/file_explorer.dart';
 import '../../core/window/window_capability_transport.dart';
 import '../../features/tasks/application/pending_update_task.dart';
 import '../../l10n/l10n.dart';
+import '../../shared/widgets/app_toast.dart';
 import '../../util/package_info.dart';
 import '../../util/updater.dart';
 import '../../util/util.dart';
@@ -173,6 +175,7 @@ class AppPlatformController extends AsyncNotifier<AppPlatformState> with WindowL
           label: locale.pauseAll,
           onClick: (_) => unawaited(ref.read(gopeedServiceProvider).pauseAllTasks(null)),
         ),
+        MenuItem(label: locale.openFolder, onClick: (_) => _openDownloadFolder()),
         MenuItem(label: locale.setting, onClick: (_) => _go('/settings')),
         MenuItem.separator(),
         MenuItem(
@@ -338,6 +341,26 @@ class AppPlatformController extends AsyncNotifier<AppPlatformState> with WindowL
   Future<void> _showMainWindow() async {
     await windowManager.show();
     await windowManager.focus();
+  }
+
+  Future<void> _openDownloadFolder() async {
+    final path = ref.read(appRuntimeControllerProvider).value?.downloaderConfig.downloadDir ?? '';
+    try {
+      if (path.isNotEmpty && await Directory(path).exists() && await FileExplorer.open(path)) return;
+    } on FileSystemException catch (error, stackTrace) {
+      logger.w('Cannot access download directory', error, stackTrace);
+    }
+    if (!ref.mounted) return;
+    await _showMainWindow();
+    final context = AppRouter.rootNavigatorKey.currentContext;
+    if (context != null && context.mounted) {
+      final locale = context.l10n;
+      showAppToast(
+        context,
+        path.isEmpty ? locale.downloadDirValid : locale.unableOpenPath(path),
+        type: AppToastType.error,
+      );
+    }
   }
 
   Future<void> _openCreateTask() async {
