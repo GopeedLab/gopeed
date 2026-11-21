@@ -7,28 +7,32 @@ import '../../../../../shared/theme/app_palette.dart';
 import '../../../../../shared/widgets/app_tooltip.dart';
 import '../../../../../l10n/l10n.dart';
 import '../../task_record_localizations.dart';
+import '../task_progress_bar.dart';
 
-Color taskCardFillColor(AppPalette palette, TaskStatus status, bool isDark) {
-  if (isDark) {
-    switch (status) {
-      case TaskStatus.failed:
-        return palette.error;
-      case TaskStatus.paused:
-        return palette.textMuted;
-      case TaskStatus.downloading:
-      case TaskStatus.completed:
-        return palette.brandProgress;
-    }
-  }
+class TaskCardProgressBar extends StatelessWidget {
+  const TaskCardProgressBar({super.key, required this.task, this.height = 2});
 
-  switch (status) {
-    case TaskStatus.failed:
-      return palette.error;
-    case TaskStatus.paused:
-      return palette.textMuted;
-    case TaskStatus.downloading:
-    case TaskStatus.completed:
-      return palette.brandProgress;
+  final TaskRecord task;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
+    final fillColor = switch (task.status) {
+      TaskStatus.failed => palette.error,
+      TaskStatus.paused => palette.textMuted,
+      TaskStatus.downloading || TaskStatus.completed => palette.brandProgress,
+    };
+    return TaskProgressBar(
+      value: task.status == TaskStatus.completed ? 1.0 : task.progress,
+      height: height,
+      indeterminate: task.isIndeterminate,
+      trackColor: palette.brandTrack,
+      fillColor: fillColor,
+      highlightStartColor: fillColor,
+      highlightEndColor: fillColor,
+      shimmer: task.status == TaskStatus.downloading && !task.waiting,
+    );
   }
 }
 

@@ -15,10 +15,11 @@ import '../../../../shared/widgets/detail/app_detail_surface.dart';
 import '../../../../core/utils/text_wrap.dart';
 import '../../../../l10n/l10n.dart';
 import '../../domain/task_record.dart';
-import '../task_record_localizations.dart';
 import '../../application/task_runtime_status_provider.dart';
 import 'task_file_browser_dialog.dart';
 import 'task_file_tree.dart';
+import 'task_info_row.dart';
+import 'task_info_summary.dart';
 import 'task_statistics/task_statistics_tab.dart';
 
 class TaskDrawer extends ConsumerStatefulWidget {
@@ -299,32 +300,11 @@ class _TaskInfoTab extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _InfoBlock(label: context.l10n.name, value: task.name),
-        _InfoBlock(
-          label: context.l10n.status,
-          value: task.localizedStatus(context.l10n),
-          error: task.status == TaskStatus.failed,
-        ),
-        _InfoBlock(
-          label: context.l10n.size,
-          value: task.status == TaskStatus.completed
-              ? task.total ?? task.downloaded
-              : task.total != null
-              ? '${task.downloaded} / ${task.total}'
-              : task.downloaded,
-        ),
-        if (task.speed != null) _InfoBlock(label: context.l10n.speed, value: task.speed!),
-        if (task.uploading) _InfoBlock(label: context.l10n.uploadSpeed, value: task.uploadSpeed!),
-        if (task.status == TaskStatus.completed)
-          _InfoBlock(label: context.l10n.downloadDuration, value: task.localizedDownloadDuration(context.l10n) ?? '—')
-        else if (task.status == TaskStatus.paused)
-          _InfoBlock(label: context.l10n.remaining, value: '—')
-        else if (task.localizedRemaining(context.l10n) case final remaining?)
-          _InfoBlock(label: context.l10n.remaining, value: remaining),
+        TaskInfoSummary(task: task),
         if (task.createdAt case final createdAt?)
-          _InfoBlock(label: context.l10n.createdAt, value: _formatTaskDateTime(createdAt)),
+          TaskInfoRow(label: context.l10n.createdAt, value: _formatTaskDateTime(createdAt)),
         if (task.status == TaskStatus.completed)
-          _InfoBlock(
+          TaskInfoRow(
             label: context.l10n.doneAt,
             value: switch (task.doneAt) {
               final doneAt? => _formatTaskDateTime(doneAt),
@@ -379,35 +359,6 @@ String _formatTaskDateTime(DateTime value) {
       '${two(local.hour)}:${two(local.minute)}:${two(local.second)}';
 }
 
-class _InfoBlock extends StatelessWidget {
-  const _InfoBlock({required this.label, required this.value, this.error = false});
-
-  final String label;
-  final String value;
-  final bool error;
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = AppPalette.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _InfoLabel(label),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              value,
-              style: TextStyle(color: error ? palette.error : palette.textPrimary, fontSize: 12, height: 1.35),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _CopyableInfoBlock extends StatelessWidget {
   const _CopyableInfoBlock({
     required this.label,
@@ -430,68 +381,32 @@ class _CopyableInfoBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
+    return TaskInfoRow.custom(
+      label: label,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _InfoLabel(label),
-          const SizedBox(width: 12),
           Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Text(
-                    softWrapAnywhere(value),
-                    key: valueKey,
-                    semanticsLabel: value,
-                    softWrap: true,
-                    style: TextStyle(color: palette.textSecondary, fontSize: 11, height: 1.35),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                if (secondaryActionLabel != null && secondaryActionIcon != null && onSecondaryTap != null) ...[
-                  _TaskDetailIconButton(
-                    key: const ValueKey('task-details-edit-url'),
-                    label: secondaryActionLabel!,
-                    icon: Icon(secondaryActionIcon!, size: 16),
-                    onPressed: onSecondaryTap,
-                  ),
-                  const SizedBox(width: 4),
-                ],
-                action,
-              ],
+            child: Text(
+              softWrapAnywhere(value),
+              key: valueKey,
+              semanticsLabel: value,
+              softWrap: true,
+              style: TextStyle(color: palette.textSecondary, fontSize: 11, height: 1.35),
             ),
           ),
+          const SizedBox(width: 8),
+          if (secondaryActionLabel != null && secondaryActionIcon != null && onSecondaryTap != null) ...[
+            _TaskDetailIconButton(
+              key: const ValueKey('task-details-edit-url'),
+              label: secondaryActionLabel!,
+              icon: Icon(secondaryActionIcon!, size: 16),
+              onPressed: onSecondaryTap,
+            ),
+            const SizedBox(width: 4),
+          ],
+          action,
         ],
-      ),
-    );
-  }
-}
-
-class _InfoLabel extends StatelessWidget {
-  const _InfoLabel(this.label);
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = AppPalette.of(context);
-    return SizedBox(
-      width: 88,
-      child: Padding(
-        padding: const EdgeInsets.only(top: 2),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: palette.textMuted,
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.6,
-            height: 1.3,
-          ),
-        ),
       ),
     );
   }
@@ -513,58 +428,49 @@ class _EditableUrlBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return TaskInfoRow.custom(
+      label: context.l10n.downloadLink,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _InfoLabel(context.l10n.downloadLink),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                SizedBox(
-                  height: 76,
-                  child: AppTextField(
-                    controller: controller,
-                    minLines: null,
-                    maxLines: null,
-                    expands: true,
-                    textAlignVertical: TextAlignVertical.top,
-                    style: TextStyle(color: palette.textPrimary, fontSize: 11, height: 1.3),
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: palette.inputBg,
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: palette.border),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    _TaskDetailIconButton(
-                      key: const ValueKey('task-details-cancel-url'),
-                      label: context.l10n.cancel,
-                      icon: const Icon(Icons.close, size: 17),
-                      onPressed: updating ? null : onCancel,
-                    ),
-                    const SizedBox(width: 8),
-                    _TaskDetailIconButton(
-                      key: const ValueKey('task-details-save-url'),
-                      label: context.l10n.updateAndResume,
-                      icon: updating
-                          ? const SizedBox.square(dimension: 14, child: shad.CircularProgressIndicator())
-                          : const Icon(Icons.check, size: 17),
-                      onPressed: updating ? null : onSave,
-                      primary: true,
-                    ),
-                  ],
-                ),
-              ],
+          SizedBox(
+            height: 76,
+            child: AppTextField(
+              controller: controller,
+              minLines: null,
+              maxLines: null,
+              expands: true,
+              textAlignVertical: TextAlignVertical.top,
+              style: TextStyle(color: palette.textPrimary, fontSize: 11, height: 1.3),
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: palette.inputBg,
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: palette.border),
+              ),
             ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              _TaskDetailIconButton(
+                key: const ValueKey('task-details-cancel-url'),
+                label: context.l10n.cancel,
+                icon: const Icon(Icons.close, size: 17),
+                onPressed: updating ? null : onCancel,
+              ),
+              const SizedBox(width: 8),
+              _TaskDetailIconButton(
+                key: const ValueKey('task-details-save-url'),
+                label: context.l10n.updateAndResume,
+                icon: updating
+                    ? const SizedBox.square(dimension: 14, child: shad.CircularProgressIndicator())
+                    : const Icon(Icons.check, size: 17),
+                onPressed: updating ? null : onSave,
+                primary: true,
+              ),
+            ],
           ),
         ],
       ),

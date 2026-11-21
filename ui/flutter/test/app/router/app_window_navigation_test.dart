@@ -25,7 +25,6 @@ import 'package:gopeed/core/capabilities/storage_capability.dart';
 import 'package:gopeed/core/common/api_server_state.dart';
 import 'package:gopeed/core/common/start_config.dart';
 import 'package:gopeed/core/window/window_capability_transport.dart';
-import 'package:gopeed/core/window/app_window_payload.dart';
 import 'package:gopeed/features/home/presentation/pages/home_page.dart';
 import 'package:gopeed/features/tasks/application/task_list_navigation.dart';
 import 'package:gopeed/features/tasks/application/tasks_controller.dart';
@@ -126,16 +125,19 @@ void main() {
   );
 
   testWidgets(
-    'progress window falls back to a modal and closing preserves the main page',
+    'native download progress failure leaves the main window in place',
     (tester) async {
       await mount(tester);
       final home = tester.state(find.byType(HomePage));
-      await AppRouter.openWindow(AppWindowPayload.downloadProgress('missing'));
+      final windowCalls = <String>[];
+      messenger.setMockMethodCallHandler(windowManagerChannel, (call) async {
+        windowCalls.add(call.method);
+        return null;
+      });
+      expect(await AppRouter.openDownloadProgress('missing'), isFalse);
       await tester.pumpAndSettle();
-      expect(find.byKey(const ValueKey('app-window-modal')), findsOneWidget);
-      expect(find.text('Task not found'), findsOneWidget);
-      await tester.tap(find.byKey(const ValueKey('download-progress-close')));
-      await tester.pumpAndSettle();
+      expect(windowCalls, isEmpty);
+      expect(find.byKey(const ValueKey('app-window-modal')), findsNothing);
       expect(tester.state(find.byType(HomePage)), same(home));
       await unmount(tester);
     },

@@ -146,10 +146,8 @@ not accept a group ID to append members to an existing group.
 
 ## 11. Opening Child Surfaces
 
-Use `AppRouter.openWindow(AppWindowPayload)` for child-window destinations.
-`AppRouter.openCreateTask(createTask: ...)` is the create-task convenience API.
-All entry points, including deep links, browser capture and the tray, use this
-API rather than selecting a presentation themselves:
+Use `AppRouter.openCreateTask(createTask: ...)` for task creation from the main
+window, deep links, browser capture and the tray:
 
 - Desktop launches an independent native child window through
   `AppWindowLauncher.open(payload)` and the existing capability transport.
@@ -159,38 +157,32 @@ API rather than selecting a presentation themselves:
 - If native child-window creation fails, the main window is brought forward
   and the same in-app modal is used as a fallback.
 
-`AppWindowContent` owns the destination paths and content builders shared with
-`ChildWindowApp`. For another child surface, add its payload type, register its
-path and content, and use `AppWindowPage` for its in-app route. The modal's
-preferred size can be supplied per destination. Keep backend and storage access
-on the existing capability API in either presentation.
+`AppWindowContent` owns the content builders shared with `ChildWindowApp`.
+Use `AppWindowPage` when the feature needs a routed modal. Keep backend and
+storage access on the existing capability API in either presentation.
 
 Create-task content reports cancellation or completion through `onClose` when
 hosted in-app. Cancellation pops only the child surface. Completion selects the
 downloading list and returns home. The route payload uses a serializable string
 so browser history can restore a modal and its initial request.
 
-Download progress uses `AppWindowPayload.downloadProgress(taskId)` through the
-same destination registry, native window launcher and routed fallback. Its
-payload contains only the task ID. The page reuses `TasksController` and
-`TaskStatisticsTab`; polling, pause/resume and confirmed cancellation use the
-existing Gopeed capabilities in either window. Closing or backgrounding the
-window does not change the task. Completed tasks expose native file actions.
-The task context menu can open or reopen a status window independently of the
-automatic-opening setting, including for multiple different tasks.
+Download progress uses `AppRouter.openDownloadProgress(taskId)` to launch a
+native desktop child window. Its payload contains only the task ID. If the
+window cannot open, the download continues. The task context menu reports a
+failed manual attempt, and automatic attempts leave the main window in place.
+The page reuses `TasksController` and `TaskStatisticsTab`. Closing the window
+keeps the task running. Completed tasks expose native file actions. The task
+context menu can open or reopen status windows independently of the automatic
+opening setting.
 
-Each status window observes successful task snapshots to collect a timestamped
-speed history, beginning when the window opens. The full observed time range
-fills the chart width and compresses as samples arrive. Completion freezes the
-history; subsequent polling never appends zero-speed samples. API outages leave
-gaps, and paused/waiting/completed tasks report
-zero instantaneous download speed. Average speed uses downloaded bytes and
-backend active download duration, not the chart samples. No additional backend
-poller, simulated data, or child-owned runtime is introduced.
+The compact panel uses the same information rows as task details. It displays
+the latest task snapshot with the current speed, remaining time and progress.
+Connection statistics are fetched when the connection section is expanded.
+The child uses the existing task APIs through the main window capability host.
 
 The main shell owns `DownloadProgressWindowController`. On desktop it observes
-successful task-list snapshots and opens one window per new top-level task
-(one per group). The first snapshot establishes a baseline; existing tasks and
+successful task-list snapshots and opens one window per new browser-captured
+top-level task (one per group). The first snapshot establishes a baseline; existing tasks and
 subsequent status changes do not open windows. The persisted
 `extra.showDownloadProgressWindow` preference defaults to false and controls
 future automatic openings without closing windows already in use.

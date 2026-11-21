@@ -1,4 +1,6 @@
 {
+  "unableOpenDownloadProgressWindow": "Endirmə gedişi pəncərəsini açmaq mümkün olmadı",
+  "cancelDownload": "Endirməni ləğv et",
   "downloadProgressWindow": "Endirmə gedişatı pəncərəsi",
   "downloadProgressWindowDescription": "Yalnız brauzerdən tutulan endirmələr üçün gedişat pəncərəsini avtomatik açın. Pəncərəni bağlamaq endirməni dayandırmır.",
   "@@locale": "az",
@@ -667,9 +669,6 @@
   "trackerSubscriptionNotUpdated": "Hələ yenilənməyib",
   "actions": "Əməliyyatlar",
   "taskGroupDeleteImpact": "{taskCount} endirməyə və {fileCount} fayla təsir edir.",
-  "downloadSpeedHistory": "Endirmə sürəti",
-  "downloadRecentMinute": "Son 60 saniyə",
-  "averageSpeed": "Orta sürət",
   "runInBackground": "Arxa planda",
   "downloadBackgroundHint": "Bu pəncərə bağlandıqda endirmə davam edir."
 }

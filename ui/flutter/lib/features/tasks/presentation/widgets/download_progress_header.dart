@@ -5,7 +5,8 @@ import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
 import '../../domain/task_record.dart';
 import '../task_record_localizations.dart';
-import 'task_progress_bar.dart';
+import 'task_card/task_card_parts.dart';
+import 'task_info_summary.dart';
 
 class DownloadProgressHeader extends StatelessWidget {
   const DownloadProgressHeader({super.key, required this.task});
@@ -14,101 +15,29 @@ class DownloadProgressHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = AppPalette.of(context);
+    final l10n = context.l10n;
     final progress = task.status == TaskStatus.completed ? 1.0 : task.progress;
-    final color = task.status == TaskStatus.failed ? palette.error : palette.taskCardProgressFill;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppDesignTokens.space16, vertical: AppDesignTokens.space8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(AppDesignTokens.space8),
-                decoration: BoxDecoration(
-                  color: palette.brandTrack,
-                  borderRadius: BorderRadius.circular(AppDesignTokens.space8),
-                ),
-                child: Icon(
-                  task.isFolder || task.isGroup ? Icons.folder_outlined : Icons.insert_drive_file_outlined,
-                  size: 20,
-                  color: palette.textSecondary,
-                ),
-              ),
-              const SizedBox(width: AppDesignTokens.space12),
-              Expanded(
-                flex: 4,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(task.name, maxLines: 1, overflow: TextOverflow.ellipsis).small().semiBold(),
-                    Text(
-                      [
-                        if (task.protocol != null) task.protocol!.name.toUpperCase(),
-                        if (Uri.tryParse(task.url)?.host.isNotEmpty == true) Uri.parse(task.url).host,
-                      ].join(' · '),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ).xSmall().muted(),
-                  ],
-                ),
-              ),
-              const SizedBox(width: AppDesignTokens.space8),
-              Flexible(
-                child: Align(
-                  alignment: AlignmentDirectional.centerEnd,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppDesignTokens.space8,
-                      vertical: AppDesignTokens.space4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: palette.brandTrack,
-                      borderRadius: BorderRadius.circular(AppDesignTokens.windowRadius),
-                    ),
-                    child: Text(
-                      task.localizedStatus(context.l10n),
-                      textAlign: TextAlign.end,
-                      style: TextStyle(color: task.status == TaskStatus.failed ? palette.error : palette.textPrimary),
-                    ).xSmall(),
-                  ),
-                ),
-              ),
-            ],
+    final percentage = progress == null ? null : '${(progress * 100).toStringAsFixed(1)}%';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TaskInfoSummary(task: task),
+        if (task.error case final error? when error.isNotEmpty) ...[
+          Text(
+            error,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: AppPalette.of(context).error, fontSize: 12),
           ),
           const SizedBox(height: AppDesignTokens.space8),
-          Row(
-            children: [
-              Expanded(child: Text('${task.downloaded} / ${task.total ?? context.l10n.unknownSize}').xSmall()),
-              if (progress != null) Text('${(progress * 100).toStringAsFixed(1)}%').large().semiBold(),
-            ],
-          ),
-          const SizedBox(height: AppDesignTokens.space8),
-          Semantics(
-            label: context.l10n.progress,
-            value: progress == null ? task.localizedStatus(context.l10n) : '${(progress * 100).toStringAsFixed(1)}%',
-            child: TaskProgressBar(
-              value: progress,
-              indeterminate: task.isIndeterminate,
-              shimmer: task.status == TaskStatus.downloading && !task.waiting,
-              height: AppDesignTokens.space8,
-              trackColor: palette.brandTrack,
-              fillColor: color,
-              highlightStartColor: color,
-              highlightEndColor: color,
-            ),
-          ),
-          const SizedBox(height: AppDesignTokens.space8),
-          if (task.error?.isNotEmpty == true)
-            Text(
-              task.error!,
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: palette.error),
-            ),
         ],
-      ),
+        Semantics(
+          label: l10n.progress,
+          value: percentage ?? task.localizedStatus(l10n),
+          child: TaskCardProgressBar(task: task, height: 3),
+        ),
+      ],
     );
   }
 }

@@ -1,4 +1,6 @@
 {
+  "unableOpenDownloadProgressWindow": "تعذّر فتح نافذة تقدم التنزيل",
+  "cancelDownload": "إلغاء التنزيل",
   "downloadProgressWindow": "نافذة تقدم التنزيل",
   "downloadProgressWindowDescription": "فتح نافذة تقدم تلقائيًا للتنزيلات الملتقطة من المتصفح فقط. يستمر التنزيل عند إغلاقها.",
   "@@locale": "ar",
@@ -483,9 +485,6 @@
   "trackerSubscriptionNotUpdated": "لم يُحدّث بعد",
   "actions": "الإجراءات",
   "taskGroupDeleteImpact": "سيؤثر على {taskCount} من مهام التنزيل و{fileCount} من الملفات.",
-  "downloadSpeedHistory": "سرعة التنزيل",
-  "downloadRecentMinute": "آخر 60 ثانية",
-  "averageSpeed": "متوسط السرعة",
   "runInBackground": "في الخلفية",
   "downloadBackgroundHint": "يستمر التنزيل عند إغلاق هذه النافذة."
 }

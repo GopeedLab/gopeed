@@ -1,4 +1,6 @@
 {
+  "unableOpenDownloadProgressWindow": "Das Fenster für den Downloadfortschritt konnte nicht geöffnet werden",
+  "cancelDownload": "Download abbrechen",
   "downloadProgressWindow": "Download-Fortschrittsfenster",
   "downloadProgressWindowDescription": "Nur für vom Browser erfasste Downloads automatisch ein Fortschrittsfenster öffnen. Der Download läuft nach dem Schließen weiter.",
   "@@locale": "de",
@@ -483,9 +485,6 @@
   "trackerSubscriptionNotUpdated": "Noch nicht aktualisiert",
   "actions": "Aktionen",
   "taskGroupDeleteImpact": "Betrifft {taskCount} Downloads und {fileCount} Dateien.",
-  "downloadSpeedHistory": "Downloadgeschwindigkeit",
-  "downloadRecentMinute": "Letzte 60 Sekunden",
-  "averageSpeed": "Durchschnitt",
   "runInBackground": "Hintergrund",
   "downloadBackgroundHint": "Der Download läuft nach dem Schließen weiter."
 }

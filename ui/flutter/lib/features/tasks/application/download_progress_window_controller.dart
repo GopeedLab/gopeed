@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/application/app_runtime_controller.dart';
 import '../../../app/router/app_router.dart';
 import '../../../core/window/app_window_chrome.dart';
-import '../../../core/window/app_window_payload.dart';
 import 'tasks_controller.dart';
 
 final downloadProgressWindowControllerProvider = NotifierProvider<DownloadProgressWindowController, void>(
@@ -45,5 +44,7 @@ class DownloadProgressWindowController extends Notifier<void> {
   }
 
   @visibleForTesting
-  Future<void> openWindow(String taskId) => AppRouter.openWindow(AppWindowPayload.downloadProgress(taskId));
+  Future<void> openWindow(String taskId) async {
+    await AppRouter.openDownloadProgress(taskId);
+  }
 }

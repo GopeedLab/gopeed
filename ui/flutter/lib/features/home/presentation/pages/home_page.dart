@@ -13,7 +13,6 @@ import '../../../../core/utils/breakpoints.dart';
 import '../../../../core/utils/file_explorer.dart';
 import '../../../../app/router/app_router.dart';
 import '../../../../core/window/app_window_chrome.dart';
-import '../../../../core/window/app_window_payload.dart';
 import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
 import '../../../../shared/widgets/app_toast.dart';
@@ -475,9 +474,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       allSelected: allSelected,
       listeningForUpdate: listeningForUpdate,
       onShowDetails: () => _showTaskDetails(task),
-      onShowDownloadProgress: AppWindowChrome.isDesktopWindow
-          ? () => unawaited(AppRouter.openWindow(AppWindowPayload.downloadProgress(task.id)))
-          : null,
+      onShowDownloadProgress: AppWindowChrome.isDesktopWindow ? () => unawaited(_showDownloadProgress(task.id)) : null,
       onOpenFile: () => unawaited(_openTask(task)),
       onOpenDirectory: () => unawaited(_revealTask(task)),
       onBrowseFiles: () =>
@@ -498,6 +495,11 @@ class _HomePageState extends ConsumerState<HomePage> {
       onUpdateUrl: () => unawaited(_showUpdateUrlDialog(task)),
       onToggleUpdateListener: () => _toggleUpdateListener(task),
     );
+  }
+
+  Future<void> _showDownloadProgress(String taskId) async {
+    final opened = await AppRouter.openDownloadProgress(taskId);
+    if (!opened && mounted) _showToast(context.l10n.unableOpenDownloadProgressWindow);
   }
 
   List<String> _contextTaskIds(TaskRecord task) {

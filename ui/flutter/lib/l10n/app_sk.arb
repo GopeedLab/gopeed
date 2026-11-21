@@ -1,4 +1,6 @@
 {
+  "unableOpenDownloadProgressWindow": "Nepodarilo sa otvoriť okno priebehu sťahovania",
+  "cancelDownload": "Zrušiť sťahovanie",
   "downloadProgressWindow": "Okno priebehu sťahovania",
   "downloadProgressWindowDescription": "Automaticky otvoriť okno priebehu iba pre sťahovania zachytené z prehliadača. Zatvorenie okna nezastaví sťahovanie.",
   "@@locale": "sk",
@@ -684,9 +686,6 @@
   "trackerSubscriptionNotUpdated": "Zatiaľ neaktualizované",
   "actions": "Akcie",
   "taskGroupDeleteImpact": "Ovplyvní {taskCount} sťahovaní a {fileCount} súborov.",
-  "downloadSpeedHistory": "Rýchlosť sťahovania",
-  "downloadRecentMinute": "Posledných 60 sekúnd",
-  "averageSpeed": "Priemerná rýchlosť",
   "runInBackground": "Na pozadí",
   "downloadBackgroundHint": "Sťahovanie pokračuje aj po zatvorení okna."
 }

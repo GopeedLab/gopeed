@@ -1,4 +1,6 @@
 {
+  "unableOpenDownloadProgressWindow": "پنجرهٔ پیشرفت دانلود باز نشد",
+  "cancelDownload": "لغو دانلود",
   "downloadProgressWindow": "پنجرهٔ پیشرفت بارگیری",
   "downloadProgressWindowDescription": "پنجرهٔ پیشرفت فقط برای بارگیری‌های دریافت‌شده از مرورگر به‌طور خودکار باز شود. بستن آن بارگیری را متوقف نمی‌کند.",
   "@@locale": "fa",
@@ -483,9 +485,6 @@
   "trackerSubscriptionNotUpdated": "هنوز به‌روزرسانی نشده",
   "actions": "عملیات",
   "taskGroupDeleteImpact": "بر {taskCount} بارگیری و {fileCount} پرونده تأثیر می‌گذارد.",
-  "downloadSpeedHistory": "سرعت دانلود",
-  "downloadRecentMinute": "۶۰ ثانیهٔ اخیر",
-  "averageSpeed": "سرعت میانگین",
   "runInBackground": "پس‌زمینه",
   "downloadBackgroundHint": "با بستن این پنجره دانلود ادامه می‌یابد."
 }
