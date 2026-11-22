@@ -1,6 +1,5 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:window_manager/window_manager.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
 import '../app/application/app_appearance_controller.dart';
@@ -9,7 +8,6 @@ import '../core/window/app_window_frame.dart';
 import '../core/window/app_window_payload.dart';
 import '../core/window/window_capability_transport.dart';
 import 'router/app_window_content.dart';
-import '../features/tasks/application/tasks_controller.dart';
 import '../l10n/l10n.dart';
 import '../shared/theme/app_component_themes.dart';
 import '../shared/theme/app_theme.dart';
@@ -67,17 +65,10 @@ class _ChildWindowAppState extends ConsumerState<ChildWindowApp> with WidgetsBin
     };
     final locale = supportedLocaleFromConfig(appearance.locale);
 
-    String? taskName;
-    if (widget.payload.type == AppWindowType.downloadProgress) {
-      final name = tasksControllerProvider.select((tasks) => tasks.value?.findTask(widget.payload.taskId)?.name);
-      ref.listen(name, (_, next) async {
-        if (next != null) await windowManager.setTitle(next);
-      });
-      taskName = ref.watch(name);
-    }
+    final type = widget.payload.type;
     return shad.ShadcnApp(
       debugShowCheckedModeBanner: false,
-      onGenerateTitle: (context) => taskName ?? AppWindowBootstrap.subWindowTitle(widget.payload.type, context.l10n),
+      onGenerateTitle: (context) => AppWindowBootstrap.subWindowTitle(type, context.l10n),
       theme: AppTheme.light(themeColor),
       darkTheme: AppTheme.dark(themeColor),
       materialTheme: isLightTheme ? AppTheme.materialLight(themeColor) : AppTheme.materialDark(themeColor),
@@ -86,10 +77,12 @@ class _ChildWindowAppState extends ConsumerState<ChildWindowApp> with WidgetsBin
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       builder: (context, child) => AppComponentThemes(child: child ?? const SizedBox.shrink()),
-      home: AppWindowFrame(
-        title: widget.payload.type == AppWindowType.downloadProgress ? taskName ?? '' : null,
-        resizable: widget.payload.type != AppWindowType.downloadProgress,
-        child: Builder(builder: _buildPage),
+      home: Builder(
+        builder: (context) => AppWindowFrame(
+          title: type == AppWindowType.downloadProgress ? AppWindowBootstrap.subWindowTitle(type, context.l10n) : null,
+          resizable: type != AppWindowType.downloadProgress,
+          child: Builder(builder: _buildPage),
+        ),
       ),
     );
   }

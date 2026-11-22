@@ -1,12 +1,14 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform;
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../../../core/capabilities/app_capabilities.dart';
 import '../../../../core/utils/file_explorer.dart';
+import '../../../../core/window/app_window_bootstrap.dart';
 import '../../../../core/window/app_window_chrome.dart';
 import '../../../../l10n/l10n.dart';
 import '../../../../shared/theme/app_design_tokens.dart';
@@ -181,10 +183,20 @@ class _DownloadProgressWindowPageState extends ConsumerState<DownloadProgressWin
     do {
       target = _targetHeight;
       try {
-        if (await windowManager.isMaximized() || await windowManager.isFullScreen()) break;
+        // AppKit can report non-resizable windows as zoomed even at their compact size.
+        if ((defaultTargetPlatform != TargetPlatform.macOS && await windowManager.isMaximized()) ||
+            await windowManager.isFullScreen()) {
+          break;
+        }
         final size = await windowManager.getSize();
-        if (mounted && !_closing && target == _targetHeight && (size.height - target).abs() >= 1) {
-          await windowManager.setSize(Size(size.width, target));
+        if (mounted && !_closing && target == _targetHeight) {
+          final nextSize = Size(size.width, target);
+          if (defaultTargetPlatform == TargetPlatform.linux) {
+            // A previous GTK size request may still be waiting for allocation.
+            await AppWindowBootstrap.setLinuxProgressWindowSize(nextSize);
+          } else if ((size.height - target).abs() >= 1) {
+            await windowManager.setSize(nextSize);
+          }
         }
       } catch (error) {
         debugPrint('Unable to resize the download progress window: $error');

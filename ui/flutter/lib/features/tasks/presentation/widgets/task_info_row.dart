@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/widgets.dart';
 
 import '../../../../shared/theme/app_design_tokens.dart';
@@ -10,23 +11,33 @@ class TaskInfoRow extends StatelessWidget {
     required String value,
     this.error = false,
     this.bottomPadding = 14,
+    this.scrollValue = false,
   }) : _value = value,
        _child = null;
 
   const TaskInfoRow.custom({super.key, required this.label, required Widget child, this.bottomPadding = 14})
     : _value = null,
       _child = child,
+      scrollValue = false,
       error = false;
 
   final String label;
   final bool error;
   final double bottomPadding;
+  final bool scrollValue;
   final String? _value;
   final Widget? _child;
 
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
+    final value =
+        _child ??
+        Text(
+          _value!,
+          maxLines: scrollValue ? 1 : null,
+          style: TextStyle(color: error ? palette.error : palette.textPrimary, fontSize: 12, height: 1.35),
+        );
     return Padding(
       padding: EdgeInsets.only(bottom: bottomPadding),
       child: Row(
@@ -50,12 +61,15 @@ class TaskInfoRow extends StatelessWidget {
           ),
           const SizedBox(width: AppDesignTokens.space12),
           Expanded(
-            child:
-                _child ??
-                Text(
-                  _value!,
-                  style: TextStyle(color: error ? palette.error : palette.textPrimary, fontSize: 12, height: 1.35),
-                ),
+            child: scrollValue
+                ? ScrollConfiguration(
+                    behavior: ScrollConfiguration.of(context).copyWith(
+                      dragDevices: {...ScrollConfiguration.of(context).dragDevices, PointerDeviceKind.mouse},
+                      scrollbars: false,
+                    ),
+                    child: SingleChildScrollView(scrollDirection: Axis.horizontal, child: value),
+                  )
+                : value,
           ),
         ],
       ),

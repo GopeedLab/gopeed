@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/material.dart' show Colors;
+import 'package:flutter/services.dart' show MethodChannel;
 import 'package:flutter/widgets.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -9,6 +10,10 @@ import 'app_window_chrome.dart';
 import 'app_window_payload.dart';
 
 class AppWindowBootstrap {
+  static Future<void> setLinuxProgressWindowSize(Size size) => const MethodChannel(
+    'gopeed/progress_window',
+  ).invokeMethod<void>('setSize', {'width': size.width.round(), 'height': size.height.ceil()});
+
   static Future<void> setupMainWindow({bool hidden = false}) async {
     if (!AppWindowChrome.isDesktopWindow) {
       return;
@@ -48,6 +53,9 @@ class AppWindowBootstrap {
     final title = subWindowTitle(type, appLocalizationsFor(localeConfig));
 
     if (type == AppWindowType.downloadProgress) {
+      if (defaultTargetPlatform == TargetPlatform.linux) {
+        await setLinuxProgressWindowSize(AppDesignTokens.downloadProgressWindowSize);
+      }
       final progressOptions = WindowOptions(
         size: AppDesignTokens.downloadProgressWindowSize,
         center: true,
@@ -104,7 +112,7 @@ class AppWindowBootstrap {
   static String subWindowTitle(AppWindowType type, AppLocalizations l10n) {
     return switch (type) {
       AppWindowType.createTask => 'Gopeed - ${l10n.create}',
-      AppWindowType.downloadProgress => 'Gopeed - ${l10n.downloadProgressWindow}',
+      AppWindowType.downloadProgress => l10n.downloadProgressTitle,
       _ => 'Gopeed',
     };
   }

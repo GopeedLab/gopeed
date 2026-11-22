@@ -12,7 +12,7 @@ void main() {
     final payload = AppWindowPayload.fromRaw(raw);
     expect(payload.type, AppWindowType.downloadProgress);
     expect(payload.taskId, 'task-123');
-    expect(AppWindowBootstrap.subWindowTitle(payload.type, appLocalizationsFor('zh')), 'Gopeed - 下载进度弹窗');
+    expect(AppWindowBootstrap.subWindowTitle(payload.type, appLocalizationsFor('zh')), '下载进度');
   });
 
   test('invalid progress window task IDs are rejected', () {

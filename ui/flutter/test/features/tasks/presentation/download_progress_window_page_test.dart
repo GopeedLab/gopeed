@@ -4,6 +4,7 @@ import 'dart:math' as math;
 
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform;
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -26,6 +27,7 @@ import 'package:gopeed/shared/theme/app_theme.dart';
 import 'package:gopeed/shared/theme/app_design_tokens.dart';
 
 void main() {
+  const linuxProgress = MethodChannel('gopeed/progress_window');
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     final font = FontLoader('packages/shadcn_flutter/GeistSans');
@@ -47,6 +49,12 @@ void main() {
       };
       final messenger = tester.binding.defaultBinaryMessenger;
       final calls = <MethodCall>[];
+      final linuxSizes = <dynamic>[];
+      messenger.setMockMethodCallHandler(linuxProgress, (call) async {
+        expect(call.method, 'setSize');
+        linuxSizes.add(call.arguments);
+        return null;
+      });
       messenger.setMockMethodCallHandler(window, (call) async {
         calls.add(call);
         return switch (call.method) {
@@ -67,6 +75,7 @@ void main() {
         },
       );
       addTearDown(() {
+        messenger.setMockMethodCallHandler(linuxProgress, null);
         messenger.setMockMethodCallHandler(window, null);
         messenger.setMockMethodCallHandler(screen, null);
       });
@@ -76,7 +85,16 @@ void main() {
       await tester.pump(const Duration(milliseconds: 180));
       Iterable<dynamic> arguments(String method) =>
           calls.where((call) => call.method == method).map((call) => call.arguments);
+      expect(arguments('setTitle').single, {'title': 'Download progress'});
       expect(arguments('setResizable').single, {'isResizable': false});
+      expect(
+        linuxSizes,
+        defaultTargetPlatform == TargetPlatform.linux
+            ? [
+                {'width': 500, 'height': 224},
+              ]
+            : isEmpty,
+      );
       expect(arguments('setMaximizable').single, {'isMaximizable': false});
       expect(
         arguments('setHasShadow'),
@@ -114,10 +132,16 @@ void main() {
     );
     addTearDown(container.dispose);
     if (onClose != null) {
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(linuxProgress, (_) async => null);
+      addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(linuxProgress, null));
       const channel = MethodChannel('window_manager');
       tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, (call) async {
         if (call.method == 'close') onClose();
-        return null;
+        return switch (call.method) {
+          'isFullScreen' || 'isMaximized' => false,
+          'getBounds' => {'x': 0.0, 'y': 0.0, 'width': size.width, 'height': size.height},
+          _ => null,
+        };
       });
       addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, null));
     }
@@ -143,16 +167,17 @@ void main() {
     final tasks = await mount(tester, firstSnapshot: first.future);
     final rows = find.byType(TaskInfoRow);
     final emptyValues = find.descendant(of: rows, matching: find.text(''));
-    final labels = ['Status', 'Size', 'Speed', 'Remaining'];
+    final labels = ['Name', 'Status', 'Size', 'Speed', 'Remaining'];
     for (final label in labels) {
       expect(find.text(label), findsOneWidget);
     }
-    expect(emptyValues, findsNWidgets(4));
+    expect(emptyValues, findsNWidgets(5));
     final initialPositions = [for (final label in labels) tester.getTopLeft(find.text(label))];
     first.complete(TasksState(tasks: [_task(TaskStatus.downloading, speed: null, remainingSeconds: null)]));
     await tester.idle();
     await tester.pump();
     expect(find.text('1 MB / 4 MB'), findsOneWidget);
+    expect(find.text('archive.zip'), findsOneWidget);
     expect(emptyValues, findsNWidgets(2));
     tasks.emit(TaskStatus.downloading);
     await tester.pump();
@@ -176,7 +201,8 @@ void main() {
         expect(progress.height, 3);
         expect(progress.shimmer, isTrue);
         expect(find.text('128 KB/s'), findsOneWidget);
-        expect(find.text('archive.zip'), findsNothing);
+        final nameRow = find.ancestor(of: find.text('Name'), matching: find.byType(TaskInfoRow));
+        expect(find.descendant(of: nameRow, matching: find.text('archive.zip')), findsOneWidget);
         expect(find.text('Download Link'), findsNothing);
         expect(find.text('https://example.com/archive.zip'), findsNothing);
         final speed = tester.element(find.text('128 KB/s'));
@@ -305,21 +331,36 @@ void main() {
         final initialHeight = AppDesignTokens.downloadProgressWindowSize.height;
         var bounds = Rect.fromLTWH(80, screenBottom - initialHeight, width, initialHeight);
         var displayQueries = 0;
+        var maximizeQueries = 0;
         final resizes = <Rect>[];
+        void resize(Map args) {
+          expect(args.containsKey('x'), isFalse);
+          expect(args.containsKey('y'), isFalse);
+          final size = Size((args['width'] as num).toDouble(), (args['height'] as num).toDouble());
+          bounds = bounds.topLeft & size;
+          resizes.add(bounds);
+          tester.view.physicalSize = size;
+        }
+
+        messenger.setMockMethodCallHandler(linuxProgress, (call) async {
+          expect(defaultTargetPlatform, TargetPlatform.linux);
+          expect(call.method, 'setSize');
+          resize(call.arguments as Map);
+          return null;
+        });
         messenger.setMockMethodCallHandler(windowChannel, (call) async {
           switch (call.method) {
             case 'isMaximized':
+              maximizeQueries++;
+              // AppKit can report a non-resizable progress window as zoomed.
+              return defaultTargetPlatform == TargetPlatform.macOS;
             case 'isFullScreen':
               return false;
             case 'getBounds':
               return {'x': bounds.left, 'y': bounds.top, 'width': bounds.width, 'height': bounds.height};
             case 'setBounds':
-              final args = call.arguments as Map;
-              expect(args.containsKey('x'), isFalse);
-              expect(args.containsKey('y'), isFalse);
-              bounds = bounds.topLeft & Size(args['width'], args['height']);
-              resizes.add(bounds);
-              tester.view.physicalSize = bounds.size;
+              expect(defaultTargetPlatform, isNot(TargetPlatform.linux));
+              resize(call.arguments as Map);
               return null;
           }
           throw MissingPluginException(call.method);
@@ -337,6 +378,7 @@ void main() {
           };
         });
         addTearDown(() {
+          messenger.setMockMethodCallHandler(linuxProgress, null);
           messenger.setMockMethodCallHandler(windowChannel, null);
           messenger.setMockMethodCallHandler(screenChannel, null);
         });
@@ -356,8 +398,23 @@ void main() {
         final cancel = find.byKey(const ValueKey('download-progress-cancel'));
         final bar = find.byType(TaskProgressBar);
         if (width == 500) {
-          expect(compact.height, 224);
-          tasks.replace(TasksState(tasks: [_task(TaskStatus.downloading, uploading: true)]));
+          expect(compact.height, greaterThanOrEqualTo(initialHeight));
+          final longName = '${'long-filename-' * 12}.zip';
+          tasks.replace(TasksState(tasks: [_task(TaskStatus.downloading, name: longName)]));
+          await tester.pump();
+          await tester.pump();
+          final name = find.text(longName);
+          final nameRow = find.ancestor(of: name, matching: find.byType(TaskInfoRow));
+          final nameScroll = find.descendant(of: nameRow, matching: find.byType(Scrollable));
+          final namePosition = tester.state<ScrollableState>(nameScroll).position;
+          expect(tester.getSize(name).height, tester.getSize(find.text('1 MB / 4 MB')).height);
+          expect(bounds, compact);
+          expect(namePosition.maxScrollExtent, greaterThan(0));
+          await tester.dragFrom(tester.getCenter(nameScroll), const Offset(-140, 0), kind: PointerDeviceKind.mouse);
+          await tester.pump(const Duration(milliseconds: 300));
+          expect(namePosition.pixels, greaterThan(0));
+
+          tasks.replace(TasksState(tasks: [_task(TaskStatus.downloading, name: longName, uploading: true)]));
           await tester.pump();
           await tester.pump();
           final fields = find.ancestor(of: find.text('Upload speed'), matching: find.byType(SingleChildScrollView));
@@ -420,6 +477,7 @@ void main() {
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 250));
         expect(resizes, [expanded, compact]);
+        expect(maximizeQueries, defaultTargetPlatform == TargetPlatform.macOS ? 0 : greaterThan(0));
         expect(displayQueries, 0);
         expect(find.byType(TaskStatisticsTab), findsNothing);
         expect(tester.takeException(), isNull);
@@ -609,6 +667,7 @@ class _Tasks extends TasksController {
 TaskRecord _task(
   TaskStatus status, {
   String id = 'download',
+  String name = 'archive.zip',
   bool unknownSize = false,
   String? speed = '128 KB/s',
   int? remainingSeconds = 30,
@@ -618,7 +677,7 @@ TaskRecord _task(
   bool uploading = false,
 }) => TaskRecord(
   id: id,
-  name: 'archive.zip',
+  name: name,
   status: status,
   isFolder: isFolder,
   isGroup: isGroup,

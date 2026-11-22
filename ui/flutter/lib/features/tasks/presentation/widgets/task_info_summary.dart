@@ -28,7 +28,7 @@ class TaskInfoSummary extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (!compact) row(label: l10n.name, value: task?.name),
+        TaskInfoRow(label: l10n.name, value: task?.name ?? '', bottomPadding: spacing, scrollValue: compact),
         row(label: l10n.status, value: task?.localizedStatus(l10n), error: task?.status == TaskStatus.failed),
         row(label: l10n.size, value: size),
         if (compact || task?.speed != null) row(label: l10n.speed, value: task?.speed),

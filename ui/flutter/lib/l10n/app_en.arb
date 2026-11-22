@@ -2,6 +2,7 @@
   "unableOpenDownloadProgressWindow": "Could not open the download progress window",
   "cancelDownload": "Cancel Download",
   "downloadProgressWindow": "Download progress window",
+  "downloadProgressTitle": "Download progress",
   "downloadProgressWindowDescription": "Automatically open a progress window only for downloads captured from the browser. Closing it keeps the download running.",
   "@@locale": "en",
   "label": "English",
