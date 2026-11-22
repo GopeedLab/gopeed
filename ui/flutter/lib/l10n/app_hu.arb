@@ -50,6 +50,8 @@
   "autoTorrentEnable": "BT feladatok automatikus létrehozása .torrent fájlokból",
   "autoTorrentDeleteAfterDownload": ".torrent fájl törlése a BT feladat létrehozása után",
   "autoDeleteMissingFileTasks": "Hiányzó fájlokkal rendelkező feladatok automatikus törlése",
+  "autoCloseWhenAllTasksDone": "Kilépés az alkalmazásból, ha minden feladat elkészült",
+  "autoCloseWhenAllTasksDoneDescription": "A Gopeed bezárul, miután minden letöltési feladat befejeződött. A szüneteltetett feladatok a következő indításig megmaradnak.",
   "items": "{count} elem",
   "subscribeTracker": "Nyomkövető előfizetése",
   "subscribeFail": "Az előfizetés nem sikerült, kérjük, ellenőrizze a hálózatot, vagy próbálja újra később",

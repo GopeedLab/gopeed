@@ -50,6 +50,8 @@
   "autoTorrentEnable": "Tự động tạo nhiệm vụ BT từ file .torrent",
   "autoTorrentDeleteAfterDownload": "Xóa file .torrent sau khi tạo nhiệm vụ BT",
   "autoDeleteMissingFileTasks": "Tự động xóa tác vụ có tệp bị thiếu",
+  "autoCloseWhenAllTasksDone": "Thoát ứng dụng khi mọi tác vụ hoàn tất",
+  "autoCloseWhenAllTasksDoneDescription": "Đóng Gopeed sau khi tất cả tác vụ tải xuống hoàn tất. Các tác vụ đã tạm dừng sẽ được giữ lại cho lần mở sau.",
   "items": "{count} mục",
   "subscribeTracker": "Theo dõi Tracker",
   "subscribeFail": "Theo dõi thất bại, vui lòng kiểm tra kết nối mạng hoặc thử lại sau",

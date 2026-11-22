@@ -50,6 +50,8 @@
   "autoTorrentEnable": "Automatyczne tworzenie zadań BT z plików .torrent",
   "autoTorrentDeleteAfterDownload": "Usuń plik .torrent po utworzeniu zadania BT",
   "autoDeleteMissingFileTasks": "Automatycznie usuwaj zadania z brakującymi plikami",
+  "autoCloseWhenAllTasksDone": "Zamknij aplikację po ukończeniu wszystkich zadań",
+  "autoCloseWhenAllTasksDoneDescription": "Zamyka Gopeed po ukończeniu wszystkich zadań pobierania. Wstrzymane zadania pozostaną do następnego uruchomienia.",
   "items": "{count} elementów",
   "subscribeTracker": "Subskrybuj tracker",
   "subscribeFail": "Błąd subskrypcji, sprawdź łączność z internetem",

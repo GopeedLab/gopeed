@@ -50,6 +50,8 @@
   "autoTorrentEnable": "إنشاء مهام تورنت تلقائياً من ملفات .torrent",
   "autoTorrentDeleteAfterDownload": "حذف ملف .torrent بعد إنشاء مهمة التورنت",
   "autoDeleteMissingFileTasks": "حذف المهام ذات الملفات المفقودة تلقائياً",
+  "autoCloseWhenAllTasksDone": "إنهاء التطبيق عند اكتمال كل المهام",
+  "autoCloseWhenAllTasksDoneDescription": "يُنهي Gopeed بعد انتهاء جميع مهام التنزيل. تبقى المهام المتوقفة في قائمة الانتظار للفتح التالي.",
   "items": "{count} عناصر",
   "subscribeTracker": "الاشتراك في متتبعات التورنت",
   "subscribeFail": "فشل الاشتراك، يرجى التحقق من الشبكة أو المحاولة لاحقاً",

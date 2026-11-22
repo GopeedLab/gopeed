@@ -50,6 +50,8 @@
   "autoTorrentEnable": ".torrent dosyalarından otomatik BitTorrent işlemleri oluştur",
   "autoTorrentDeleteAfterDownload": "BitTorrent işlemi oluşturulduktan sonra .torrent dosyasını sil",
   "autoDeleteMissingFileTasks": "Eksik dosya işlemlerini otomatik sil",
+  "autoCloseWhenAllTasksDone": "Tüm görevler bitince uygulamadan çık",
+  "autoCloseWhenAllTasksDoneDescription": "Tüm indirme görevleri tamamlandıktan sonra Gopeed kapanır. Duraklatılmış görevler bir sonraki açılış için saklanır.",
   "items": "{count} öğe",
   "subscribeTracker": "Tracker Aboneliği",
   "subscribeFail": "Abonelik başarısız oldu, lütfen ağı kontrol edin veya daha sonra tekrar deneyin",

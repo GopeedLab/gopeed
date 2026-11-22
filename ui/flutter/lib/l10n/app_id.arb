@@ -50,6 +50,8 @@
   "autoTorrentEnable": "Buat tugas BT secara otomatis dari file .torrent",
   "autoTorrentDeleteAfterDownload": "Hapus file .torrent setelah membuat tugas BT",
   "autoDeleteMissingFileTasks": "Otomatis hapus tugas dengan file yang hilang",
+  "autoCloseWhenAllTasksDone": "Keluar dari aplikasi setelah semua tugas selesai",
+  "autoCloseWhenAllTasksDoneDescription": "Gopeed akan ditutup setelah semua tugas unduhan selesai. Tugas yang dijeda tetap tersimpan untuk peluncuran berikutnya.",
   "items": "{count} item",
   "subscribeTracker": "Berlangganan Tracker",
   "subscribeFail": "Berlangganan gagal, periksa jaringan atau coba lagi nanti",

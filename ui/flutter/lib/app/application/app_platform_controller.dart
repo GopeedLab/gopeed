@@ -187,7 +187,7 @@ class AppPlatformController extends AsyncNotifier<AppPlatformState> with WindowL
         ),
         MenuItem(label: version),
         MenuItem.separator(),
-        MenuItem(label: locale.exit, onClick: (_) => _exit()),
+        MenuItem(label: locale.exit, onClick: (_) => exitApp()),
       ],
     );
 
@@ -379,7 +379,9 @@ class AppPlatformController extends AsyncNotifier<AppPlatformState> with WindowL
     }
   }
 
-  Future<void> _exit() async {
+  /// Stops the in-process services and destroys the window. Shared by the tray
+  /// menu and the automatic shutdown after the last download task.
+  Future<void> exitApp() async {
     try {
       await HostRpcService.instance.stop();
       await AppWindowCapabilityHost.instance.stop();
