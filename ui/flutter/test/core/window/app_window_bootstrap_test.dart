@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gopeed/api/model/downloader_config.dart';
 import 'package:gopeed/core/window/app_window_bootstrap.dart';
 import 'package:gopeed/core/window/app_window_payload.dart';
 
@@ -58,6 +59,25 @@ void main() {
             ],
     );
   }
+
+  testWidgets('hidden Windows startup does not restore maximized state', (tester) async {
+    final saved = WindowStateConfig(isMaximized: true, width: 1200, height: 800);
+    await AppWindowBootstrap.setupMainWindow(hidden: true);
+    await tester.pump();
+    calls.clear();
+
+    await AppWindowBootstrap.restoreMainWindowState(saved, hidden: true);
+
+    expect(calls.map((call) => call.method), contains('setBounds'));
+    expect(calls.map((call) => call.method).where((method) => ['maximize', 'show', 'focus'].contains(method)), isEmpty);
+    expect(saved.isMaximized, isTrue);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
+  testWidgets('normal Windows startup restores maximized state', (tester) async {
+    await AppWindowBootstrap.restoreMainWindowState(WindowStateConfig(isMaximized: true), hidden: false);
+
+    expect(calls.map((call) => call.method), contains('maximize'));
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 
   for (final platform in [TargetPlatform.linux, TargetPlatform.windows, TargetPlatform.macOS]) {
     for (final subWindow in [false, true]) {

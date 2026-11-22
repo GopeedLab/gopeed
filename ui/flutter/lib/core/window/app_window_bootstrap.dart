@@ -3,6 +3,7 @@ import 'package:flutter/material.dart' show Colors;
 import 'package:flutter/widgets.dart';
 import 'package:window_manager/window_manager.dart';
 
+import '../../api/model/downloader_config.dart';
 import '../../l10n/l10n.dart';
 import '../../shared/theme/app_design_tokens.dart';
 import 'app_window_chrome.dart';
@@ -37,6 +38,19 @@ class AppWindowBootstrap {
         await windowManager.focus();
       }
     });
+  }
+
+  static Future<void> restoreMainWindowState(WindowStateConfig windowState, {required bool hidden}) async {
+    final width = windowState.width;
+    final height = windowState.height;
+    if (width != null && height != null && width > 0 && height > 0) {
+      await windowManager.setSize(Size(width, height));
+      await windowManager.center();
+    }
+    // On Windows, maximizing a hidden window also shows it.
+    if (!hidden && windowState.isMaximized) {
+      await windowManager.maximize();
+    }
   }
 
   static Future<void> setupSubWindow(AppWindowType type, {String localeConfig = ''}) async {
