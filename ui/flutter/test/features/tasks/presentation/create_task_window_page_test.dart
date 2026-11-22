@@ -36,7 +36,7 @@ import 'package:gopeed/l10n/app_localizations.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
 void main() {
-  testWidgets('extension file estimates survive batch submission and window serialization', (tester) async {
+  testWidgets('extension file paths and estimates survive batch submission and window serialization', (tester) async {
     tester.view.physicalSize = const Size(900, 1000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -49,6 +49,7 @@ void main() {
         (_) => ResolveResult(
           id: '',
           res: Resource(
+            name: 'videos',
             files: [
               FileInfo(
                 name: 'under.mp4',
@@ -57,6 +58,7 @@ void main() {
               ),
               FileInfo(
                 name: 'over.mp4',
+                path: 'nested',
                 size: 1048576,
                 req: Request(url: 'https://example.com/audio'),
               ),
@@ -66,7 +68,7 @@ void main() {
       )
       ..bind(GopeedMethods.createTaskBatch, (batch) {
         submitted = CreateTaskBatch.fromJson(jsonDecode(jsonEncode(batch)) as Map<String, dynamic>);
-        return ['first', 'second'];
+        return CreateTaskBatchResult(taskIds: ['first', 'second'], parentId: 'generated');
       })
       ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
     final router = GoRouter(
@@ -97,6 +99,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(submitted?.reqs?.map((item) => item.opts?.size), [3, 1048576]);
     expect(submitted?.reqs?.map((item) => item.req?.url), ['https://example.com/video', 'https://example.com/audio']);
+    expect(submitted?.group, isTrue);
+    expect(submitted?.groupName, 'videos');
+    expect(submitted?.opts?.path, '/downloads');
+    expect(submitted?.reqs?.map((item) => item.opts?.path), ['', 'nested']);
     expect(tester.takeException(), isNull);
   });
 
@@ -118,9 +124,9 @@ void main() {
       final registry = CapabilityRegistry(createAppCapabilityCodecs())
         ..bind(GopeedMethods.getConfig, (_) => config)
         ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit())
-        ..bind(GopeedMethods.createTask, (_) {
+        ..bind(GopeedMethods.createTaskBatch, (batch) {
           events.add('created');
-          return 'task-id';
+          return CreateTaskBatchResult(taskIds: ['task-id']);
         })
         ..bind(NavigationMethods.showDownloadingTasks, (_) {
           events.add('downloads');
@@ -163,9 +169,14 @@ void main() {
       CreateTask? submitted;
       final registry = CapabilityRegistry(createAppCapabilityCodecs())
         ..bind(GopeedMethods.getConfig, (_) => DownloaderConfig(downloadDir: '/downloads'))
-        ..bind(GopeedMethods.createTask, (task) {
+        ..bind(GopeedMethods.createTaskBatch, (batch) {
+          final task = CreateTask(
+            rid: batch.reqs!.single.rid,
+            req: batch.reqs!.single.req,
+            opts: batch.reqs!.single.opts,
+          );
           submitted = task;
-          return 'created-id';
+          return CreateTaskBatchResult(taskIds: ['created-id']);
         })
         ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
       final container = ProviderContainer(
@@ -246,9 +257,14 @@ void main() {
           GopeedMethods.getConfig,
           (_) => DownloaderConfig(downloadDir: '/downloads')..extra.defaultDirectDownload = true,
         )
-        ..bind(GopeedMethods.createTask, (task) {
+        ..bind(GopeedMethods.createTaskBatch, (batch) {
+          final task = CreateTask(
+            rid: batch.reqs!.single.rid,
+            req: batch.reqs!.single.req,
+            opts: batch.reqs!.single.opts,
+          );
           submitted = task;
-          return 'created-id';
+          return CreateTaskBatchResult(taskIds: ['created-id']);
         })
         ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
       final container = ProviderContainer(
@@ -374,9 +390,15 @@ void main() {
       ..protocolConfig.http.connections = 8;
     final registry = CapabilityRegistry(createAppCapabilityCodecs())
       ..bind(GopeedMethods.getConfig, (_) => config)
-      ..bind(GopeedMethods.createTask, (task) {
+      ..bind(GopeedMethods.putConfig, (_) => const RpcUnit())
+      ..bind(GopeedMethods.createTaskBatch, (batch) {
+        final task = CreateTask(
+          rid: batch.reqs!.single.rid,
+          req: batch.reqs!.single.req,
+          opts: batch.reqs!.single.opts,
+        );
         submitted = task;
-        return 'created-task';
+        return CreateTaskBatchResult(taskIds: ['created-task']);
       })
       ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
     final capabilities = AppCapabilities(LocalCapabilityInvoker(registry));
@@ -877,9 +899,14 @@ void main() {
       CreateTask? submitted;
       final registry = CapabilityRegistry(createAppCapabilityCodecs())
         ..bind(GopeedMethods.getConfig, (_) => DownloaderConfig(downloadDir: '/downloads'))
-        ..bind(GopeedMethods.createTask, (task) {
+        ..bind(GopeedMethods.createTaskBatch, (batch) {
+          final task = CreateTask(
+            rid: batch.reqs!.single.rid,
+            req: batch.reqs!.single.req,
+            opts: batch.reqs!.single.opts,
+          );
           submitted = task;
-          return 'task-id';
+          return CreateTaskBatchResult(taskIds: ['task-id']);
         })
         ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
 
@@ -985,9 +1012,14 @@ void main() {
     final config = DownloaderConfig(downloadDir: '/downloads')..extra.defaultDirectDownload = true;
     final registry = CapabilityRegistry(createAppCapabilityCodecs())
       ..bind(GopeedMethods.getConfig, (_) => config)
-      ..bind(GopeedMethods.createTask, (task) {
+      ..bind(GopeedMethods.createTaskBatch, (batch) {
+        final task = CreateTask(
+          rid: batch.reqs!.single.rid,
+          req: batch.reqs!.single.req,
+          opts: batch.reqs!.single.opts,
+        );
         submitted = task;
-        return 'task-id';
+        return CreateTaskBatchResult(taskIds: ['task-id']);
       })
       ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
 
@@ -1140,9 +1172,18 @@ void main() {
     final createdTasks = <CreateTask>[];
     final registry = CapabilityRegistry(createAppCapabilityCodecs())
       ..bind(GopeedMethods.getConfig, (_) => DownloaderConfig(downloadDir: '/downloads'))
-      ..bind(GopeedMethods.createTask, (task) {
-        createdTasks.add(task);
-        return 'task-id';
+      ..bind(
+        GopeedMethods.resolve,
+        (_) => ResolveResult(
+          id: 'resolved',
+          res: Resource(files: [FileInfo(name: 'file.zip')]),
+        ),
+      )
+      ..bind(GopeedMethods.createTaskBatch, (batch) {
+        for (final item in batch.reqs!) {
+          createdTasks.add(CreateTask(rid: item.rid, req: item.req, opts: item.opts));
+        }
+        return CreateTaskBatchResult(taskIds: ['task-id']);
       })
       ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
 
@@ -1189,8 +1230,12 @@ void main() {
 
     // Confirm creation
     await tester.tap(find.text('Confirm'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
 
+    expect(createdTasks, isEmpty);
+    await tester.tap(find.byKey(const ValueKey('resolve-create-button')));
+    await tester.pumpAndSettle();
     expect(createdTasks.length, 2);
     for (final t in createdTasks) {
       final extra = OptsExtraHttp.fromJson(Map<String, dynamic>.from(t.opts!.extra! as Map));
@@ -1345,7 +1390,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('the resolve dialog shows the suggested category directory', (tester) async {
+  testWidgets('the file list keeps category suggestions out of its header', (tester) async {
     tester.view.physicalSize = const Size(700, 700);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -1381,8 +1426,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     final suggestion = find.byKey(const ValueKey('resolve-category-directory'));
-    expect(suggestion, findsOneWidget);
-    expect(tester.widget<Text>(suggestion).data, contains('/downloads/Program'));
+    expect(suggestion, findsNothing);
+    expect(find.text('File List'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -1437,7 +1482,7 @@ void main() {
     await _settleToastTimers(tester);
   });
 
-  testWidgets('the resolve dialog shows the directory the user named, not the suggestion', (tester) async {
+  testWidgets('the file list uses its fixed title for a manual directory', (tester) async {
     tester.view.physicalSize = const Size(700, 700);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -1475,13 +1520,87 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     final shown = find.byKey(const ValueKey('resolve-category-directory'));
-    expect(shown, findsOneWidget);
-    expect(tester.widget<Text>(shown).data, contains('/work'));
-    expect(tester.widget<Text>(shown).data, isNot(contains('/downloads/Program')));
+    expect(shown, findsNothing);
+    expect(find.text('File List'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('a resolved file list is split into tasks that keep the directory structure', (tester) async {
+  testWidgets('a resolved file list keeps structure and saves the selected parent directory', (tester) async {
+    tester.view.physicalSize = const Size(700, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    CreateTaskBatch? batch;
+    final config = DownloaderConfig(downloadDir: '/downloads');
+    DownloaderConfig? savedConfig;
+    final registry = CapabilityRegistry(createAppCapabilityCodecs())
+      ..bind(GopeedMethods.getConfig, (_) => config)
+      ..bind(GopeedMethods.putConfig, (next) {
+        savedConfig = next;
+        return const RpcUnit();
+      })
+      ..bind(
+        GopeedMethods.resolve,
+        (_) => ResolveResult(
+          res: Resource(
+            name: 'bundle',
+            files: [
+              FileInfo(name: 'first.zip', path: 'first.zip', size: 1),
+              FileInfo(name: 'second.zip', path: 'second.zip', size: 1),
+            ],
+          ),
+        ),
+      )
+      ..bind(GopeedMethods.createTaskBatch, (request) {
+        batch = request;
+        return CreateTaskBatchResult(taskIds: ['task-1', 'task-2'], parentId: 'generated');
+      })
+      ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
+    final capabilities = AppCapabilities(LocalCapabilityInvoker(registry));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [appCapabilitiesProvider.overrideWithValue(capabilities)],
+        child: shad.ShadcnApp(
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          home: AppComponentThemes(child: const CreateTaskWindowPage()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const ValueKey('create-task-directory-input')), '/chosen');
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('create-task-remember-download-directory-checkbox')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const ValueKey('create-task-url-input')), 'https://example.com/bundle');
+    await tester.tap(find.byKey(const ValueKey('create-task-confirm-button')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byKey(const ValueKey('resolve-create-button')));
+    await tester.pumpAndSettle();
+
+    expect(batch, isNotNull);
+    expect(batch!.reqs, hasLength(2));
+    expect(batch!.group, isTrue);
+    expect(batch!.groupName, 'bundle');
+    expect(batch!.toJson().containsKey('groupId'), isFalse);
+    expect(batch!.opts?.path, '/chosen');
+    expect(batch!.opts?.asDefaultPath, isTrue);
+    for (final item in batch!.reqs!) {
+      // The split tasks keep the structure of the resolved resource, so they
+      // are never classified into a category or replace the selected parent.
+      expect(item.opts?.skipAutoCategorize, isTrue);
+      expect(item.opts?.asDefaultPath, isFalse);
+    }
+    expect(savedConfig?.downloadDir, '/chosen');
+    expect(batch!.group, isTrue);
+    expect(tester.takeException(), isNull);
+    await _settleToastTimers(tester);
+  });
+
+  testWidgets('a single selected file of a multi file resource is still not classified', (tester) async {
     tester.view.physicalSize = const Size(700, 900);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -1504,64 +1623,7 @@ void main() {
       )
       ..bind(GopeedMethods.createTaskBatch, (request) {
         batch = request;
-        return ['task-1', 'task-2'];
-      })
-      ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
-    final capabilities = AppCapabilities(LocalCapabilityInvoker(registry));
-
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [appCapabilitiesProvider.overrideWithValue(capabilities)],
-        child: shad.ShadcnApp(
-          theme: AppTheme.light(),
-          materialTheme: AppTheme.materialLight(),
-          home: AppComponentThemes(child: const CreateTaskWindowPage()),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byKey(const ValueKey('create-task-url-input')), 'https://example.com/bundle');
-    await tester.tap(find.byKey(const ValueKey('create-task-confirm-button')));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 300));
-    await tester.tap(find.byKey(const ValueKey('resolve-create-button')));
-    await tester.pumpAndSettle();
-
-    expect(batch, isNotNull);
-    expect(batch!.reqs, hasLength(2));
-    for (final item in batch!.reqs!) {
-      // The split tasks keep the structure of the resolved resource, so they
-      // are never classified into a category.
-      expect(item.opts?.skipAutoCategorize, isTrue);
-    }
-    expect(batch!.opts?.skipAutoCategorize, isTrue);
-    expect(tester.takeException(), isNull);
-    await _settleToastTimers(tester);
-  });
-
-  testWidgets('a single selected file of a multi file resource is still not classified', (tester) async {
-    tester.view.physicalSize = const Size(700, 900);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-
-    CreateTaskBatch? batch;
-    final registry = CapabilityRegistry(createAppCapabilityCodecs())
-      ..bind(GopeedMethods.getConfig, (_) => DownloaderConfig(downloadDir: '/downloads'))
-      ..bind(
-        GopeedMethods.resolve,
-        (_) => ResolveResult(
-          res: Resource(
-            files: [
-              FileInfo(name: 'first.zip', path: 'first.zip', size: 1),
-              FileInfo(name: 'second.zip', path: 'second.zip', size: 1),
-            ],
-          ),
-        ),
-      )
-      ..bind(GopeedMethods.createTaskBatch, (request) {
-        batch = request;
-        return ['task-1'];
+        return CreateTaskBatchResult(taskIds: ['task-1'], parentId: 'generated');
       })
       ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
     final capabilities = AppCapabilities(LocalCapabilityInvoker(registry));
@@ -1594,10 +1656,11 @@ void main() {
 
     expect(batch, isNotNull);
     expect(batch!.reqs, hasLength(1));
+    expect(batch!.group, isTrue);
     for (final item in batch!.reqs!) {
       expect(item.opts?.skipAutoCategorize, isTrue);
     }
-    expect(batch!.opts?.skipAutoCategorize, isTrue);
+    expect(batch!.group, isTrue);
     expect(tester.takeException(), isNull);
     await _settleToastTimers(tester);
   });
@@ -1642,7 +1705,7 @@ void _ftpTests() {
 
   testWidgets('ftp links offer the TLS mode and carry FTP options through resolve', (tester) async {
     ResolveTask? resolved;
-    CreateTask? submitted;
+    CreateTaskBatch? submitted;
     final registry = CapabilityRegistry(createAppCapabilityCodecs())
       ..bind(GopeedMethods.getConfig, (_) => DownloaderConfig(downloadDir: '/downloads'))
       ..bind(GopeedMethods.resolve, (task) {
@@ -1655,9 +1718,9 @@ void _ftpTests() {
           ),
         );
       })
-      ..bind(GopeedMethods.createTask, (task) {
-        submitted = task;
-        return 'ftp-task';
+      ..bind(GopeedMethods.createTaskBatch, (batch) {
+        submitted = batch;
+        return CreateTaskBatchResult(taskIds: ['ftp-task']);
       })
       ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
     await _pumpCreateRoute(tester, registry);
@@ -1693,20 +1756,20 @@ void _ftpTests() {
     // The TLS mode travels on the request, so the resolve already uses it.
     expect(resolved?.req?.url, 'FTP://files.example/pub/big.iso');
     expect(resolved?.req?.extra, {'tls': 'explicit'});
-    expect(submitted?.rid, 'ftp-resolved');
-    final createOptions = submitted?.opts?.extra! as Map<String, dynamic>;
+    expect(submitted?.reqs?.single.rid, 'ftp-resolved');
+    final createOptions = submitted?.reqs?.single.opts?.extra! as Map<String, dynamic>;
     expect(createOptions['connections'], 32);
     expect(createOptions.containsKey('tls'), isFalse);
   });
 
   testWidgets('an ftp .torrent link restores its TLS mode and is not treated as BitTorrent', (tester) async {
-    CreateTask? submitted;
+    CreateTaskBatch? submitted;
     final config = DownloaderConfig(downloadDir: '/downloads')..extra.defaultDirectDownload = true;
     final registry = CapabilityRegistry(createAppCapabilityCodecs())
       ..bind(GopeedMethods.getConfig, (_) => config)
-      ..bind(GopeedMethods.createTask, (task) {
-        submitted = task;
-        return 'ftp-task';
+      ..bind(GopeedMethods.createTaskBatch, (batch) {
+        submitted = batch;
+        return CreateTaskBatchResult(taskIds: ['ftp-task']);
       })
       ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
     await _pumpCreateRoute(
@@ -1733,19 +1796,22 @@ void _ftpTests() {
 
     await tester.tap(find.text('Confirm'));
     await tester.pumpAndSettle();
-    expect(submitted?.req?.url, 'ftp://files.example/pub/linux.torrent');
-    expect(submitted?.req?.extra, {'tls': 'implicit'});
-    final options = OptsExtraFtp.fromJson(submitted?.opts?.extra! as Map<String, dynamic>);
+    expect(submitted?.reqs?.single.req?.url, 'ftp://files.example/pub/linux.torrent');
+    expect(submitted?.reqs?.single.req?.extra, {'tls': 'implicit'});
+    final options = OptsExtraFtp.fromJson(submitted?.reqs?.single.opts?.extra! as Map<String, dynamic>);
     expect(options.connections, 6);
   });
 
   testWidgets('mixed links cap only the FTP task at 32 connections', (tester) async {
-    final submitted = <CreateTask>[];
+    final submitted = <CreateTaskBatch>[];
     final registry = CapabilityRegistry(createAppCapabilityCodecs())
-      ..bind(GopeedMethods.getConfig, (_) => DownloaderConfig(downloadDir: '/downloads'))
-      ..bind(GopeedMethods.createTask, (task) {
-        submitted.add(task);
-        return 'task-${submitted.length}';
+      ..bind(
+        GopeedMethods.getConfig,
+        (_) => DownloaderConfig(downloadDir: '/downloads')..extra.defaultDirectDownload = true,
+      )
+      ..bind(GopeedMethods.createTaskBatch, (batch) {
+        submitted.add(batch);
+        return CreateTaskBatchResult(taskIds: ['http-task', 'ftp-task']);
       })
       ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
     await _pumpCreateRoute(tester, registry);
@@ -1758,13 +1824,60 @@ void _ftpTests() {
     await tester.tap(find.text('Confirm'));
     await tester.pumpAndSettle();
 
-    final byUrl = {for (final task in submitted) task.req!.url: task.opts!.extra! as Map<String, dynamic>};
+    expect(submitted, hasLength(1));
+    final byUrl = {for (final item in submitted.single.reqs!) item.req!.url: item.opts!.extra! as Map<String, dynamic>};
     expect(byUrl.keys, unorderedEquals(['https://example.com/a.zip', 'ftpes://files.example/b.iso']));
     expect(byUrl['https://example.com/a.zip']!['connections'], 64);
     expect(byUrl['https://example.com/a.zip']!.containsKey('tls'), isFalse);
     expect(byUrl['ftpes://files.example/b.iso']!['connections'], 32);
     expect(byUrl['ftpes://files.example/b.iso']!.containsKey('tls'), isFalse);
-    expect(submitted.map((task) => task.req!.extra), everyElement(isNull));
+    expect(submitted.single.reqs!.map((item) => item.req!.extra), everyElement(isNull));
+  });
+  testWidgets('mixed resolved HTTP and FTP resources share one batch with separate options', (tester) async {
+    final resolvedUrls = <String>[];
+    CreateTaskBatch? submitted;
+    final registry = CapabilityRegistry(createAppCapabilityCodecs())
+      ..bind(GopeedMethods.getConfig, (_) => DownloaderConfig(downloadDir: '/downloads'))
+      ..bind(GopeedMethods.resolve, (task) {
+        final url = task.req!.url;
+        resolvedUrls.add(url);
+        final ftp = url.startsWith('ftp');
+        return ResolveResult(
+          id: ftp ? 'ftp-rid' : 'http-rid',
+          res: Resource(
+            name: ftp ? 'folder' : '',
+            files: [
+              FileInfo(name: ftp ? 'movie.mkv' : 'file.zip', size: 10),
+              if (ftp) FileInfo(name: 'extra.txt', size: 2),
+            ],
+          ),
+        );
+      })
+      ..bind(GopeedMethods.createTaskBatch, (batch) {
+        submitted = batch;
+        return CreateTaskBatchResult(taskIds: ['http-task', 'ftp-task']);
+      })
+      ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
+    await _pumpCreateRoute(tester, registry);
+    await tester.enterText(find.byKey(urlInput), 'https://example.com/a.zip\nftpes://files.example/folder');
+    await tester.enterText(find.byKey(connectionsInput), '64');
+    await tester.tap(find.text('Confirm'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(resolvedUrls, ['https://example.com/a.zip', 'ftpes://files.example/folder']);
+    await tester.tap(find.byKey(const ValueKey('resolve-create-button')));
+    await tester.pumpAndSettle();
+    expect(submitted!.group, isFalse);
+    expect(submitted!.reqs, hasLength(2));
+    final http = submitted!.reqs![0];
+    final ftp = submitted!.reqs![1];
+    expect(http.rid, 'http-rid');
+    expect(ftp.rid, 'ftp-rid');
+    expect((http.opts!.extra as Map)['connections'], 64);
+    expect((ftp.opts!.extra as Map)['connections'], 32);
+    expect(http.opts!.selectFiles, [0]);
+    expect(ftp.opts!.selectFiles, [0, 1]);
+    expect(tester.takeException(), isNull);
   });
 }
 
@@ -1795,9 +1908,10 @@ Future<AppPalette> _pumpCreateTaskForSubmit(
     ..categories = categories;
   final registry = CapabilityRegistry(createAppCapabilityCodecs())
     ..bind(GopeedMethods.getConfig, (_) => config)
-    ..bind(GopeedMethods.createTask, (task) {
+    ..bind(GopeedMethods.createTaskBatch, (batch) {
+      final task = CreateTask(rid: batch.reqs!.single.rid, req: batch.reqs!.single.req, opts: batch.reqs!.single.opts);
       onCreate(task);
-      return 'created-task';
+      return CreateTaskBatchResult(taskIds: ['created-task']);
     })
     ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
   final capabilities = AppCapabilities(LocalCapabilityInvoker(registry));
@@ -1850,9 +1964,10 @@ Future<AppPalette> _pumpCreateTaskWithCategories(
     ..bind(GopeedMethods.getConfig, (_) => config)
     ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
   if (onCreate != null) {
-    registry.bind(GopeedMethods.createTask, (task) {
+    registry.bind(GopeedMethods.createTaskBatch, (batch) {
+      final task = CreateTask(rid: batch.reqs!.single.rid, req: batch.reqs!.single.req, opts: batch.reqs!.single.opts);
       onCreate(task);
-      return 'created-task';
+      return CreateTaskBatchResult(taskIds: ['created-task']);
     });
   }
   final capabilities = AppCapabilities(LocalCapabilityInvoker(registry));

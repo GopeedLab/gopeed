@@ -51,6 +51,7 @@ func NewService(downloader *download.Downloader) (*Service, error) {
 	service.routes = []RouteSpec{
 		newRoute(http.MethodGet, "/api/v1/info", service.info),
 		newRoute(http.MethodPost, "/api/v1/resolve", service.resolve),
+		newRoute(http.MethodDelete, "/api/v1/resolve/{id}", service.releaseResolve),
 		newRoute(http.MethodPost, "/api/v1/tasks", service.createTask),
 		newRoute(http.MethodPost, "/api/v1/tasks/batch", service.createTaskBatch),
 		newRoute(http.MethodPatch, "/api/v1/tasks/{id}", service.patchTask),
@@ -143,11 +144,18 @@ func (s *Service) resolve(ctx *Context) *Response {
 	if response := decodeRequest(ctx.Body, &request); response != nil {
 		return response
 	}
-	result, err := s.Downloader.Resolve(request.Req)
+	result, err := s.Downloader.ResolveWithID(request.ID, request.Req)
 	if err != nil {
 		return newErrorResponse(err.Error())
 	}
 	return newOKResponse(result)
+}
+
+func (s *Service) releaseResolve(ctx *Context) *Response {
+	if err := s.Downloader.ReleaseResolve(ctx.PathParam("id")); err != nil {
+		return newErrorResponse(err.Error())
+	}
+	return newOKResponse(nil)
 }
 
 func (s *Service) createTask(ctx *Context) *Response {
@@ -180,11 +188,11 @@ func (s *Service) createTaskBatch(ctx *Context) *Response {
 	if len(request.Reqs) == 0 {
 		return newErrorResponse("param invalid: reqs", restmodel.CodeInvalidParam)
 	}
-	taskIDs, err := s.Downloader.CreateDirectBatch(&request)
+	result, err := s.Downloader.CreateDirectBatchWithResult(&request)
 	if err != nil {
 		return newErrorResponse(err.Error())
 	}
-	return newOKResponse(taskIDs)
+	return newOKResponse(result)
 }
 
 func (s *Service) patchTask(ctx *Context) *Response {

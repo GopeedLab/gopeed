@@ -98,7 +98,7 @@
   "startAll": "Iniciar Tudo",
   "pauseAll": "Pausar Tudo",
   "deleteTask": "Excluir @count tarefas",
-  "deleteTaskTip": "Manter arquivos baixados",
+  "deleteTaskTip": "Excluir arquivos baixados",
   "delete": "Excluir",
   "add": "Adicionar",
   "edit": "Editar",
@@ -208,7 +208,7 @@
   "categoryName": "Nome da Categoria",
   "categoryPath": "Caminho da Categoria",
   "autoCategorizeByExtension": "Categorizar automaticamente por tipo de arquivo",
-  "autoCategorizeByExtensionDescription": "Envia os downloads para a pasta da categoria com base na extensão ao salvar na pasta de download padrão.",
+  "autoCategorizeByExtensionDescription": "Envia os downloads para a pasta da categoria com base na extensão ao salvar na pasta de download padrão",
   "categoryExtensions": "Extensões de arquivo",
   "categoryExtensionsUsageHint": "Separe as extensões com vírgulas ou espaços e prima Enter.",
   "categoryExtensionsEmptyHint": "Sem extensões, os ficheiros não serão guardados aqui automaticamente.",
@@ -372,7 +372,9 @@
   "torrentDataEmpty": "Os dados do ficheiro Torrent estão em branco",
   "torrentPathUnavailable": "Não foi possível aceder ao local do ficheiro torrent",
   "selectAtLeastOneFile": "Selecione pelo menos um arquivo",
-  "resolvedFiles": "Ficheiros Resolvidos",
+  "resolvedFiles": "Lista de arquivos",
+  "waitingToResolve": "Aguardando resolução",
+  "resolvingResource": "Resolvendo recurso",
   "resolvedFileCount": "{count} ficheiros resolvidos",
   "resolvedCategoryDirectory": "Será salvo em {path}",
   "resourceHasNoFiles": "O recurso não tem lista de arquivos selecionáveis",
@@ -477,5 +479,6 @@
   "trackerSubscriptionUpdateStatus": "Estado da atualização",
   "trackerSubscriptionTrackerCount": "Número de trackers",
   "trackerSubscriptionNotUpdated": "Ainda não atualizado",
-  "actions": "Ações"
+  "actions": "Ações",
+  "taskGroupDeleteImpact": "Afeta {taskCount} downloads e {fileCount} arquivos."
 }

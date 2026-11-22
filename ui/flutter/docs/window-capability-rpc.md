@@ -94,6 +94,8 @@ State broadcasting must observe the owning Riverpod state centrally. Do not broa
 - Storage RPC methods expose business capabilities such as create-history operations, not raw `box.get` or `box.put` access.
 - Prefer batch mutations across the window boundary. For example, save all parsed URLs in one `saveCreateHistory(List<String>)` call.
 - New child-window storage requirements must be added to `StorageMethods` and bound in the main registry.
+- Config reads, full config saves, and create-history mutations share one main-window queue. Each history mutation reads, changes, and writes the config within that queue. History reads wait for earlier saves.
+- `StorageMethods` owns `extra.createHistory`; full config saves preserve its latest value inside the queue so stale settings or child-window snapshots cannot overwrite history.
 
 ## 7. Gopeed Backend Migration
 
@@ -128,3 +130,42 @@ Child-window code must not:
 - Parse RPC JSON directly inside a page or widget.
 
 These constraints keep all backend and persistence ownership in the main window and allow multiple child windows to operate concurrently without database locks or duplicated Gopeed runtimes.
+
+## 10. Batch Task Creation
+
+`GopeedMethods.createTaskBatch` carries `CreateTaskBatch` through the existing
+codec registry. Each member accepts either `rid` from resolve or `req`, plus
+creation `opts`. A nonempty `rid` takes priority. BT selections retain their
+original file indexes in `opts.selectFiles`.
+
+Both ordinary and grouped creation return `CreateTaskBatchResult`, an object
+with `taskIds` and an optional `parentId`. A successful response completes the
+batch, including partial success. The preview tracks completed batches so a
+failed batch can be retried without repeating successful batches. Creation does
+not accept a group ID to append members to an existing group.
+
+## 11. Opening Child Surfaces
+
+Use `AppRouter.openWindow(AppWindowPayload)` for child-window destinations.
+`AppRouter.openCreateTask(createTask: ...)` is the create-task convenience API.
+All entry points, including deep links, browser capture and the tray, use this
+API rather than selecting a presentation themselves:
+
+- Desktop launches an independent native child window through
+  `AppWindowLauncher.open(payload)` and the existing capability transport.
+- Web pushes an `AppWindowPage` on the root Navigator. This routed shadcn modal
+  keeps the current section, filters and scroll state mounted underneath it.
+- Native mobile retains the full-page flow, including later share requests.
+- If native child-window creation fails, the main window is brought forward
+  and the same in-app modal is used as a fallback.
+
+`AppWindowContent` owns the destination paths and content builders shared with
+`ChildWindowApp`. For another child surface, add its payload type, register its
+path and content, and use `AppWindowPage` for its in-app route. The modal's
+preferred size can be supplied per destination. Keep backend and storage access
+on the existing capability API in either presentation.
+
+Create-task content reports cancellation or completion through `onClose` when
+hosted in-app. Cancellation pops only the child surface. Completion selects the
+downloading list and returns home. The route payload uses a serializable string
+so browser history can restore a modal and its initial request.

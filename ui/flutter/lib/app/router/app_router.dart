@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
@@ -11,7 +13,13 @@ import '../../features/auth/application/web_auth_controller.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
-import '../../features/tasks/presentation/pages/create_task_window_page.dart';
+import '../../api/model/create_task.dart';
+import '../../core/window/app_window_chrome.dart';
+import '../../core/window/app_window_launcher.dart';
+import '../../core/window/app_window_payload.dart';
+import '../../features/tasks/application/pending_create_task.dart';
+import 'app_window_content.dart';
+import 'app_window_page.dart';
 import '../../features/tasks/domain/task_record.dart';
 import '../../features/tasks/presentation/pages/task_details_page.dart';
 import '../../features/tasks/presentation/pages/task_files_page.dart';
@@ -22,6 +30,37 @@ import 'runtime_page.dart';
 class AppRouter {
   static final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
+  static bool get _isMobile =>
+      !kIsWeb && (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS);
+
+  static Future<void> openCreateTask({CreateTask? createTask}) =>
+      openWindow(AppWindowPayload.createTask(createTask: createTask?.toJson()));
+
+  /// Opens a desktop child window, a Web modal, or a native mobile page.
+  /// Callers never need to choose a presentation or implement a fallback.
+  static Future<void> openWindow(AppWindowPayload payload) async {
+    final location = AppWindowContent.location(payload.type);
+    if (AppWindowChrome.isDesktopWindow && await AppWindowLauncher.open(payload)) return;
+    final context = rootNavigatorKey.currentContext;
+    if (context == null || !context.mounted) return;
+    final router = GoRouter.of(context);
+    if (router.state.uri.path == location) {
+      // Native share intents may arrive while the creation page is already open.
+      if (payload.type == AppWindowType.createTask && payload.createTask != null) {
+        ProviderScope.containerOf(
+          context,
+          listen: false,
+        ).read(pendingCreateTaskProvider.notifier).set(CreateTask.fromJson(payload.createTask!));
+      }
+      return;
+    }
+    if (_isMobile) {
+      router.go(location, extra: payload.toRaw());
+    } else {
+      unawaited(router.push<void>(location, extra: payload.toRaw()));
+    }
+  }
+
   static void showDownloadingTasks() {
     final context = rootNavigatorKey.currentContext;
     if (context == null || !context.mounted) return;
@@ -31,8 +70,7 @@ class AppRouter {
 
   static GoRouter build(WebAuthController webAuthController) {
     // Keep desktop and web sections as peers; native mobile retains home below them.
-    final isMobile =
-        !kIsWeb && (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS);
+    final isMobile = _isMobile;
     final sectionRoutes = [
       GoRoute(
         path: isMobile ? 'extensions' : '/extensions',
@@ -83,7 +121,33 @@ class AppRouter {
               path: '/',
               builder: _runtimePage((context, state) => const HomePage()),
               routes: [
-                GoRoute(path: 'create', builder: _runtimePage((context, state) => const CreateTaskWindowPage())),
+                GoRoute(
+                  path: 'create',
+                  parentNavigatorKey: rootNavigatorKey,
+                  pageBuilder: (context, state) {
+                    final payload = state.extra is String
+                        ? AppWindowPayload.fromRaw(state.extra! as String)
+                        : AppWindowPayload.createTask();
+                    final child = RuntimePage(
+                      builder: (context) => AppWindowContent.build(
+                        payload,
+                        modal: !isMobile,
+                        onClose: (created) {
+                          if (created) {
+                            showDownloadingTasks();
+                          } else if (context.canPop()) {
+                            context.pop();
+                          } else {
+                            context.go('/');
+                          }
+                        },
+                      ),
+                    );
+                    return isMobile
+                        ? NoTransitionPage<void>(key: state.pageKey, child: child)
+                        : AppWindowPage<void>(key: state.pageKey, child: child);
+                  },
+                ),
                 GoRoute(
                   path: 'tasks/:id',
                   builder: _runtimePage(

@@ -27,6 +27,10 @@ type ScriptData struct {
 // ScriptPayload contains the task data
 type ScriptPayload struct {
 	Task *Task
+	// TaskName is computed before Task is cloned. The clone has no fetcher
+	// manager, so for an unresolved task without Options.Name its Name()
+	// would return "unknown".
+	TaskName string
 }
 
 // getScriptPaths extracts script paths from config
@@ -103,7 +107,7 @@ func (d *Downloader) executeScriptAtPath(scriptPath string, data *ScriptData) er
 	cmd.Env = append(os.Environ(),
 		fmt.Sprintf("GOPEED_EVENT=%s", data.Event),
 		fmt.Sprintf("GOPEED_TASK_ID=%s", data.Payload.Task.ID),
-		fmt.Sprintf("GOPEED_TASK_NAME=%s", data.Payload.Task.Name()),
+		fmt.Sprintf("GOPEED_TASK_NAME=%s", data.Payload.TaskName),
 		fmt.Sprintf("GOPEED_TASK_STATUS=%s", data.Payload.Task.Status),
 	)
 
@@ -137,7 +141,8 @@ func (d *Downloader) triggerScripts(event ScriptEvent, task *Task, err error) {
 		Event: event,
 		Time:  time.Now().UnixMilli(),
 		Payload: &ScriptPayload{
-			Task: task.clone(),
+			Task:     task.clone(),
+			TaskName: task.Name(),
 		},
 	}
 

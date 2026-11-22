@@ -21,13 +21,8 @@ class TaskDetailsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tasksAsync = ref.watch(tasksControllerProvider);
-    TaskRecord? task = initialTask;
-    for (final item in tasksAsync.value?.tasks ?? const <TaskRecord>[]) {
-      if (item.id == taskId) {
-        task = item;
-        break;
-      }
-    }
+    final state = tasksAsync.value;
+    final task = state == null ? initialTask : state.findTask(taskId);
     final palette = AppPalette.of(context);
 
     return AppDetailPage(
@@ -43,12 +38,12 @@ class TaskDetailsPage extends ConsumerWidget {
               key: ValueKey(task.id),
               task: task,
               mobile: true,
-              onOpenStorage: () => FileExplorer.reveal(task!.storagePath),
+              onOpenStorage: () => FileExplorer.reveal(task.storagePath),
               onUpdateUrl: (url) async {
                 try {
                   await ref
                       .read(tasksControllerProvider.notifier)
-                      .updateUrl(task!.id, url, headers: task.requestHeaders);
+                      .updateUrl(task.id, url, headers: task.requestHeaders);
                 } catch (error) {
                   if (context.mounted) {
                     showAppToast(context, error.toString(), type: AppToastType.error);

@@ -98,7 +98,7 @@
   "startAll": "Inicia-ho tot",
   "pauseAll": "Pausa-ho tot",
   "deleteTask": "Suprimeix @count tasques",
-  "deleteTaskTip": "Mantén els fitxers baixats",
+  "deleteTaskTip": "Suprimeix els fitxers baixats",
   "delete": "Suprimeix",
   "add": "Afegeix",
   "edit": "Edita",
@@ -208,7 +208,7 @@
   "categoryName": "Nom de la categoria",
   "categoryPath": "Ruta de la categoria",
   "autoCategorizeByExtension": "Categoritza automàticament segons el tipus de fitxer",
-  "autoCategorizeByExtensionDescription": "Les baixades es desen a la carpeta de categoria segons l'extensió del fitxer en utilitzar la carpeta de baixades predeterminada.",
+  "autoCategorizeByExtensionDescription": "Les baixades es desen a la carpeta de categoria segons l'extensió del fitxer en utilitzar la carpeta de baixades predeterminada",
   "categoryExtensions": "Extensions de fitxer",
   "categoryExtensionsUsageHint": "Separa les extensions amb comes o espais i prem Retorn.",
   "categoryExtensionsEmptyHint": "Sense extensions, els fitxers no es desaran aquí automàticament.",
@@ -372,7 +372,9 @@
   "torrentDataEmpty": "El fitxer torrent de dades és buit",
   "torrentPathUnavailable": "No s' ha pogut accedir al camí del fitxer torrent",
   "selectAtLeastOneFile": "Seleccioneu com a mínim un fitxer",
-  "resolvedFiles": "Fitxers resolts",
+  "resolvedFiles": "Llista de fitxers",
+  "waitingToResolve": "Esperant l’anàlisi",
+  "resolvingResource": "S’està analitzant el recurs",
   "resolvedFileCount": "{count}",
   "resolvedCategoryDirectory": "Es desarà a {path}",
   "resourceHasNoFiles": "El recurs no té cap llista de fitxers per seleccionar",
@@ -477,5 +479,6 @@
   "trackerSubscriptionUpdateStatus": "Estat de l’actualització",
   "trackerSubscriptionTrackerCount": "Nombre de trackers",
   "trackerSubscriptionNotUpdated": "Sense actualitzar",
-  "actions": "Accions"
+  "actions": "Accions",
+  "taskGroupDeleteImpact": "Afecta {taskCount} baixades i {fileCount} fitxers."
 }

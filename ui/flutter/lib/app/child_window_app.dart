@@ -1,13 +1,12 @@
 import 'package:flutter/widgets.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
-import '../api/model/create_task.dart';
 import '../app/application/app_appearance_controller.dart';
 import '../core/window/app_window_bootstrap.dart';
 import '../core/window/app_window_frame.dart';
 import '../core/window/app_window_payload.dart';
 import '../core/window/window_capability_transport.dart';
-import '../features/tasks/presentation/pages/create_task_window_page.dart';
+import 'router/app_window_content.dart';
 import '../l10n/l10n.dart';
 import '../shared/theme/app_component_themes.dart';
 import '../shared/theme/app_theme.dart';
@@ -82,10 +81,7 @@ class _ChildWindowAppState extends State<ChildWindowApp> with WidgetsBindingObse
 
   Widget _buildPage(BuildContext context) {
     return switch (widget.payload.type) {
-      AppWindowType.createTask => CreateTaskWindowPage(
-        windowController: widget.session.controller,
-        initialTask: widget.payload.createTask == null ? null : CreateTask.fromJson(widget.payload.createTask!),
-      ),
+      AppWindowType.createTask => AppWindowContent.build(widget.payload, windowController: widget.session.controller),
       _ => shad.Scaffold(child: Center(child: Text(context.l10n.unsupportedWindowPayload))),
     };
   }

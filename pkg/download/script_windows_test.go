@@ -87,13 +87,8 @@ func TestScript_EnvironmentVariables(t *testing.T) {
 		t.Setenv("GOPEED_TEST_OUTPUT_FILE", outputFile)
 		downloader.triggerScripts(ScriptEventDownloadDone, task, nil)
 
-		waitForFile(t, outputFile, 5*time.Second)
-		content, err := os.ReadFile(outputFile)
-		if err != nil {
-			t.Fatalf("Failed to read output file: %v", err)
-		}
-
-		output := string(content)
+		// GOPEED_TASK_PATH is the last line the script writes.
+		output := waitForFileContains(t, outputFile, "GOPEED_TASK_PATH=", 5*time.Second)
 		if !strings.Contains(output, "GOPEED_EVENT=DOWNLOAD_DONE") {
 			t.Errorf("Expected GOPEED_EVENT in output, got: %s", output)
 		}

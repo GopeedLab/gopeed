@@ -20,13 +20,8 @@ class TaskFilesPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tasksAsync = ref.watch(tasksControllerProvider);
-    TaskRecord? task = initialTask;
-    for (final item in tasksAsync.value?.tasks ?? const <TaskRecord>[]) {
-      if (item.id == taskId) {
-        task = item;
-        break;
-      }
-    }
+    final state = tasksAsync.value;
+    final task = state == null ? initialTask : state.findTask(taskId);
     final palette = AppPalette.of(context);
 
     return shad.Scaffold(

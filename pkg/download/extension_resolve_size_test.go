@@ -70,10 +70,11 @@ func TestExtensionResolveSizeThroughTaskCreation(t *testing.T) {
 				if err := json.Unmarshal(wire, &submitted); err != nil {
 					t.Fatal(err)
 				}
-				ids, err := d.CreateDirectBatch(&submitted)
+				batchResult, err := d.CreateDirectBatch(&submitted)
 				if err != nil {
 					t.Fatal(err)
 				}
+				ids := batchResult
 				for i, id := range ids {
 					task := d.GetTask(id)
 					if task.Meta.Res != nil {

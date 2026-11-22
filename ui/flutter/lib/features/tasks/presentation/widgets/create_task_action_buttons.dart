@@ -18,7 +18,7 @@ class CreateTaskActionButtons extends StatelessWidget {
 
   final bool submitting;
   final VoidCallback onCancel;
-  final VoidCallback onSubmit;
+  final VoidCallback? onSubmit;
   final String cancelLabel;
   final String submitLabel;
   final Key? cancelButtonKey;

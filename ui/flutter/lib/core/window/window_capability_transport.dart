@@ -52,6 +52,7 @@ class AppWindowCapabilityHost {
   CapabilityRegistry? _registry;
   AppWindowAppearance _appearance = const AppWindowAppearance.defaults();
   final Map<String, WindowController> _subscribers = {};
+  StreamSubscription<void>? _windowsChanged;
 
   bool get started => _registry != null;
 
@@ -59,12 +60,31 @@ class AppWindowCapabilityHost {
     if (_registry != null) return;
     _registry = registry;
     await _hostChannel.setMethodCallHandler(_handleCall);
+    _windowsChanged = onWindowsChanged.listen((_) => unawaited(_removeClosedSubscribers()));
   }
 
   Future<void> stop() async {
     _registry = null;
+    await _windowsChanged?.cancel();
+    _windowsChanged = null;
     _subscribers.clear();
     await _hostChannel.setMethodCallHandler(null);
+  }
+
+  Future<void> _removeClosedSubscribers() async {
+    // Engine shutdown does not run Widget.dispose, so a closed child cannot
+    // always send window.unsubscribe itself.
+    final registry = _registry;
+    final candidates = _subscribers.keys.toSet();
+    if (registry == null || candidates.isEmpty) return;
+    try {
+      final windows = await WindowController.getAll();
+      if (!identical(registry, _registry)) return;
+      final openIds = windows.map((window) => window.windowId).toSet();
+      _subscribers.removeWhere((id, _) => candidates.contains(id) && !openIds.contains(id));
+    } catch (_) {
+      // The native window registry can already be gone during app shutdown.
+    }
   }
 
   void updateAppearance(AppWindowAppearance appearance) {

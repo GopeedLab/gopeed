@@ -47,6 +47,11 @@ func newBTHybridFixture(t testing.TB, payload []byte) *btFixture {
 
 func makeBTFixture(t testing.TB, files map[string][]byte, bytesPerSecond int, v2, private bool) *btFixture {
 	t.Helper()
+	return makeBTFixtureWithPieceSize(t, files, bytesPerSecond, v2, private, 16*1024)
+}
+
+func makeBTFixtureWithPieceSize(t testing.TB, files map[string][]byte, bytesPerSecond int, v2, private bool, pieceSize int64) *btFixture {
+	t.Helper()
 	source := t.TempDir()
 	name := "payload.bin"
 	if _, single := files[""]; !single {
@@ -64,7 +69,7 @@ func makeBTFixture(t testing.TB, files map[string][]byte, bytesPerSecond int, v2
 		}
 		expected[filepath.Join(name, filepath.FromSlash(path))] = append([]byte(nil), data...)
 	}
-	info := metainfo.Info{PieceLength: 16 * 1024}
+	info := metainfo.Info{PieceLength: pieceSize}
 	if err := info.BuildFromFilePath(root); err != nil {
 		t.Fatal(err)
 	}

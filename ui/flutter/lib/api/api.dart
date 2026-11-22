@@ -81,14 +81,17 @@ Future<ResolveResult> resolve(ResolveTask resolveTask) {
   );
 }
 
+Future<void> releaseResolve(String id) =>
+    _parse<void>(() => _request('api/v1/resolve/${Uri.encodeComponent(id)}', method: 'DELETE'), null);
+
 Future<String> createTask(CreateTask createTask) {
   return _parse<String>(() => _request('api/v1/tasks', method: 'POST', data: createTask), (data) => data as String);
 }
 
-Future<List<String>> createTaskBatch(CreateTaskBatch createTaskBatch) {
-  return _parse<List<String>>(
+Future<CreateTaskBatchResult> createTaskBatch(CreateTaskBatch createTaskBatch) {
+  return _parse<CreateTaskBatchResult>(
     () => _request('api/v1/tasks/batch', method: 'POST', data: createTaskBatch),
-    (data) => (data as List<dynamic>).map((e) => e as String).toList(),
+    (json) => CreateTaskBatchResult.fromJson(json as Map<String, dynamic>),
   );
 }
 

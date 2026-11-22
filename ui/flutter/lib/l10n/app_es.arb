@@ -98,7 +98,7 @@
   "startAll": "Iniciar Todo",
   "pauseAll": "Pausar Todo",
   "deleteTask": "Eliminar @count tareas",
-  "deleteTaskTip": "Mantener archivos descargados",
+  "deleteTaskTip": "Eliminar archivos descargados",
   "delete": "Eliminar",
   "add": "Añadir",
   "edit": "Editar",
@@ -208,7 +208,7 @@
   "categoryName": "Nombre de categoría",
   "categoryPath": "Ruta de categoría",
   "autoCategorizeByExtension": "Categorizar automáticamente por tipo de archivo",
-  "autoCategorizeByExtensionDescription": "Las descargas se guardan automáticamente en la carpeta de categoría según la extensión del archivo al usar la carpeta de descargas predeterminada.",
+  "autoCategorizeByExtensionDescription": "Las descargas se guardan automáticamente en la carpeta de categoría según la extensión del archivo al usar la carpeta de descargas predeterminada",
   "categoryExtensions": "Extensiones de archivo",
   "categoryExtensionsUsageHint": "Separa las extensiones con comas o espacios y pulsa Intro.",
   "categoryExtensionsEmptyHint": "Sin extensiones, los archivos no se guardarán automáticamente en esta categoría.",
@@ -372,7 +372,9 @@
   "torrentDataEmpty": "Los datos de archivos Torrent están vacíos",
   "torrentPathUnavailable": "Incapaz de acceder a la ruta del archivo torrent",
   "selectAtLeastOneFile": "Seleccione al menos un archivo",
-  "resolvedFiles": "Archivos resueltos",
+  "resolvedFiles": "Lista de archivos",
+  "waitingToResolve": "Esperando resolución",
+  "resolvingResource": "Resolviendo recurso",
   "resolvedFileCount": "{count} resueltos",
   "resolvedCategoryDirectory": "Se guardará en {path}",
   "resourceHasNoFiles": "El recurso no tiene lista de archivos seleccionable",
@@ -477,5 +479,6 @@
   "trackerSubscriptionUpdateStatus": "Estado de actualización",
   "trackerSubscriptionTrackerCount": "Número de trackers",
   "trackerSubscriptionNotUpdated": "Sin actualizar",
-  "actions": "Acciones"
+  "actions": "Acciones",
+  "taskGroupDeleteImpact": "Afecta a {taskCount} descargas y {fileCount} archivos."
 }

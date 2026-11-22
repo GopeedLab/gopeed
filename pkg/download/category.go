@@ -32,6 +32,10 @@ func categoryForResource(cfg *base.DownloaderStoreConfig, res *base.Resource) *b
 // runs on the result, so a category directory the white list rejects falls
 // back to the base directory of this task instead of failing it.
 func (d *Downloader) decideDownloadDir(opts *base.Options, res *base.Resource) (string, error) {
+	return d.decideDownloadDirForTask(opts, res, nil)
+}
+
+func (d *Downloader) decideDownloadDirForTask(opts *base.Options, res *base.Resource, group *TaskGroup) (string, error) {
 	if opts == nil {
 		opts = &base.Options{}
 	}
@@ -47,6 +51,9 @@ func (d *Downloader) decideDownloadDir(opts *base.Options, res *base.Resource) (
 	// task nor the config names a directory.
 	if base == "" {
 		return "", errors.New("download directory is empty")
+	}
+	if group != nil && opts.SkipAutoCategorize {
+		return d.initDownloadPathForTask(base, group)
 	}
 	target := base
 	if !opts.SkipAutoCategorize {

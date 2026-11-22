@@ -98,7 +98,7 @@
   "startAll": "Запустить все",
   "pauseAll": "Приостановить все",
   "deleteTask": "Удалить @count задач",
-  "deleteTaskTip": "Сохранить загруженные файлы",
+  "deleteTaskTip": "Удалить загруженные файлы",
   "delete": "Удалить",
   "add": "Добавить",
   "edit": "Редактировать",
@@ -208,7 +208,7 @@
   "categoryName": "Название категории",
   "categoryPath": "Путь категории",
   "autoCategorizeByExtension": "Автокатегоризация по типу файла",
-  "autoCategorizeByExtensionDescription": "Загрузки автоматически сохраняются в папку категории по расширению файла, если выбрана папка загрузки по умолчанию.",
+  "autoCategorizeByExtensionDescription": "Загрузки автоматически сохраняются в папку категории по расширению файла, если выбрана папка загрузки по умолчанию",
   "categoryExtensions": "Расширения файлов",
   "categoryExtensionsUsageHint": "Разделяйте расширения запятыми или пробелами и нажимайте Enter.",
   "categoryExtensionsEmptyHint": "Без расширений файлы не будут автоматически сохранены в эту категорию.",
@@ -372,7 +372,9 @@
   "torrentDataEmpty": "Данные торрент-файлов пусты",
   "torrentPathUnavailable": "Невозможность доступа к торрент-файлу",
   "selectAtLeastOneFile": "Выберите хотя бы один файл",
-  "resolvedFiles": "Решенные файлы",
+  "resolvedFiles": "Список файлов",
+  "waitingToResolve": "Ожидание анализа",
+  "resolvingResource": "Анализ ресурса",
   "resolvedFileCount": "{count} файлов, разрешенных",
   "resolvedCategoryDirectory": "Будет сохранено в {path}",
   "resourceHasNoFiles": "Ресурс не имеет выбираемого списка файлов",
@@ -477,5 +479,6 @@
   "trackerSubscriptionUpdateStatus": "Статус обновления",
   "trackerSubscriptionTrackerCount": "Число трекеров",
   "trackerSubscriptionNotUpdated": "Ещё не обновлено",
-  "actions": "Действия"
+  "actions": "Действия",
+  "taskGroupDeleteImpact": "Затронет {taskCount} загрузок и {fileCount} файлов."
 }

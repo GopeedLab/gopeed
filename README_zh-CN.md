@@ -20,7 +20,7 @@ Gopeed（全称 **Go Speed**，也叫“够快下载器”）是一款使用 Go 
 
 访问 ✈ [官方网站](https://gopeed.com)
 
-![应用截图](_docs/img/ui-concept-zh-CN.png)
+![应用截图](_docs/img/ui-concept-zh-CN.webp)
 
 ## ✨ 主要特性
 

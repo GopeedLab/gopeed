@@ -20,7 +20,7 @@ Ngoài việc quản lý tải xuống hằng ngày, Gopeed còn hỗ trợ tíc
 
 Truy cập ✈ [Trang web chính thức](https://gopeed.com)
 
-![Ảnh chụp màn hình ứng dụng](_docs/img/ui-concept-en.png)
+![Ảnh chụp màn hình ứng dụng](_docs/img/ui-concept-en.webp)
 
 ## ✨ Tính năng chính
 

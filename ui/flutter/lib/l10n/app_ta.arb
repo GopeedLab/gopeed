@@ -98,7 +98,7 @@
   "startAll": "அனைத்தையும் தொடங்கு",
   "pauseAll": "அனைத்தையும் நிறுத்திவை",
   "deleteTask": "பணிகளை நீக்கு @count",
-  "deleteTaskTip": "பதிவிறக்கம் செய்யப்பட்ட கோப்புகளை வைத்திரு",
+  "deleteTaskTip": "பதிவிறக்கிய கோப்புகளை நீக்கு",
   "delete": "நீக்கு",
   "add": "சேர்",
   "edit": "திருத்துக",
@@ -208,7 +208,7 @@
   "categoryName": "வகை பெயர்",
   "categoryPath": "வகை பாதை",
   "autoCategorizeByExtension": "கோப்பு வகை வாரியாக தானாக வகைப்படுத்து",
-  "autoCategorizeByExtensionDescription": "இயல்புநிலை பதிவிறக்கக் கோப்புறையில் சேமிக்கும்போது, கோப்பு நீட்டிப்பின் அடிப்படையில் வகைக் கோப்புறைக்கு தானாக அனுப்பப்படும்.",
+  "autoCategorizeByExtensionDescription": "இயல்புநிலை பதிவிறக்கக் கோப்புறையில் சேமிக்கும்போது, கோப்பு நீட்டிப்பின் அடிப்படையில் வகைக் கோப்புறைக்கு தானாக அனுப்பப்படும்",
   "categoryExtensions": "கோப்பு நீட்டிப்புகள்",
   "categoryExtensionsUsageHint": "நீட்டிப்புகளை காற்புள்ளிகள் அல்லது இடைவெளிகளால் பிரித்து Enter அழுத்தவும்.",
   "categoryExtensionsEmptyHint": "நீட்டிப்புகள் இல்லாததால், கோப்புகள் இந்த வகைப்பாட்டில் தானாகச் சேமிக்கப்படாது.",
@@ -372,7 +372,9 @@
   "torrentDataEmpty": "டொரண்ட் கோப்பு தரவு காலியாக உள்ளது",
   "torrentPathUnavailable": "டொரண்ட் கோப்பு பாதையை அணுக முடியவில்லை",
   "selectAtLeastOneFile": "குறைந்தது ஒரு கோப்பையாவது தேர்ந்தெடுக்கவும்",
-  "resolvedFiles": "தீர்க்கப்பட்ட கோப்புகள்",
+  "resolvedFiles": "கோப்புப் பட்டியல்",
+  "waitingToResolve": "பகுப்பாய்விற்காகக் காத்திருக்கிறது",
+  "resolvingResource": "வளத்தைப் பகுப்பாய்வு செய்கிறது",
   "resolvedFileCount": "{count} கோப்புகள் தீர்க்கப்பட்டன",
   "resolvedCategoryDirectory": "{path} இல் சேமிக்கப்படும்",
   "resourceHasNoFiles": "வளத்தில் தேர்ந்தெடுக்கக்கூடிய கோப்பு பட்டியல் இல்லை",
@@ -477,5 +479,6 @@
   "trackerSubscriptionUpdateStatus": "புதுப்பிப்பு நிலை",
   "trackerSubscriptionTrackerCount": "டிராக்கர் எண்ணிக்கை",
   "trackerSubscriptionNotUpdated": "இன்னும் புதுப்பிக்கப்படவில்லை",
-  "actions": "செயல்கள்"
+  "actions": "செயல்கள்",
+  "taskGroupDeleteImpact": "{taskCount} பதிவிறக்கங்களையும் {fileCount} கோப்புகளையும் பாதிக்கும்."
 }

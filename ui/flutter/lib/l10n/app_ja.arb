@@ -98,7 +98,7 @@
   "startAll": "すべてを開始",
   "pauseAll": "すべてを一時停止",
   "deleteTask": "@count タスクを削除",
-  "deleteTaskTip": "ダウンロードしたファイルを保持",
+  "deleteTaskTip": "ダウンロードしたファイルを削除",
   "delete": "削除",
   "add": "追加",
   "edit": "編集",
@@ -208,7 +208,7 @@
   "categoryName": "カテゴリ名",
   "categoryPath": "カテゴリパス",
   "autoCategorizeByExtension": "ファイル種別で自動分類",
-  "autoCategorizeByExtensionDescription": "既定のダウンロードフォルダーに保存する際、拡張子に基づいて分類フォルダーへ自動的に振り分けます。",
+  "autoCategorizeByExtensionDescription": "既定のダウンロードフォルダーに保存する際、拡張子に基づいて分類フォルダーへ自動的に振り分けます",
   "categoryExtensions": "ファイル拡張子",
   "categoryExtensionsUsageHint": "カンマやスペースで拡張子を区切り、Enterで追加します。",
   "categoryExtensionsEmptyHint": "拡張子が未設定の場合、ファイルは自動的にこの分類へ保存されません。",
@@ -372,7 +372,9 @@
   "torrentDataEmpty": "トレントファイルデータが空です",
   "torrentPathUnavailable": "トレントファイルパスにアクセスできない",
   "selectAtLeastOneFile": "少なくとも1つのファイルを選択します",
-  "resolvedFiles": "解決されたファイル",
+  "resolvedFiles": "ファイル一覧",
+  "waitingToResolve": "解析待ち",
+  "resolvingResource": "リソースを解析中",
   "resolvedFileCount": "{count} ファイルが解決しました",
   "resolvedCategoryDirectory": "{path} に保存されます",
   "resourceHasNoFiles": "リソースには、選択可能なファイルリストはありません",
@@ -477,5 +479,6 @@
   "trackerSubscriptionUpdateStatus": "更新状況",
   "trackerSubscriptionTrackerCount": "Tracker 数",
   "trackerSubscriptionNotUpdated": "未更新",
-  "actions": "操作"
+  "actions": "操作",
+  "taskGroupDeleteImpact": "{taskCount} 件のダウンロードと {fileCount} 個のファイルが対象です。"
 }

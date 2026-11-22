@@ -4,9 +4,12 @@ import 'package:flutter/gestures.dart' show Drag;
 import 'package:flutter/widgets.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' hide Column, Expanded, Row;
 
+import '../../core/utils/breakpoints.dart';
 import '../theme/app_palette.dart';
 import '../../l10n/l10n.dart';
 import '../../util/util.dart';
+import 'file_tree_horizontal_viewport.dart';
+import 'file_tree_name.dart';
 import 'virtual_tree_view.dart';
 
 class FileTreeItem<T> {
@@ -16,6 +19,8 @@ class FileTreeItem<T> {
     required this.name,
     required this.size,
     required this.data,
+    this.directoryOnly = false,
+    this.namespace = '',
   });
 
   final String key;
@@ -23,6 +28,10 @@ class FileTreeItem<T> {
   final String name;
   final int size;
   final T data;
+  final bool directoryOnly;
+
+  /// Keeps directories from independent resources distinct without adding a visible root.
+  final String namespace;
 }
 
 class FileTreeNode<T> {
@@ -61,6 +70,7 @@ class FileTreeView<T> extends StatefulWidget {
     this.headerLeading,
     this.leadingBuilder,
     this.iconBuilder,
+    this.iconWidgetBuilder,
     this.trailingBuilder,
     this.onNodePressed,
     this.keyPrefix = 'file-tree',
@@ -71,12 +81,15 @@ class FileTreeView<T> extends StatefulWidget {
     this.contentTextStyle,
     this.iconSize = 18,
     this.initialExpandedDepth,
+    this.directoryLabels = const {},
   });
 
   final List<FileTreeItem<T>> items;
+  final Map<String, String> directoryLabels;
   final Widget? headerLeading;
   final FileTreeNodeWidgetBuilder<T>? leadingBuilder;
   final FileTreeNodeIconBuilder<T>? iconBuilder;
+  final FileTreeNodeWidgetBuilder<T>? iconWidgetBuilder;
   final FileTreeNodeWidgetBuilder<T>? trailingBuilder;
   final ValueChanged<FileTreeNode<T>>? onNodePressed;
   final String keyPrefix;
@@ -100,6 +113,7 @@ class _FileTreeViewState<T> extends State<FileTreeView<T>> with SingleTickerProv
   late final Animation<double> _reveal;
   final _scrollController = ScrollController();
   final _horizontalScrollController = ScrollController();
+  final _wholeTreeScrollController = ScrollController();
   Drag? _horizontalDrag;
   final Map<String, double> _labelWidthCache = {};
   TextStyle? _labelMeasurementStyle;
@@ -115,7 +129,11 @@ class _FileTreeViewState<T> extends State<FileTreeView<T>> with SingleTickerProv
   @override
   void initState() {
     super.initState();
-    _nodes = _buildTree(widget.items, expandedDepth: widget.initialExpandedDepth);
+    _nodes = _buildTree(
+      widget.items,
+      expandedDepth: widget.initialExpandedDepth,
+      directoryLabels: widget.directoryLabels,
+    );
     _allFoldersExpanded = _foldersAreExpanded(_nodes);
     _transitionController = AnimationController(vsync: this, duration: _treeTransitionDuration, value: 1)
       ..addStatusListener(_onTransitionStatus);
@@ -127,8 +145,12 @@ class _FileTreeViewState<T> extends State<FileTreeView<T>> with SingleTickerProv
     super.didUpdateWidget(oldWidget);
     if (identical(widget.items, oldWidget.items)) return;
 
-    final expandedKeys = _expandedFolderKeys(_nodes);
-    var nodes = _restoreExpandedFolders(_buildTree(widget.items), expandedKeys);
+    // During a collapse animation, the pending tree holds the user's target state.
+    final expandedKeys = _expandedFolderKeys(_pendingCollapsedNodes ?? _nodes);
+    var nodes = _restoreExpandedFolders(
+      _buildTree(widget.items, directoryLabels: widget.directoryLabels),
+      expandedKeys,
+    );
     nodes = _sortNodes(nodes, _sortColumn, _sortDirection);
     _nodes = nodes;
     _allFoldersExpanded = _foldersAreExpanded(nodes);
@@ -145,6 +167,7 @@ class _FileTreeViewState<T> extends State<FileTreeView<T>> with SingleTickerProv
     _transitionController.dispose();
     _scrollController.dispose();
     _horizontalScrollController.dispose();
+    _wholeTreeScrollController.dispose();
     super.dispose();
   }
 
@@ -171,72 +194,87 @@ class _FileTreeViewState<T> extends State<FileTreeView<T>> with SingleTickerProv
       label,
       () => _measureLabelWidth(label, style: labelStyle, textDirection: textDirection, textScaler: textScaler),
     );
-    final nameContentWidth = _widestLabelWidth(widget.items, measureLabel);
+    final nameContentWidth = _widestLabelWidth(_nodes, measureLabel);
     final fixedNameChrome =
         _treeNodeExpandChrome + widget.iconSize + 4 + (widget.leadingBuilder == null ? 0 : _treeLeadingChrome);
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final treeWidth = constraints.hasBoundedWidth ? constraints.maxWidth : _treeFallbackWidth;
+        // Folder expansion must not switch between frozen and scrolling columns.
+        final scrollWholeTree = treeWidth < Breakpoints.mobile;
         final horizontalOverflow = _horizontalOverflow(
-          widget.items,
+          _nodes,
           baseNameViewport:
               treeWidth - _treeHorizontalPadding - trailingColumnWidth - _treeTrailingGap - fixedNameChrome,
           depthIndent: treeItemInset * 3,
           measureLabel: measureLabel,
         );
 
-        return OutlinedContainer(
-          child: Column(
-            children: [
-              _FileTreeToolbar(
-                keyPrefix: widget.keyPrefix,
-                headerLeading: widget.headerLeading,
-                allExpanded: _allFoldersExpanded,
-                nameSortDirection: _sortColumn == _FileTreeSortColumn.name
-                    ? _sortDirection
-                    : _FileTreeSortDirection.none,
-                sizeSortDirection: _sortColumn == _FileTreeSortColumn.size
-                    ? _sortDirection
-                    : _FileTreeSortDirection.none,
-                showSizeColumn: widget.showSizeColumn,
-                trailingHeader: widget.trailingHeader,
-                trailingColumnWidth: trailingColumnWidth,
-                onNameSort: () => _toggleSort(_FileTreeSortColumn.name),
-                onSizeSort: () => _toggleSort(_FileTreeSortColumn.size),
-                onToggleExpanded: _allFoldersExpanded ? _collapseAll : _expandAll,
-              ),
-              Expanded(
-                child: _nodes.isEmpty
-                    ? _FileTreeEmptyState(label: widget.emptyLabel ?? context.l10n.noFiles)
-                    : VirtualTreeView<FileTreeNode<T>>(
-                        nodes: _nodes,
-                        controller: _scrollController,
-                        branchLine: BranchLine.path,
-                        rowHeight: widget.rowHeight,
-                        padding: const EdgeInsets.fromLTRB(_treeContentOffset, 4, 8, 4),
-                        itemPadding: EdgeInsets.symmetric(vertical: treeItemInset * 0.5),
-                        itemBuilder: (context, entry) => _buildTreeItem(
-                          context,
-                          entry,
-                          nameContentWidth: nameContentWidth,
-                          trailingColumnWidth: trailingColumnWidth,
-                          hasTrailingColumn: hasTrailingColumn,
-                          horizontalScrollEnabled: horizontalOverflow > 0.5,
-                          contentTextStyle: labelStyle,
-                        ),
-                        transitionBuilder: _buildTreeTransition,
+        final content = Column(
+          children: [
+            _FileTreeToolbar(
+              keyPrefix: widget.keyPrefix,
+              headerLeading: widget.headerLeading,
+              allExpanded: _allFoldersExpanded,
+              nameSortDirection: _sortColumn == _FileTreeSortColumn.name ? _sortDirection : _FileTreeSortDirection.none,
+              sizeSortDirection: _sortColumn == _FileTreeSortColumn.size ? _sortDirection : _FileTreeSortDirection.none,
+              showSizeColumn: widget.showSizeColumn,
+              trailingHeader: widget.trailingHeader,
+              trailingColumnWidth: trailingColumnWidth,
+              onNameSort: () => _toggleSort(_FileTreeSortColumn.name),
+              onSizeSort: () => _toggleSort(_FileTreeSortColumn.size),
+              onToggleExpanded: _allFoldersExpanded ? _collapseAll : _expandAll,
+            ),
+            Expanded(
+              child: _nodes.isEmpty
+                  ? _FileTreeEmptyState(label: widget.emptyLabel ?? context.l10n.noFiles)
+                  : VirtualTreeView<FileTreeNode<T>>(
+                      nodes: _nodes,
+                      controller: _scrollController,
+                      branchLine: BranchLine.path,
+                      rowHeight: widget.rowHeight,
+                      padding: const EdgeInsets.fromLTRB(_treeContentOffset, 4, 8, 4),
+                      itemPadding: EdgeInsets.symmetric(vertical: treeItemInset * 0.5),
+                      itemBuilder: (context, entry) => _buildTreeItem(
+                        context,
+                        entry,
+                        nameContentWidth: nameContentWidth,
+                        trailingColumnWidth: trailingColumnWidth,
+                        hasTrailingColumn: hasTrailingColumn,
+                        horizontalScrollEnabled: horizontalOverflow > 0.5,
+                        scrollWholeTree: scrollWholeTree,
+                        nameContentOffset:
+                            _treeContentOffset + (entry.depth.length - 1) * treeItemInset * 3 + fixedNameChrome,
+                        contentTextStyle: labelStyle,
                       ),
+                      transitionBuilder: _buildTreeTransition,
+                    ),
+            ),
+            if (!scrollWholeTree && _nodes.isNotEmpty && horizontalOverflow > 0.5)
+              _FileNameHorizontalScrollbar(
+                keyPrefix: widget.keyPrefix,
+                controller: _horizontalScrollController,
+                overflow: horizontalOverflow,
+                trailingColumnWidth: trailingColumnWidth,
               ),
-              if (_nodes.isNotEmpty && horizontalOverflow > 0.5)
-                _FileNameHorizontalScrollbar(
+          ],
+        );
+
+        return OutlinedContainer(
+          child: scrollWholeTree
+              ? FileTreeHorizontalViewport(
                   keyPrefix: widget.keyPrefix,
-                  controller: _horizontalScrollController,
-                  overflow: horizontalOverflow,
-                  trailingColumnWidth: trailingColumnWidth,
-                ),
-            ],
-          ),
+                  controller: _wholeTreeScrollController,
+                  contentWidth:
+                      _treeHorizontalPadding +
+                      fixedNameChrome +
+                      _treeTrailingGap +
+                      trailingColumnWidth +
+                      _widestIndentedLabelWidth(_nodes, measureLabel, treeItemInset * 3),
+                  child: content,
+                )
+              : content,
         );
       },
     );
@@ -249,6 +287,8 @@ class _FileTreeViewState<T> extends State<FileTreeView<T>> with SingleTickerProv
     required double trailingColumnWidth,
     required bool hasTrailingColumn,
     required bool horizontalScrollEnabled,
+    required bool scrollWholeTree,
+    required double nameContentOffset,
     required TextStyle contentTextStyle,
   }) {
     final palette = AppPalette.of(context);
@@ -283,49 +323,36 @@ class _FileTreeViewState<T> extends State<FileTreeView<T>> with SingleTickerProv
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 if (leading != null) ...[leading, const SizedBox(width: 8)],
-                Icon(
-                  widget.iconBuilder?.call(data) ??
-                      (data.isFolder
-                          ? (visuallyExpanded ? BootstrapIcons.folder2Open : BootstrapIcons.folder2)
-                          : _fileIcon(data.label)),
-                  size: widget.iconSize,
-                  color: palette.textSecondary,
-                ),
+                widget.iconWidgetBuilder?.call(context, data) ??
+                    Icon(
+                      widget.iconBuilder?.call(data) ??
+                          (data.isFolder
+                              ? (visuallyExpanded ? BootstrapIcons.folder2Open : BootstrapIcons.folder2)
+                              : _fileIcon(data.label)),
+                      size: widget.iconSize,
+                      color: palette.textSecondary,
+                    ),
                 const SizedBox(width: 4),
                 Expanded(
                   child: GestureDetector(
                     key: ValueKey('${widget.keyPrefix}-name-scroll-${data.key}'),
                     behavior: HitTestBehavior.opaque,
-                    onHorizontalDragStart: horizontalScrollEnabled ? _startNameDrag : null,
-                    onHorizontalDragUpdate: horizontalScrollEnabled
+                    onHorizontalDragStart: !scrollWholeTree && horizontalScrollEnabled ? _startNameDrag : null,
+                    onHorizontalDragUpdate: !scrollWholeTree && horizontalScrollEnabled
                         ? (details) => _horizontalDrag?.update(details)
                         : null,
-                    onHorizontalDragEnd: horizontalScrollEnabled ? (details) => _horizontalDrag?.end(details) : null,
-                    onHorizontalDragCancel: horizontalScrollEnabled ? () => _horizontalDrag?.cancel() : null,
-                    child: ClipRect(
-                      child: AnimatedBuilder(
-                        animation: _horizontalScrollController,
-                        builder: (context, child) {
-                          final offset = horizontalScrollEnabled && _horizontalScrollController.hasClients
-                              ? _horizontalScrollController.offset
-                              : 0.0;
-                          return Transform.translate(offset: Offset(-offset, 0), child: child);
-                        },
-                        child: OverflowBox(
-                          alignment: Alignment.centerLeft,
-                          minWidth: 0,
-                          maxWidth: double.infinity,
-                          child: SizedBox(
-                            width: nameContentWidth,
-                            child: Text(
-                              data.label,
-                              maxLines: 1,
-                              softWrap: false,
-                              style: contentTextStyle.copyWith(color: palette.textPrimary),
-                            ),
-                          ),
-                        ),
-                      ),
+                    onHorizontalDragEnd: !scrollWholeTree && horizontalScrollEnabled
+                        ? (details) => _horizontalDrag?.end(details)
+                        : null,
+                    onHorizontalDragCancel: !scrollWholeTree && horizontalScrollEnabled
+                        ? () => _horizontalDrag?.cancel()
+                        : null,
+                    child: FileTreeName(
+                      name: data.label,
+                      style: contentTextStyle.copyWith(color: palette.textPrimary),
+                      controller: scrollWholeTree ? _wholeTreeScrollController : _horizontalScrollController,
+                      contentWidth: nameContentWidth,
+                      treeContentOffset: scrollWholeTree ? nameContentOffset : null,
                     ),
                   ),
                 ),
@@ -873,7 +900,11 @@ class _BuildNode<T> {
   }
 }
 
-List<TreeNode<FileTreeNode<T>>> _buildTree<T>(List<FileTreeItem<T>> items, {int? expandedDepth}) {
+List<TreeNode<FileTreeNode<T>>> _buildTree<T>(
+  List<FileTreeItem<T>> items, {
+  int? expandedDepth,
+  Map<String, String> directoryLabels = const {},
+}) {
   final root = <_BuildNode<T>>[];
   final folders = <String, _BuildNode<T>>{};
   var originalIndex = 0;
@@ -885,8 +916,13 @@ List<TreeNode<FileTreeNode<T>>> _buildTree<T>(List<FileTreeItem<T>> items, {int?
 
     for (final part in parts) {
       currentPath = currentPath.isEmpty ? part : '$currentPath/$part';
-      final folder = folders.putIfAbsent(currentPath, () {
-        final node = _BuildNode<T>(key: 'folder:$currentPath', label: part, originalIndex: originalIndex++);
+      final directoryKey = item.namespace.isEmpty ? currentPath : '${item.namespace}:$currentPath';
+      final folder = folders.putIfAbsent(directoryKey, () {
+        final node = _BuildNode<T>(
+          key: 'folder:$directoryKey',
+          label: directoryLabels[directoryKey] ?? part,
+          originalIndex: originalIndex++,
+        );
         if (parent == null) {
           root.add(node);
         } else {
@@ -896,6 +932,8 @@ List<TreeNode<FileTreeNode<T>>> _buildTree<T>(List<FileTreeItem<T>> items, {int?
       });
       parent = folder;
     }
+
+    if (item.directoryOnly) continue;
 
     final fileNode = _BuildNode<T>(
       key: 'file:${item.key}',
@@ -945,10 +983,10 @@ List<TreeNode<FileTreeNode<T>>> _sortNodes<T>(
   sorted.sort((a, b) {
     final left = a.data;
     final right = b.data;
-    if (left.isFolder != right.isFolder) return left.isFolder ? -1 : 1;
     if (column == null || direction == _FileTreeSortDirection.none) {
       return left.originalIndex.compareTo(right.originalIndex);
     }
+    if (left.isFolder != right.isFolder) return left.isFolder ? -1 : 1;
     final comparison = switch (column) {
       _FileTreeSortColumn.name => left.label.toLowerCase().compareTo(right.label.toLowerCase()),
       _FileTreeSortColumn.size => left.size.compareTo(right.size),
@@ -994,7 +1032,7 @@ Set<String> _expandedFolderKeys<T>(Iterable<TreeNode<FileTreeNode<T>>> nodes) {
   final keys = <String>{};
   void collect(TreeNode<FileTreeNode<T>> node) {
     final item = node as TreeItemNode<FileTreeNode<T>>;
-    if (item.children.isNotEmpty && item.expanded) keys.add(item.data.key);
+    if (item.data.isFolder && item.expanded) keys.add(item.data.key);
     for (final child in item.children) {
       collect(child);
     }
@@ -1016,7 +1054,7 @@ List<TreeNode<FileTreeNode<T>>> _restoreExpandedFolders<T>(
         final children = _restoreExpandedFolders(item.children, expandedKeys);
         return item
             .updateChildren(children)
-            .updateState(expanded: item.children.isNotEmpty && expandedKeys.contains(item.data.key));
+            .updateState(expanded: item.data.isFolder && expandedKeys.contains(item.data.key));
       })
       .toList(growable: false);
 }
@@ -1036,13 +1074,28 @@ String _extensionOf(String name) {
   return name.substring(index + 1).toLowerCase();
 }
 
-double _widestLabelWidth<T>(List<FileTreeItem<T>> items, double Function(String label) measureLabel) {
+double _widestLabelWidth<T>(List<TreeNode<FileTreeNode<T>>> nodes, double Function(String label) measureLabel) {
   var widest = _treeMinimumNameContentWidth;
-  for (final item in items) {
-    widest = math.max(widest, measureLabel(item.name));
-    for (final segment in item.path.split(RegExp(r'[/\\]+'))) {
-      if (segment.isNotEmpty) widest = math.max(widest, measureLabel(segment));
-    }
+  for (final node in nodes) {
+    final item = node as TreeItemNode<FileTreeNode<T>>;
+    widest = math.max(widest, measureLabel(item.data.label));
+    widest = math.max(widest, _widestLabelWidth(item.children, measureLabel));
+  }
+  return widest;
+}
+
+double _widestIndentedLabelWidth<T>(
+  List<TreeNode<FileTreeNode<T>>> nodes,
+  double Function(String label) measureLabel,
+  double depthIndent, [
+  int depth = 0,
+]) {
+  var widest = _treeMinimumNameContentWidth;
+  for (final node in nodes) {
+    final item = node as TreeItemNode<FileTreeNode<T>>;
+    widest = math.max(widest, depth * depthIndent + measureLabel(item.data.label));
+    // Include collapsed descendants so expanding folders keeps the canvas stable.
+    widest = math.max(widest, _widestIndentedLabelWidth(item.children, measureLabel, depthIndent, depth + 1));
   }
   return widest;
 }
@@ -1063,20 +1116,27 @@ double _measureLabelWidth(
 }
 
 double _horizontalOverflow<T>(
-  List<FileTreeItem<T>> items, {
+  List<TreeNode<FileTreeNode<T>>> nodes, {
   required double baseNameViewport,
   required double depthIndent,
   required double Function(String label) measureLabel,
+  int depth = 0,
 }) {
   var overflow = 0.0;
-  for (final item in items) {
-    final segments = item.path.split(RegExp(r'[/\\]+')).where((segment) => segment.isNotEmpty).toList();
-    for (var depth = 0; depth < segments.length; depth++) {
-      final viewport = math.max(_treeMinimumNameViewport, baseNameViewport - (depth * depthIndent));
-      overflow = math.max(overflow, measureLabel(segments[depth]) - viewport);
-    }
-    final fileViewport = math.max(_treeMinimumNameViewport, baseNameViewport - (segments.length * depthIndent));
-    overflow = math.max(overflow, measureLabel(item.name) - fileViewport);
+  final viewport = math.max(_treeMinimumNameViewport, baseNameViewport - depth * depthIndent);
+  for (final node in nodes) {
+    final item = node as TreeItemNode<FileTreeNode<T>>;
+    overflow = math.max(overflow, measureLabel(item.data.label) - viewport);
+    overflow = math.max(
+      overflow,
+      _horizontalOverflow(
+        item.children,
+        baseNameViewport: baseNameViewport,
+        depthIndent: depthIndent,
+        measureLabel: measureLabel,
+        depth: depth + 1,
+      ),
+    );
   }
   return math.max(0, overflow);
 }

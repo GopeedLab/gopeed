@@ -125,13 +125,26 @@ func TestUnescapeHTMLEntities(t *testing.T) {
 			in:   "normal.txt",
 			want: "normal.txt",
 		},
+		{
+			name: "escaped ampersand before entity name is decoded once",
+			in:   "a&amp;lt;b.txt",
+			want: "a&lt;b.txt",
+		},
+		{
+			name: "escaped ampersand before quote entity is decoded once",
+			in:   "a&amp;quot;b.txt",
+			want: "a&quot;b.txt",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := unescapeHTMLEntities(tt.in)
-			if got != tt.want {
-				t.Errorf("unescapeHTMLEntities() = %q, want %q", got, tt.want)
+			// Run repeatedly so that an order-dependent implementation fails reliably.
+			for i := 0; i < 200; i++ {
+				got := unescapeHTMLEntities(tt.in)
+				if got != tt.want {
+					t.Fatalf("unescapeHTMLEntities() = %q, want %q (run %d)", got, tt.want, i)
+				}
 			}
 		})
 	}

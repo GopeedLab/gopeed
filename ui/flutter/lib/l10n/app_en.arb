@@ -105,7 +105,7 @@
   "startAll": "Start All",
   "pauseAll": "Pause All",
   "deleteTask": "Delete @count tasks",
-  "deleteTaskTip": "Keep downloaded files",
+  "deleteTaskTip": "Delete downloaded files",
   "delete": "Delete",
   "add": "Add",
   "edit": "Edit",
@@ -222,7 +222,7 @@
   "categoryName": "Category Name",
   "categoryPath": "Category Path",
   "autoCategorizeByExtension": "Auto-categorize by file type",
-  "autoCategorizeByExtensionDescription": "Automatically route downloads into a category folder based on the file name when saving to the default download folder.",
+  "autoCategorizeByExtensionDescription": "Automatically route downloads into a category folder based on the file name when saving to the default download folder",
   "categoryExtensions": "Associated Extensions",
   "categoryExtensionsUsageHint": "Separate suffixes with commas or spaces, then press Enter.",
   "categoryExtensionsEmptyHint": "Without extensions, files won't be saved into this category automatically.",
@@ -406,7 +406,9 @@
   "torrentDataEmpty": "Torrent file data is empty",
   "torrentPathUnavailable": "Unable to access the torrent file path",
   "selectAtLeastOneFile": "Select at least one file",
-  "resolvedFiles": "Resolved Files",
+  "resolvedFiles": "File List",
+  "waitingToResolve": "Waiting to resolve",
+  "resolvingResource": "Resolving resource",
   "resolvedFileCount": "{count, plural, =1{1 file resolved} other{{count} files resolved}}",
   "resolvedCategoryDirectory": "Will be saved to {path}",
   "@resolvedCategoryDirectory": {
@@ -704,5 +706,16 @@
   "trackerSubscriptionUpdateStatus": "Update status",
   "trackerSubscriptionTrackerCount": "Tracker count",
   "trackerSubscriptionNotUpdated": "Not updated",
-  "actions": "Actions"
+  "actions": "Actions",
+  "taskGroupDeleteImpact": "Affects {taskCount} downloads and {fileCount} files.",
+  "@taskGroupDeleteImpact": {
+    "placeholders": {
+      "taskCount": {
+        "type": "int"
+      },
+      "fileCount": {
+        "type": "int"
+      }
+    }
+  }
 }

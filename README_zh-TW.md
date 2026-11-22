@@ -20,7 +20,7 @@ Gopeed（**Go Speed** 的縮寫）是一款以 Go 與 Flutter 開發的高速、
 
 瀏覽 ✈ [官方網站](https://gopeed.com)
 
-![應用程式截圖](_docs/img/ui-concept-en.png)
+![應用程式截圖](_docs/img/ui-concept-en.webp)
 
 ## ✨ 主要功能
 

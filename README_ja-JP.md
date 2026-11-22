@@ -20,7 +20,7 @@ Gopeed（**Go Speed** の略）は、Go と Flutter で開発された高速で�
 
 ✈ [公式サイト](https://gopeed.com)
 
-![アプリのスクリーンショット](_docs/img/ui-concept-en.png)
+![アプリのスクリーンショット](_docs/img/ui-concept-en.webp)
 
 ## ✨ 主な機能
 

@@ -98,7 +98,7 @@
   "startAll": "شروع همه",
   "pauseAll": "توقف همه",
   "deleteTask": "حذف @count کار",
-  "deleteTaskTip": "فایل های دانلود شده را نگه دارد",
+  "deleteTaskTip": "حذف فایل‌های دانلودشده",
   "delete": "پاک کردن",
   "add": "افزودن",
   "edit": "ویرایش",
@@ -208,7 +208,7 @@
   "categoryName": "نام دسته‌بندی",
   "categoryPath": "مسیر دسته‌بندی",
   "autoCategorizeByExtension": "دسته‌بندی خودکار بر اساس نوع فایل",
-  "autoCategorizeByExtensionDescription": "هنگام ذخیره در پوشه پیش‌فرض دانلود، دانلودها بر اساس پسوند فایل به پوشه دسته مربوطه منتقل می‌شوند.",
+  "autoCategorizeByExtensionDescription": "هنگام ذخیره در پوشه پیش‌فرض دانلود، دانلودها بر اساس پسوند فایل به پوشه دسته مربوطه منتقل می‌شوند",
   "categoryExtensions": "پسوندهای فایل",
   "categoryExtensionsUsageHint": "پسوندها را با ویرگول یا فاصله جدا کنید و Enter را بزنید.",
   "categoryExtensionsEmptyHint": "بدون پسوندها، فایل‌ها به‌صورت خودکار در این دسته ذخیره نمی‌شوند.",
@@ -372,7 +372,9 @@
   "torrentDataEmpty": "داده های فایل تورنت خالی است",
   "torrentPathUnavailable": "امکان دسترسی به مسیر فایل تورنت",
   "selectAtLeastOneFile": "حداقل یک فایل را انتخاب کنید",
-  "resolvedFiles": "فایل های حل شده",
+  "resolvedFiles": "فهرست فایل‌ها",
+  "waitingToResolve": "در انتظار پردازش",
+  "resolvingResource": "در حال پردازش منبع",
   "resolvedFileCount": "{count} فایل شناسایی شد",
   "resolvedCategoryDirectory": "در {path} ذخیره می‌شود",
   "resourceHasNoFiles": "منبع هیچ لیست فایل قابل انتخاب ندارد",
@@ -477,5 +479,6 @@
   "trackerSubscriptionUpdateStatus": "وضعیت به‌روزرسانی",
   "trackerSubscriptionTrackerCount": "تعداد ردیاب‌ها",
   "trackerSubscriptionNotUpdated": "هنوز به‌روزرسانی نشده",
-  "actions": "عملیات"
+  "actions": "عملیات",
+  "taskGroupDeleteImpact": "بر {taskCount} بارگیری و {fileCount} پرونده تأثیر می‌گذارد."
 }

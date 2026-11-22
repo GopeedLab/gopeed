@@ -3,6 +3,7 @@
 #include <dwmapi.h>
 #include <flutter_windows.h>
 
+#include "crash_handler.h"
 #include "resource.h"
 
 namespace {
@@ -158,19 +159,26 @@ LRESULT CALLBACK Win32Window::WndProc(HWND const window,
                                       UINT const message,
                                       WPARAM const wparam,
                                       LPARAM const lparam) noexcept {
-  if (message == WM_NCCREATE) {
-    auto window_struct = reinterpret_cast<CREATESTRUCT*>(lparam);
-    SetWindowLongPtr(window, GWLP_USERDATA,
-                     reinterpret_cast<LONG_PTR>(window_struct->lpCreateParams));
+  // Capture inside the callback, before user32 wraps or suppresses an escaping
+  // exception. Keep C++ objects requiring unwinding out of this SEH boundary.
+  __try {
+    if (message == WM_NCCREATE) {
+      auto window_struct = reinterpret_cast<CREATESTRUCT*>(lparam);
+      SetWindowLongPtr(window, GWLP_USERDATA,
+                       reinterpret_cast<LONG_PTR>(window_struct->lpCreateParams));
 
-    auto that = static_cast<Win32Window*>(window_struct->lpCreateParams);
-    EnableFullDpiSupportIfAvailable(window);
-    that->window_handle_ = window;
-  } else if (Win32Window* that = GetThisFromHandle(window)) {
-    return that->MessageHandler(window, message, wparam, lparam);
+      auto that = static_cast<Win32Window*>(window_struct->lpCreateParams);
+      EnableFullDpiSupportIfAvailable(window);
+      that->window_handle_ = window;
+    } else if (Win32Window* that = GetThisFromHandle(window)) {
+      return that->MessageHandler(window, message, wparam, lparam);
+    }
+
+    return DefWindowProc(window, message, wparam, lparam);
+  } __except (RecordNativeCrash(GetExceptionInformation())) {
+    // The filter always continues the exception search; this is unreachable.
+    return 0;
   }
-
-  return DefWindowProc(window, message, wparam, lparam);
 }
 
 LRESULT

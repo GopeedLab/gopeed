@@ -98,7 +98,7 @@
   "startAll": "Bắt đầu tất cả",
   "pauseAll": "Tạm dừng tất cả",
   "deleteTask": "Xóa @count nhiệm vụ",
-  "deleteTaskTip": "Giữ các tệp đã tải về",
+  "deleteTaskTip": "Xóa các tệp đã tải xuống",
   "delete": "Xóa",
   "add": "Thêm",
   "edit": "Sửa",
@@ -208,7 +208,7 @@
   "categoryName": "Tên danh mục",
   "categoryPath": "Đường dẫn danh mục",
   "autoCategorizeByExtension": "Tự động phân loại theo loại tệp",
-  "autoCategorizeByExtensionDescription": "Tải xuống sẽ được chuyển vào thư mục danh mục dựa trên phần mở rộng tệp khi lưu vào thư mục tải xuống mặc định.",
+  "autoCategorizeByExtensionDescription": "Tải xuống sẽ được chuyển vào thư mục danh mục dựa trên phần mở rộng tệp khi lưu vào thư mục tải xuống mặc định",
   "categoryExtensions": "Phần mở rộng tệp",
   "categoryExtensionsUsageHint": "Phân tách phần mở rộng bằng dấu phẩy hoặc khoảng trắng rồi nhấn Enter.",
   "categoryExtensionsEmptyHint": "Không có phần mở rộng, tệp sẽ không tự động được lưu vào danh mục này.",
@@ -372,7 +372,9 @@
   "torrentDataEmpty": "Dữ liệu về tập tin đã rỗng",
   "torrentPathUnavailable": "Không thể truy cập đường dẫn tập tin lũ lụt",
   "selectAtLeastOneFile": "Chọn ít nhất một tập tin",
-  "resolvedFiles": "Các tập tin đã giải quyết",
+  "resolvedFiles": "Danh sách tệp",
+  "waitingToResolve": "Đang chờ phân tích",
+  "resolvingResource": "Đang phân tích tài nguyên",
   "resolvedFileCount": "{count} tập tin được giải quyết",
   "resolvedCategoryDirectory": "Sẽ được lưu vào {path}",
   "resourceHasNoFiles": "Không thể chọn danh sách tập tin",
@@ -477,5 +479,6 @@
   "trackerSubscriptionUpdateStatus": "Trạng thái cập nhật",
   "trackerSubscriptionTrackerCount": "Số tracker",
   "trackerSubscriptionNotUpdated": "Chưa cập nhật",
-  "actions": "Thao tác"
+  "actions": "Thao tác",
+  "taskGroupDeleteImpact": "Ảnh hưởng đến {taskCount} tác vụ tải và {fileCount} tệp."
 }

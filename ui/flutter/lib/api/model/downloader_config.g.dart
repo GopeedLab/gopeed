@@ -186,7 +186,7 @@ ExtraConfig _$ExtraConfigFromJson(Map<String, dynamic> json) => ExtraConfig(
   themeMode: json['themeMode'] as String? ?? '',
   themeColor: json['themeColor'] as String? ?? 'green',
   locale: json['locale'] as String? ?? '',
-  lastDeleteTaskKeep: json['lastDeleteTaskKeep'] as bool? ?? false,
+  lastDeleteTaskKeep: json['lastDeleteTaskKeep'] as bool? ?? true,
   defaultDirectDownload: json['defaultDirectDownload'] as bool? ?? false,
   defaultBtClient: json['defaultBtClient'] as bool? ?? true,
   notifyWhenNewVersion: json['notifyWhenNewVersion'] as bool? ?? true,

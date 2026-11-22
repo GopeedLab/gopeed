@@ -267,3 +267,65 @@ func TestFullConfigAndJobTriggerShareProtectedProtocolState(t *testing.T) {
 		t.Fatalf("job state overwritten: %s", raw)
 	}
 }
+
+func TestBatchResolvedAndDirectCreation(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Length", "4")
+		_, _ = w.Write([]byte("test"))
+	}))
+	t.Cleanup(upstream.Close)
+	d := download.NewDownloader(&download.DownloaderConfig{StorageDir: t.TempDir(), TempDir: t.TempDir(), FetchManagers: []fetcher.FetcherManager{&httpProtocol.FetcherManager{}}})
+	if err := d.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { d.Close() })
+	cfg, err := d.GetConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg.MaxRunning = 0
+	if err := d.PutConfig(cfg); err != nil {
+		t.Fatal(err)
+	}
+	service, err := NewService(d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, grouped := range []bool{false, true} {
+		resolved := serviceTestRequest[*download.ResolveResult](t, service, http.MethodPost, "/api/v1/resolve", &restmodel.ResolveTask{Req: &base.Request{URL: upstream.URL + "/resolved"}})
+		result := serviceTestRequest[map[string]json.RawMessage](t, service, http.MethodPost, "/api/v1/tasks/batch", &base.CreateTaskBatch{
+			Group: grouped, GroupName: "folder", Opts: &base.Options{Path: t.TempDir()},
+			Reqs: []*base.CreateTaskBatchItem{
+				{Rid: "invalid"},
+				{Rid: resolved.ID, Req: &base.Request{URL: "unsupported://ignored"}, Opts: &base.Options{SelectFiles: []int{0}}},
+				{Req: &base.Request{URL: upstream.URL + "/direct"}},
+			},
+		})
+		var ids []string
+		if err := json.Unmarshal(result["taskIds"], &ids); err != nil || len(ids) != 2 {
+			t.Fatalf("unexpected task IDs: %+v, %v", result, err)
+		}
+		wantFields := 1
+		if grouped {
+			wantFields = 2
+		}
+		if len(result) != wantFields {
+			t.Fatalf("unexpected response fields: %+v", result)
+		}
+		var parentID string
+		if grouped {
+			if err := json.Unmarshal(result["parentId"], &parentID); err != nil || parentID == "" {
+				t.Fatalf("missing parent ID: %+v", result)
+			}
+		}
+		task := serviceTestRequest[*download.Task](t, service, http.MethodGet, "/api/v1/tasks/"+ids[0], nil)
+		if task.ParentID != parentID || !reflect.DeepEqual(task.Meta.Opts.SelectFiles, []int{0}) {
+			t.Fatalf("resolved task lost membership or selection: %+v", task)
+		}
+		status, response := service.JSON(http.MethodPost, "/api/v1/tasks/batch", nil, []byte(`{"reqs":[{"rid":"missing"},{"req":{"url":"unsupported://bad"}}]}`), nil)
+		var failed restmodel.Result[any]
+		if err := json.Unmarshal(response, &failed); err != nil || status != http.StatusOK || failed.Code == restmodel.CodeOk {
+			t.Fatalf("all-failed batch succeeded: %d %s", status, response)
+		}
+	}
+}

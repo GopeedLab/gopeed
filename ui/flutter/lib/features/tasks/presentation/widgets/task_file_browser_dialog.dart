@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart' show Icons;
 import 'package:flutter/widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
@@ -7,6 +8,7 @@ import '../../../../l10n/l10n.dart';
 import '../../../../shared/widgets/app_tooltip.dart';
 import '../../../../util/util.dart';
 import '../../domain/task_record.dart';
+import '../../application/tasks_controller.dart';
 import 'task_file_manager.dart';
 
 Future<void> browseTaskFiles(BuildContext context, TaskRecord task, {required bool mobile}) async {
@@ -49,7 +51,16 @@ Future<void> showTaskFileBrowserDialog(BuildContext context, TaskRecord task) as
         content: SizedBox(
           width: dialogWidth,
           height: dialogHeight,
-          child: TaskFileManagerView(task: task),
+          child: Consumer(
+            builder: (context, ref, _) {
+              final state = ref.watch(tasksControllerProvider).value;
+              final current = state?.findTask(task.id);
+              if (state != null && current == null) {
+                return Center(child: Text(context.l10n.taskNotFound));
+              }
+              return TaskFileManagerView(task: current ?? task);
+            },
+          ),
         ),
       );
     },

@@ -1,5 +1,4 @@
-import 'package:flutter/material.dart' show Icons;
-import 'package:flutter/widgets.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/window/app_window_chrome.dart';
@@ -28,7 +27,21 @@ class PrimaryRail extends StatelessWidget {
         children: [
           SizedBox(
             height: AppDesignTokens.contentHeaderHeight,
-            child: const Center(child: GopeedAppMark(key: ValueKey('primary-rail-app-mark'))),
+            child: Center(
+              child: AppTooltip(
+                message: context.l10n.task,
+                child: Semantics(
+                  label: context.l10n.task,
+                  button: true,
+                  child: GhostButton(
+                    key: const ValueKey('primary-rail-home-button'),
+                    density: ButtonDensity.icon,
+                    onPressed: () => context.go('/'),
+                    child: const ExcludeSemantics(child: GopeedAppMark(key: ValueKey('primary-rail-app-mark'))),
+                  ),
+                ),
+              ),
+            ),
           ),
           const SizedBox(height: AppDesignTokens.space8),
           _RailItem(

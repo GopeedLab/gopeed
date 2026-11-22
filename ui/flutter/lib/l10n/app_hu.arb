@@ -98,7 +98,7 @@
   "startAll": "Összes indítása",
   "pauseAll": "Összes szüneteltetése",
   "deleteTask": "@count feladat törlése",
-  "deleteTaskTip": "Letöltött fájlok megőrzése",
+  "deleteTaskTip": "Letöltött fájlok törlése",
   "delete": "Törlés",
   "add": "Hozzáad",
   "edit": "Szerk",
@@ -208,7 +208,7 @@
   "categoryName": "Kategória neve",
   "categoryPath": "Kategória útvonala",
   "autoCategorizeByExtension": "Automatikus kategorizálás fájltípus szerint",
-  "autoCategorizeByExtensionDescription": "Az alapértelmezett letöltési mappa használatakor a letöltések a fájl kiterjesztése alapján automatikusan a kategória mappájába kerülnek.",
+  "autoCategorizeByExtensionDescription": "Az alapértelmezett letöltési mappa használatakor a letöltések a fájl kiterjesztése alapján automatikusan a kategória mappájába kerülnek",
   "categoryExtensions": "Fájlkiterjesztések",
   "categoryExtensionsUsageHint": "A kiterjesztéseket vesszővel vagy szóközzel válaszd el, majd nyomd le az Enter billentyűt.",
   "categoryExtensionsEmptyHint": "Kiterjesztések nélkül a fájlok nem kerülnek automatikusan ebbe a kategóriába.",
@@ -372,7 +372,9 @@
   "torrentDataEmpty": "A torrent fájl adatai üresek",
   "torrentPathUnavailable": "Nem érhető el a torrent fájl elérési útja",
   "selectAtLeastOneFile": "Válasszon ki legalább egy fájlt",
-  "resolvedFiles": "Feloldott fájlok",
+  "resolvedFiles": "Fájllista",
+  "waitingToResolve": "Feldolgozásra vár",
+  "resolvingResource": "Erőforrás feldolgozása",
   "resolvedFileCount": "{count} fájlok megoldva",
   "resolvedCategoryDirectory": "Ide lesz mentve: {path}",
   "resourceHasNoFiles": "Az erőforrásnak nincs kiválasztható fájllistája",
@@ -477,5 +479,6 @@
   "trackerSubscriptionUpdateStatus": "Frissítés állapota",
   "trackerSubscriptionTrackerCount": "Trackerek száma",
   "trackerSubscriptionNotUpdated": "Még nem frissült",
-  "actions": "Műveletek"
+  "actions": "Műveletek",
+  "taskGroupDeleteImpact": "{taskCount} letöltést és {fileCount} fájlt érint."
 }

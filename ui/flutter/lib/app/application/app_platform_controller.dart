@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart' show Size;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
@@ -11,14 +10,15 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../api/api.dart' as api;
-import '../../api/model/downloader_config.dart';
 import '../../core/libgopeed_boot.dart';
 import '../../core/capabilities/app_capabilities.dart';
-import '../../core/window/app_window_launcher.dart';
+import '../../core/entry/app_startup_options.dart';
+import '../../core/utils/file_explorer.dart';
+import '../../core/window/app_window_bootstrap.dart';
 import '../../core/window/window_capability_transport.dart';
-import '../../features/tasks/application/pending_create_task.dart';
 import '../../features/tasks/application/pending_update_task.dart';
 import '../../l10n/l10n.dart';
+import '../../shared/widgets/app_toast.dart';
 import '../../util/package_info.dart';
 import '../../util/updater.dart';
 import '../../util/util.dart';
@@ -135,7 +135,10 @@ class AppPlatformController extends AsyncNotifier<AppPlatformState> with WindowL
     _started = true;
     final extra = ref.read(appRuntimeControllerProvider).value!.downloaderConfig.extra;
     await AppWindowCapabilityHost.instance.start(LocalAppCapabilities.instance.registry);
-    await _restoreWindowState(extra.windowState);
+    await AppWindowBootstrap.restoreMainWindowState(
+      extra.windowState,
+      hidden: ref.read(appStartupOptionsProvider).hidden,
+    );
     windowManager.addListener(this);
     await windowManager.setPreventClose(true);
     if (Util.isMacos()) {
@@ -175,6 +178,7 @@ class AppPlatformController extends AsyncNotifier<AppPlatformState> with WindowL
           label: locale.pauseAll,
           onClick: (_) => unawaited(ref.read(gopeedServiceProvider).pauseAllTasks(null)),
         ),
+        MenuItem(label: locale.openFolder, onClick: (_) => _openDownloadFolder()),
         MenuItem(label: locale.setting, onClick: (_) => _go('/settings')),
         MenuItem.separator(),
         MenuItem(
@@ -211,11 +215,7 @@ class AppPlatformController extends AsyncNotifier<AppPlatformState> with WindowL
           await ref.read(gopeedServiceProvider).createTask(createTask);
           return;
         }
-        final opened = await AppWindowLauncher.openCreateTaskWindow(createTask: createTask);
-        if (!opened) {
-          ref.read(pendingCreateTaskProvider.notifier).set(createTask);
-          await _go('/create');
-        }
+        await AppRouter.openCreateTask(createTask: createTask);
       },
       onForward: ({required path, required method, data, query}) {
         return api.forward(path, method: method, data: data, queryParameters: query);
@@ -346,12 +346,29 @@ class AppPlatformController extends AsyncNotifier<AppPlatformState> with WindowL
     await windowManager.focus();
   }
 
+  Future<void> _openDownloadFolder() async {
+    final path = ref.read(appRuntimeControllerProvider).value?.downloaderConfig.downloadDir ?? '';
+    try {
+      if (path.isNotEmpty && await Directory(path).exists() && await FileExplorer.open(path)) return;
+    } on FileSystemException catch (error, stackTrace) {
+      logger.w('Cannot access download directory', error, stackTrace);
+    }
+    if (!ref.mounted) return;
+    await _showMainWindow();
+    final context = AppRouter.rootNavigatorKey.currentContext;
+    if (context != null && context.mounted) {
+      final locale = context.l10n;
+      showAppToast(
+        context,
+        path.isEmpty ? locale.downloadDirValid : locale.unableOpenPath(path),
+        type: AppToastType.error,
+      );
+    }
+  }
+
   Future<void> _openCreateTask() async {
     await _showMainWindow();
-    final opened = await AppWindowLauncher.openCreateTaskWindow();
-    if (!opened) {
-      _go('/create');
-    }
+    await AppRouter.openCreateTask();
   }
 
   Future<void> _go(String route) async {
@@ -419,17 +436,5 @@ class AppPlatformController extends AsyncNotifier<AppPlatformState> with WindowL
   @override
   void onWindowResize() {
     _windowsResizeSave();
-  }
-
-  Future<void> _restoreWindowState(WindowStateConfig windowState) async {
-    final width = windowState.width;
-    final height = windowState.height;
-    if (width != null && height != null && width > 0 && height > 0) {
-      await windowManager.setSize(Size(width, height));
-      await windowManager.center();
-    }
-    if (windowState.isMaximized) {
-      await windowManager.maximize();
-    }
   }
 }

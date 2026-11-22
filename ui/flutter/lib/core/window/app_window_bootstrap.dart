@@ -3,7 +3,9 @@ import 'package:flutter/material.dart' show Colors;
 import 'package:flutter/widgets.dart';
 import 'package:window_manager/window_manager.dart';
 
+import '../../api/model/downloader_config.dart';
 import '../../l10n/l10n.dart';
+import '../../shared/theme/app_design_tokens.dart';
 import 'app_window_chrome.dart';
 import 'app_window_payload.dart';
 
@@ -28,12 +30,27 @@ class AppWindowBootstrap {
       if (AppWindowChrome.usesCustomChrome) {
         await windowManager.setAsFrameless();
       }
-      await windowManager.setHasShadow(true);
+      if (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.macOS) {
+        await windowManager.setHasShadow(true);
+      }
       if (!hidden) {
         await windowManager.show();
         await windowManager.focus();
       }
     });
+  }
+
+  static Future<void> restoreMainWindowState(WindowStateConfig windowState, {required bool hidden}) async {
+    final width = windowState.width;
+    final height = windowState.height;
+    if (width != null && height != null && width > 0 && height > 0) {
+      await windowManager.setSize(Size(width, height));
+      await windowManager.center();
+    }
+    // On Windows, maximizing a hidden window also shows it.
+    if (!hidden && windowState.isMaximized) {
+      await windowManager.maximize();
+    }
   }
 
   static Future<void> setupSubWindow(AppWindowType type, {String localeConfig = ''}) async {
@@ -46,7 +63,7 @@ class AppWindowBootstrap {
 
     final options = switch (type) {
       AppWindowType.createTask => WindowOptions(
-        size: Size(820, 620),
+        size: AppDesignTokens.childWindowSize,
         center: true,
         skipTaskbar: false,
         backgroundColor: Colors.transparent,
@@ -68,7 +85,9 @@ class AppWindowBootstrap {
         await windowManager.setAsFrameless();
       }
       await windowManager.setTitle(title);
-      await windowManager.setHasShadow(true);
+      if (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.macOS) {
+        await windowManager.setHasShadow(true);
+      }
       await _showSubWindowInForeground();
     });
   }

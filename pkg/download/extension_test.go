@@ -2044,8 +2044,13 @@ func waitForTaskStatus(t *testing.T, downloader *Downloader, id string, status b
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
 		task := downloader.GetTask(id)
-		if task != nil && task.Status == status {
-			return
+		if task != nil && downloader.taskStatus(task) == status {
+			if status != base.DownloadStatusDone {
+				return
+			}
+			if _, watching := downloader.watchedTasks.Load(id); !watching {
+				return
+			}
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
@@ -2053,9 +2058,6 @@ func waitForTaskStatus(t *testing.T, downloader *Downloader, id string, status b
 	if task == nil {
 		t.Fatalf("timeout waiting for task %s status %s: task not found", id, status)
 	}
-	total := int64(0)
-	if task.Meta != nil && task.Meta.Res != nil {
-		total = task.Meta.Res.Size
-	}
-	t.Fatalf("timeout waiting for task %s status %s: got %s downloaded=%d total=%d", id, status, task.Status, task.Progress.Downloaded, total)
+	snapshot, err := downloader.RuntimeStatus(id)
+	t.Fatalf("timeout waiting for task %s status %s: got %+v, error=%v", id, status, snapshot, err)
 }
