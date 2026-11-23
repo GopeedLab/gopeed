@@ -131,6 +131,13 @@ dependency_overrides:
       url: https://github.com/monkeyWie/flutter-permission-handler.git
       ref: 35fc72c30262b9b49e1965b48a7524b44ba9daa7
       path: permission_handler_windows
+  # Keep until the drive-root file selection fix is released upstream.
+  # https://github.com/NetShareOSS/open_dir/pull/16
+  open_dir_windows:
+    git:
+      url: https://github.com/GopeedLab/open_dir.git
+      ref: 4d6263da123772e19ae11dba50e0ca2858c86c55
+      path: open_dir_windows
 
 dev_dependencies:
   app_links_platform_interface: ^2.0.2

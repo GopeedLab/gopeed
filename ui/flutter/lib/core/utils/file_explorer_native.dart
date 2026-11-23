@@ -23,14 +23,11 @@ Future<bool> reveal(String filePath) async {
     }
 
     if (await FileSystemEntity.isFile(filePath)) {
-      var parentPath = path.dirname(filePath);
-      if (Platform.isWindows) {
-        // open_dir_windows adds a backslash before the highlighted file name.
-        // A drive root already ends with a separator.
-        parentPath = parentPath.replaceFirst(RegExp(r'[\\/]+$'), '');
-      }
-
-      return await OpenDir().openNativeDir(path: parentPath, highlightedFileName: path.basename(filePath)) ?? false;
+      return await OpenDir().openNativeDir(
+            path: path.dirname(filePath),
+            highlightedFileName: path.basename(filePath),
+          ) ??
+          false;
     }
     if (await FileSystemEntity.isDirectory(filePath)) {
       return await OpenDir().openNativeDir(path: filePath) ?? false;
