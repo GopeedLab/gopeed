@@ -10,7 +10,6 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../api/api.dart' as api;
-import '../../api/model/downloader_config.dart';
 import '../../api/model/request.dart';
 import '../../core/libgopeed_boot.dart';
 import '../../core/capabilities/app_capabilities.dart';
