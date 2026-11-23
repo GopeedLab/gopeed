@@ -1,6 +1,8 @@
 import 'capability_rpc.dart';
 
 abstract final class StorageMethods {
+  static const getLastDeleteTaskKeep = RpcMethod<RpcUnit, bool>('storage.lastDeleteTaskKeep.get');
+  static const saveLastDeleteTaskKeep = RpcMethod<bool, RpcUnit>('storage.lastDeleteTaskKeep.save');
   static const getCreateHistory = RpcMethod<RpcUnit, List<String>>('storage.createHistory.get');
   static const saveCreateHistory = RpcMethod<List<String>, RpcUnit>('storage.createHistory.save');
   static const removeCreateHistory = RpcMethod<String, RpcUnit>('storage.createHistory.remove');
@@ -11,6 +13,12 @@ class AppStorageService {
   const AppStorageService(this._invoker);
 
   final CapabilityInvoker _invoker;
+
+  Future<bool> getLastDeleteTaskKeep() => _invoker.invoke(StorageMethods.getLastDeleteTaskKeep, const RpcUnit());
+
+  Future<void> saveLastDeleteTaskKeep(bool keepFiles) async {
+    await _invoker.invoke(StorageMethods.saveLastDeleteTaskKeep, keepFiles);
+  }
 
   Future<List<String>> getCreateHistory() => _invoker.invoke(StorageMethods.getCreateHistory, const RpcUnit());
 

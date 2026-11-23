@@ -1,4 +1,8 @@
 {
+  "unableOpenDownloadProgressWindow": "Impossibile aprire la finestra di avanzamento del download",
+  "cancelDownload": "Annulla download",
+  "downloadProgressWindow": "Finestra di avanzamento del download",
+  "downloadProgressWindowDescription": "Apri automaticamente una finestra di avanzamento solo per i download acquisiti dal browser. Chiuderla non interrompe il download.",
   "@@locale": "it",
   "label": "Italiano",
   "error": "Errore",
@@ -211,7 +215,7 @@
   "categoryName": "Nome categoria",
   "categoryPath": "Percorso categoria",
   "autoCategorizeByExtension": "Categorizza automaticamente per tipo di file",
-  "autoCategorizeByExtensionDescription": "Il download viene instradato automaticamente nella cartella della categoria in base all'estensione quando si salva nella cartella di download predefinita.",
+  "autoCategorizeByExtensionDescription": "Il download viene instradato automaticamente nella cartella della categoria in base all'estensione quando si salva nella cartella di download predefinita",
   "categoryExtensions": "Estensioni file",
   "categoryExtensionsUsageHint": "Separa le estensioni con virgole o spazi e premi Invio.",
   "categoryExtensionsEmptyHint": "Senza estensioni, i file non verranno salvati qui automaticamente.",
@@ -483,5 +487,7 @@
   "trackerSubscriptionTrackerCount": "Numero di tracker",
   "trackerSubscriptionNotUpdated": "Non ancora aggiornato",
   "actions": "Azioni",
-  "taskGroupDeleteImpact": "Riguarda {taskCount} download e {fileCount} file."
+  "taskGroupDeleteImpact": "Riguarda {taskCount} download e {fileCount} file.",
+  "runInBackground": "In background",
+  "downloadBackgroundHint": "Il download continua dopo la chiusura della finestra."
 }

@@ -1,4 +1,8 @@
 {
+  "unableOpenDownloadProgressWindow": "Nie można otworzyć okna postępu pobierania",
+  "cancelDownload": "Anuluj pobieranie",
+  "downloadProgressWindow": "Okno postępu pobierania",
+  "downloadProgressWindowDescription": "Automatycznie otwieraj okno postępu tylko dla pobrań przechwyconych z przeglądarki. Zamknięcie okna nie zatrzymuje pobierania.",
   "@@locale": "pl",
   "label": "Polski",
   "error": "Błąd",
@@ -211,7 +215,7 @@
   "categoryName": "Nazwa kategorii",
   "categoryPath": "Ścieżka kategorii",
   "autoCategorizeByExtension": "Automatyczna kategorizacja według typu pliku",
-  "autoCategorizeByExtensionDescription": "Pobierane pliki są automatycznie zapisywane w folderze kategorii na podstawie rozszerzenia, gdy używany jest domyślny folder pobierania.",
+  "autoCategorizeByExtensionDescription": "Pobierane pliki są automatycznie zapisywane w folderze kategorii na podstawie rozszerzenia, gdy używany jest domyślny folder pobierania",
   "categoryExtensions": "Rozszerzenia plików",
   "categoryExtensionsUsageHint": "Rozdzielaj rozszerzenia przecinkami lub spacjami i naciskaj Enter.",
   "categoryExtensionsEmptyHint": "Bez rozszerzeń pliki nie będą automatycznie zapisywane w tej kategorii.",
@@ -483,5 +487,7 @@
   "trackerSubscriptionTrackerCount": "Liczba trackerów",
   "trackerSubscriptionNotUpdated": "Jeszcze nie zaktualizowano",
   "actions": "Działania",
-  "taskGroupDeleteImpact": "Dotyczy {taskCount} pobrań i {fileCount} plików."
+  "taskGroupDeleteImpact": "Dotyczy {taskCount} pobrań i {fileCount} plików.",
+  "runInBackground": "W tle",
+  "downloadBackgroundHint": "Zamknięcie okna nie przerywa pobierania."
 }

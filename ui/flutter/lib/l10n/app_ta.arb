@@ -1,4 +1,8 @@
 {
+  "unableOpenDownloadProgressWindow": "பதிவிறக்க முன்னேற்றச் சாளரத்தைத் திறக்க முடியவில்லை",
+  "cancelDownload": "பதிவிறக்கத்தை ரத்துசெய்",
+  "downloadProgressWindow": "பதிவிறக்க முன்னேற்றச் சாளரம்",
+  "downloadProgressWindowDescription": "உலாவியிலிருந்து பெறப்பட்ட பதிவிறக்கங்களுக்கு மட்டும் முன்னேற்றச் சாளரத்தைத் தானாகத் திறக்கவும். அதை மூடுவது பதிவிறக்கத்தை நிறுத்தாது.",
   "@@locale": "ta",
   "label": "தமிழ்",
   "error": "பிழை",
@@ -211,7 +215,7 @@
   "categoryName": "வகை பெயர்",
   "categoryPath": "வகை பாதை",
   "autoCategorizeByExtension": "கோப்பு வகை வாரியாக தானாக வகைப்படுத்து",
-  "autoCategorizeByExtensionDescription": "இயல்புநிலை பதிவிறக்கக் கோப்புறையில் சேமிக்கும்போது, கோப்பு நீட்டிப்பின் அடிப்படையில் வகைக் கோப்புறைக்கு தானாக அனுப்பப்படும்.",
+  "autoCategorizeByExtensionDescription": "இயல்புநிலை பதிவிறக்கக் கோப்புறையில் சேமிக்கும்போது, கோப்பு நீட்டிப்பின் அடிப்படையில் வகைக் கோப்புறைக்கு தானாக அனுப்பப்படும்",
   "categoryExtensions": "கோப்பு நீட்டிப்புகள்",
   "categoryExtensionsUsageHint": "நீட்டிப்புகளை காற்புள்ளிகள் அல்லது இடைவெளிகளால் பிரித்து Enter அழுத்தவும்.",
   "categoryExtensionsEmptyHint": "நீட்டிப்புகள் இல்லாததால், கோப்புகள் இந்த வகைப்பாட்டில் தானாகச் சேமிக்கப்படாது.",
@@ -483,5 +487,7 @@
   "trackerSubscriptionTrackerCount": "டிராக்கர் எண்ணிக்கை",
   "trackerSubscriptionNotUpdated": "இன்னும் புதுப்பிக்கப்படவில்லை",
   "actions": "செயல்கள்",
-  "taskGroupDeleteImpact": "{taskCount} பதிவிறக்கங்களையும் {fileCount} கோப்புகளையும் பாதிக்கும்."
+  "taskGroupDeleteImpact": "{taskCount} பதிவிறக்கங்களையும் {fileCount} கோப்புகளையும் பாதிக்கும்.",
+  "runInBackground": "பின்னணியில்",
+  "downloadBackgroundHint": "இந்தச் சாளரத்தை மூடிய பிறகும் பதிவிறக்கம் தொடரும்."
 }

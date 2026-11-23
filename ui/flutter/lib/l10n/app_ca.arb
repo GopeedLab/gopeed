@@ -1,4 +1,8 @@
 {
+  "unableOpenDownloadProgressWindow": "No s’ha pogut obrir la finestra de progrés de la baixada",
+  "cancelDownload": "Cancel·la la baixada",
+  "downloadProgressWindow": "Finestra de progrés de la baixada",
+  "downloadProgressWindowDescription": "Obre automàticament una finestra de progrés només per a les baixades capturades del navegador. Tancar-la no atura la baixada.",
   "@@locale": "ca",
   "label": "Català",
   "error": "Error",
@@ -211,7 +215,7 @@
   "categoryName": "Nom de la categoria",
   "categoryPath": "Ruta de la categoria",
   "autoCategorizeByExtension": "Categoritza automàticament segons el tipus de fitxer",
-  "autoCategorizeByExtensionDescription": "Les baixades es desen a la carpeta de categoria segons l'extensió del fitxer en utilitzar la carpeta de baixades predeterminada.",
+  "autoCategorizeByExtensionDescription": "Les baixades es desen a la carpeta de categoria segons l'extensió del fitxer en utilitzar la carpeta de baixades predeterminada",
   "categoryExtensions": "Extensions de fitxer",
   "categoryExtensionsUsageHint": "Separa les extensions amb comes o espais i prem Retorn.",
   "categoryExtensionsEmptyHint": "Sense extensions, els fitxers no es desaran aquí automàticament.",
@@ -483,5 +487,7 @@
   "trackerSubscriptionTrackerCount": "Nombre de trackers",
   "trackerSubscriptionNotUpdated": "Sense actualitzar",
   "actions": "Accions",
-  "taskGroupDeleteImpact": "Afecta {taskCount} baixades i {fileCount} fitxers."
+  "taskGroupDeleteImpact": "Afecta {taskCount} baixades i {fileCount} fitxers.",
+  "runInBackground": "Segon pla",
+  "downloadBackgroundHint": "Tancar aquesta finestra no atura la baixada."
 }

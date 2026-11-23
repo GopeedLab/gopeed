@@ -1,9 +1,31 @@
 import 'package:flutter/widgets.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' hide Column, Expanded, Row;
 
+import '../../../../core/capabilities/storage_capability.dart';
 import '../../../../shared/theme/app_palette.dart';
 import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../l10n/l10n.dart';
+
+Future<bool?> showRememberedTaskDeleteDialog(
+  BuildContext context, {
+  required AppStorageService storage,
+  required int taskCount,
+  int? memberCount,
+  int? fileCount,
+}) async {
+  final saved = await storage.getLastDeleteTaskKeep();
+  if (!context.mounted) return null;
+  final keepFiles = await showTaskDeleteDialog(
+    context,
+    taskCount: taskCount,
+    keepFiles: saved,
+    memberCount: memberCount,
+    fileCount: fileCount,
+  );
+  if (keepFiles == null || !context.mounted) return null;
+  await storage.saveLastDeleteTaskKeep(keepFiles);
+  return keepFiles;
+}
 
 Future<bool?> showTaskDeleteDialog(
   BuildContext context, {
@@ -13,7 +35,7 @@ Future<bool?> showTaskDeleteDialog(
   int? fileCount,
 }) async {
   var deleteFiles = !keepFiles;
-  final dialog = const DialogOverlayHandler().show<bool>(
+  final dialog = const DialogOverlayHandler().show<bool?>(
     context: context,
     alignment: Alignment.center,
     barrierDismissable: false,
@@ -55,9 +77,7 @@ Future<bool?> showTaskDeleteDialog(
                     ),
                     decoration: BoxDecoration(
                       color: deleteFiles ? palette.error.withValues(alpha: 0.08) : palette.surfaceSoft,
-                      border: Border.all(
-                        color: deleteFiles ? palette.error.withValues(alpha: 0.35) : palette.border,
-                      ),
+                      border: Border.all(color: deleteFiles ? palette.error.withValues(alpha: 0.35) : palette.border),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(

@@ -3,6 +3,7 @@ package download
 import (
 	"encoding/json"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/GopeedLab/gopeed/internal/controller"
@@ -43,6 +44,16 @@ type CreateTaskBatchResult struct {
 	ParentID string   `json:"parentId,omitempty"`
 }
 
+// taskLifetime is shared with preparation candidates. Its mutex serializes
+// physical starts and persistence with deletion; the tombstone also invalidates
+// work that is currently outside that mutex (for example Resolve).
+type taskLifetime struct {
+	mu      sync.Mutex
+	deleted atomic.Bool
+	// Close can make a fetcher unusable even when a later deletion step fails.
+	restoreFetcher atomic.Bool
+}
+
 // Task represents a download unit.
 // Options flow path:
 // REST Request (model.CreateTask/ResolveTask) -> pkg/download Downloader -> Task.Meta.Opts (base.Options) -> Fetcher.Resolve/Start (e.g. internal/protocol/http/fetcher.go)
@@ -75,20 +86,24 @@ type Task struct {
 	producer         production.Source
 	producerReceived int64
 
-	fetcherManager fetcher.FetcherManager
-	fetcher        fetcher.Fetcher
-	timer          *util.Timer
-	statusLock     *sync.Mutex
-	lock           *sync.Mutex
-	statsLock      *sync.Mutex
-	statsLoaded    bool
-	stats          *fetcher.Stats
-	statsSnapshot  json.RawMessage
-	blobRefLock    *sync.Mutex
-	blobURL        string
-	runGeneration  uint64
-	speedArr       []int64
-	uploadSpeedArr []int64
+	fetcherManager    fetcher.FetcherManager
+	fetcher           fetcher.Fetcher
+	timer             *util.Timer
+	statusLock        *sync.Mutex
+	lock              *sync.Mutex
+	statsLock         *sync.Mutex
+	statsLoaded       bool
+	stats             *fetcher.Stats
+	statsSnapshot     json.RawMessage
+	blobRefLock       *sync.Mutex
+	blobURL           string
+	runGeneration     uint64
+	lifetime          *taskLifetime
+	speedArr          []speedSample
+	uploadSpeedArr    []speedSample
+	downloadSampledAt time.Time
+	uploadSampledAt   time.Time
+	receivedBytes     int64
 }
 
 // TaskRuntimeStatus is the lightweight, frequently refreshed view of a task.
@@ -123,6 +138,7 @@ func NewTask() *Task {
 	}
 	return &Task{
 		ID:        id,
+		lifetime:  &taskLifetime{},
 		Status:    base.DownloadStatusReady,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
@@ -195,7 +211,21 @@ func (t *Task) updateUploadSpeed(downloaded int64, usedTime float64) int64 {
 	return calcSpeed(&t.uploadSpeedArr, downloaded, usedTime)
 }
 
-func calcSpeed(speedArr *[]int64, downloaded int64, usedTime float64) int64 {
+type speedSample struct {
+	bytes   int64
+	seconds float64
+}
+
+func sampleSeconds(lastSample *time.Time, now time.Time) float64 {
+	previous := *lastSample
+	*lastSample = now
+	if previous.IsZero() {
+		return 0
+	}
+	return now.Sub(previous).Seconds()
+}
+
+func calcSpeed(speedArr *[]speedSample, downloaded int64, usedTime float64) int64 {
 	if usedTime <= 0 {
 		return 0
 	}
@@ -204,18 +234,18 @@ func calcSpeed(speedArr *[]int64, downloaded int64, usedTime float64) int64 {
 		return 0
 	}
 
-	*speedArr = append(*speedArr, downloaded)
-	// Record last 5 seconds of download speed to calculate the average speed
-	if len(*speedArr) > int(5.0/usedTime) {
-		*speedArr = (*speedArr)[1:]
-	}
-
+	*speedArr = append(*speedArr, speedSample{bytes: downloaded, seconds: usedTime})
 	var total int64
-	for _, v := range *speedArr {
-		total += v
+	var elapsed float64
+	first := len(*speedArr)
+	for first > 0 && elapsed < 5 {
+		first--
+		sample := (*speedArr)[first]
+		total += sample.bytes
+		elapsed += sample.seconds
 	}
-
-	return int64(float64(total) / float64(len(*speedArr)) / usedTime)
+	*speedArr = (*speedArr)[first:]
+	return int64(float64(total) / elapsed)
 }
 
 type TaskFilter struct {
@@ -232,12 +262,15 @@ type DownloaderConfig struct {
 	Controller    *controller.Controller
 	FetchManagers []fetcher.FetcherManager
 
-	RefreshInterval   int // RefreshInterval time duration to refresh task progress(ms)
-	Storage           Storage
-	StorageDir        string
-	TempDir           string
-	WhiteDownloadDirs []string
-	WebViewProvider   enginewebview.Provider
+	// ExtensionEventTimeout bounds one script load and its awaited event handler.
+	// Zero uses one minute. Embedders may increase it for long-running handlers.
+	ExtensionEventTimeout time.Duration
+	RefreshInterval       int // RefreshInterval time duration to refresh task progress(ms)
+	Storage               Storage
+	StorageDir            string
+	TempDir               string
+	WhiteDownloadDirs     []string
+	WebViewProvider       enginewebview.Provider
 
 	ProductionMode bool
 
@@ -259,6 +292,9 @@ func (cfg *DownloaderConfig) Init() *DownloaderConfig {
 			new(bt.FetcherManager),
 			new(ed2k.FetcherManager),
 		}
+	}
+	if cfg.ExtensionEventTimeout <= 0 {
+		cfg.ExtensionEventTimeout = time.Minute
 	}
 	if cfg.RefreshInterval == 0 {
 		cfg.RefreshInterval = 350

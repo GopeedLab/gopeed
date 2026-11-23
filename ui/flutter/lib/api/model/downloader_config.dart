@@ -216,6 +216,7 @@ class ExtraConfig {
   bool defaultBtClient;
   bool notifyWhenNewVersion;
   bool desktopNotification;
+  bool showDownloadProgressWindow;
   bool backgroundLocationKeepAlive;
   bool backgroundContinuedProcessing;
   WindowStateConfig windowState;
@@ -236,6 +237,7 @@ class ExtraConfig {
     this.defaultBtClient = true,
     this.notifyWhenNewVersion = true,
     this.desktopNotification = true,
+    this.showDownloadProgressWindow = true,
     this.backgroundLocationKeepAlive = false,
     this.backgroundContinuedProcessing = false,
     WindowStateConfig? windowState,

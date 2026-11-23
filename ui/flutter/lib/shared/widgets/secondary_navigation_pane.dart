@@ -136,7 +136,7 @@ class _SecondaryNavigationPaneItem<T> extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: active ? palette.textPrimary : palette.textSecondary,
-                    fontSize: mobile ? 16 : 14,
+                    fontSize: mobile ? 16 : AppDesignTokens.desktopMenuFontSize,
                     fontWeight: mobile ? FontWeight.w600 : FontWeight.w500,
                   ),
                 ),

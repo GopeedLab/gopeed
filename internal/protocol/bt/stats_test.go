@@ -6,7 +6,7 @@ import (
 	"github.com/GopeedLab/gopeed/internal/fetcher"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	protocolbt "github.com/GopeedLab/gopeed/pkg/protocol/bt"
-	"github.com/RoaringBitmap/roaring"
+	"github.com/RoaringBitmap/roaring/v2"
 	"github.com/anacrolix/torrent"
 	"github.com/anacrolix/torrent/storage"
 )

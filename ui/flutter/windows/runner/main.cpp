@@ -5,6 +5,7 @@
 #include <desktop_multi_window/desktop_multi_window_plugin.h>
 
 #include "app_links/app_links_plugin_c_api.h"
+#include "crash_handler.h"
 #include "flutter_window.h"
 #include "flutter/generated_plugin_registrant.h"
 #include "utils.h"
@@ -43,6 +44,7 @@ bool IsMultiWindowLaunch(const std::vector<std::string>& arguments) {
 
 int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
                       _In_ wchar_t *command_line, _In_ int show_command) {
+  InstallCrashHandler();
   // Attach to console when present (e.g., 'flutter run') or create a
   // new console when running with a debugger.
   if (!::AttachConsole(ATTACH_PARENT_PROCESS) && ::IsDebuggerPresent()) {
@@ -77,11 +79,12 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   window.SetQuitOnClose(true);
 
   ::MSG msg;
-  while (::GetMessage(&msg, nullptr, 0, 0)) {
+  BOOL message_result;
+  while ((message_result = ::GetMessage(&msg, nullptr, 0, 0)) > 0) {
     ::TranslateMessage(&msg);
     ::DispatchMessage(&msg);
   }
 
   ::CoUninitialize();
-  return EXIT_SUCCESS;
+  return message_result == -1 ? EXIT_FAILURE : static_cast<int>(msg.wParam);
 }

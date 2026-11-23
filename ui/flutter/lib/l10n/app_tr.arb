@@ -1,4 +1,8 @@
 {
+  "unableOpenDownloadProgressWindow": "İndirme ilerleme penceresi açılamadı",
+  "cancelDownload": "İndirmeyi iptal et",
+  "downloadProgressWindow": "İndirme ilerleme penceresi",
+  "downloadProgressWindowDescription": "Yalnızca tarayıcıdan yakalanan indirmeler için otomatik olarak bir ilerleme penceresi aç. Pencereyi kapatmak indirmeyi durdurmaz.",
   "@@locale": "tr",
   "label": "Türkçe",
   "error": "Hata",
@@ -211,7 +215,7 @@
   "categoryName": "Kategori Adı",
   "categoryPath": "Kategori Yolu",
   "autoCategorizeByExtension": "Dosya tipine göre otomatik sınıflandır",
-  "autoCategorizeByExtensionDescription": "Varsayılan indirme klasörüne kaydedilirken dosya uzantısına göre ilgili klasöre otomatik yönlendirir.",
+  "autoCategorizeByExtensionDescription": "Varsayılan indirme klasörüne kaydedilirken dosya uzantısına göre ilgili klasöre otomatik yönlendirir",
   "categoryExtensions": "Dosya uzantıları",
   "categoryExtensionsUsageHint": "Sonekleri virgül veya boşlukla ayırıp Enter'a basın.",
   "categoryExtensionsEmptyHint": "Uzantı yoksa dosyalar bu kategoriye otomatik olarak kaydedilmez.",
@@ -483,5 +487,7 @@
   "trackerSubscriptionTrackerCount": "Tracker sayısı",
   "trackerSubscriptionNotUpdated": "Henüz güncellenmedi",
   "actions": "İşlemler",
-  "taskGroupDeleteImpact": "{taskCount} indirmeyi ve {fileCount} dosyayı etkiler."
+  "taskGroupDeleteImpact": "{taskCount} indirmeyi ve {fileCount} dosyayı etkiler.",
+  "runInBackground": "Arka plan",
+  "downloadBackgroundHint": "Bu pencere kapatıldığında indirme devam eder."
 }

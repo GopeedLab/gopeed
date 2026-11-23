@@ -10,9 +10,11 @@ import 'app_window_chrome.dart';
 const double kWindowCornerRadius = 12;
 
 class AppWindowFrame extends StatelessWidget {
-  const AppWindowFrame({super.key, required this.child});
+  const AppWindowFrame({super.key, required this.child, this.title, this.resizable = true});
 
   final Widget child;
+  final String? title;
+  final bool resizable;
 
   @override
   Widget build(BuildContext context) {
@@ -27,11 +29,16 @@ class AppWindowFrame extends StatelessWidget {
       );
     }
 
-    if (AppWindowChrome.usesCustomChrome) {
+    if (AppWindowChrome.usesCustomChrome || title != null) {
       framedChild = Stack(
         children: [
           Positioned.fill(child: child),
-          const Positioned(top: 0, left: 0, right: 0, child: DesktopWindowHeader()),
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: DesktopWindowHeader(title: title, maximizable: resizable),
+          ),
         ],
       );
     }
@@ -47,7 +54,7 @@ class AppWindowFrame extends StatelessWidget {
       );
     }
 
-    if (AppWindowChrome.usesCustomChrome) {
+    if (AppWindowChrome.usesCustomChrome && resizable) {
       framedChild = DragToResizeArea(resizeEdgeSize: 6, child: framedChild);
     }
 

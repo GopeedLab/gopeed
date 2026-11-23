@@ -1,4 +1,8 @@
 {
+  "unableOpenDownloadProgressWindow": "Impossible d’ouvrir la fenêtre de progression du téléchargement",
+  "cancelDownload": "Annuler le téléchargement",
+  "downloadProgressWindow": "Fenêtre de progression du téléchargement",
+  "downloadProgressWindowDescription": "Ouvrir automatiquement une fenêtre de progression uniquement pour les téléchargements capturés depuis le navigateur. La fermer n’arrête pas le téléchargement.",
   "@@locale": "fr",
   "label": "Français",
   "error": "Erreur",
@@ -211,7 +215,7 @@
   "categoryName": "Nom de la catégorie",
   "categoryPath": "Chemin de la catégorie",
   "autoCategorizeByExtension": "Catégoriser automatiquement selon le type de fichier",
-  "autoCategorizeByExtensionDescription": "Les téléchargements sont placés dans un dossier de catégorie selon l'extension du fichier lors de l'enregistrement dans le dossier de téléchargement par défaut.",
+  "autoCategorizeByExtensionDescription": "Les téléchargements sont placés dans un dossier de catégorie selon l'extension du fichier lors de l'enregistrement dans le dossier de téléchargement par défaut",
   "categoryExtensions": "Extensions de fichier",
   "categoryExtensionsUsageHint": "Séparez les extensions par virgules ou espaces, puis appuyez sur Entrée.",
   "categoryExtensionsEmptyHint": "Sans extensions, les fichiers ne seront pas enregistrés ici automatiquement.",
@@ -483,5 +487,7 @@
   "trackerSubscriptionTrackerCount": "Nombre de trackers",
   "trackerSubscriptionNotUpdated": "Pas encore mis à jour",
   "actions": "Actions",
-  "taskGroupDeleteImpact": "Concerne {taskCount} téléchargements et {fileCount} fichiers."
+  "taskGroupDeleteImpact": "Concerne {taskCount} téléchargements et {fileCount} fichiers.",
+  "runInBackground": "Arrière-plan",
+  "downloadBackgroundHint": "Le téléchargement continue après la fermeture de cette fenêtre."
 }

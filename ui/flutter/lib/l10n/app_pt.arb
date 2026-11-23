@@ -1,4 +1,8 @@
 {
+  "unableOpenDownloadProgressWindow": "Não foi possível abrir a janela de progresso do download",
+  "cancelDownload": "Cancelar download",
+  "downloadProgressWindow": "Janela de progresso do download",
+  "downloadProgressWindowDescription": "Abrir automaticamente uma janela de progresso apenas para downloads capturados do navegador. Fechá-la não interrompe o download.",
   "@@locale": "pt",
   "label": "Português (Brasil)",
   "error": "Erro",
@@ -211,7 +215,7 @@
   "categoryName": "Nome da Categoria",
   "categoryPath": "Caminho da Categoria",
   "autoCategorizeByExtension": "Categorizar automaticamente por tipo de arquivo",
-  "autoCategorizeByExtensionDescription": "Envia os downloads para a pasta da categoria com base na extensão ao salvar na pasta de download padrão.",
+  "autoCategorizeByExtensionDescription": "Envia os downloads para a pasta da categoria com base na extensão ao salvar na pasta de download padrão",
   "categoryExtensions": "Extensões de arquivo",
   "categoryExtensionsUsageHint": "Separe as extensões com vírgulas ou espaços e prima Enter.",
   "categoryExtensionsEmptyHint": "Sem extensões, os ficheiros não serão guardados aqui automaticamente.",
@@ -483,5 +487,7 @@
   "trackerSubscriptionTrackerCount": "Número de trackers",
   "trackerSubscriptionNotUpdated": "Ainda não atualizado",
   "actions": "Ações",
-  "taskGroupDeleteImpact": "Afeta {taskCount} downloads e {fileCount} arquivos."
+  "taskGroupDeleteImpact": "Afeta {taskCount} downloads e {fileCount} arquivos.",
+  "runInBackground": "Segundo plano",
+  "downloadBackgroundHint": "O download continua após fechar esta janela."
 }

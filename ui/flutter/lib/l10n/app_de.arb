@@ -1,4 +1,8 @@
 {
+  "unableOpenDownloadProgressWindow": "Das Fenster für den Downloadfortschritt konnte nicht geöffnet werden",
+  "cancelDownload": "Download abbrechen",
+  "downloadProgressWindow": "Download-Fortschrittsfenster",
+  "downloadProgressWindowDescription": "Nur für vom Browser erfasste Downloads automatisch ein Fortschrittsfenster öffnen. Der Download läuft nach dem Schließen weiter.",
   "@@locale": "de",
   "label": "Deutsch",
   "error": "Fehler",
@@ -211,7 +215,7 @@
   "categoryName": "Kategoriename",
   "categoryPath": "Kategoriepfad",
   "autoCategorizeByExtension": "Nach Dateityp automatisch kategorisieren",
-  "autoCategorizeByExtensionDescription": "Downloads werden beim Speichern im Standard-Download-Ordner anhand der Dateiendung automatisch einem Kategorieordner zugeordnet.",
+  "autoCategorizeByExtensionDescription": "Downloads werden beim Speichern im Standard-Download-Ordner anhand der Dateiendung automatisch einem Kategorieordner zugeordnet",
   "categoryExtensions": "Dateiendungen",
   "categoryExtensionsUsageHint": "Trenne Endungen mit Kommas oder Leerzeichen und drücke Enter.",
   "categoryExtensionsEmptyHint": "Ohne Endungen werden Dateien nicht automatisch dieser Kategorie zugeordnet.",
@@ -483,5 +487,7 @@
   "trackerSubscriptionTrackerCount": "Tracker-Anzahl",
   "trackerSubscriptionNotUpdated": "Noch nicht aktualisiert",
   "actions": "Aktionen",
-  "taskGroupDeleteImpact": "Betrifft {taskCount} Downloads und {fileCount} Dateien."
+  "taskGroupDeleteImpact": "Betrifft {taskCount} Downloads und {fileCount} Dateien.",
+  "runInBackground": "Hintergrund",
+  "downloadBackgroundHint": "Der Download läuft nach dem Schließen weiter."
 }

@@ -1,4 +1,8 @@
 {
+  "unableOpenDownloadProgressWindow": "تعذّر فتح نافذة تقدم التنزيل",
+  "cancelDownload": "إلغاء التنزيل",
+  "downloadProgressWindow": "نافذة تقدم التنزيل",
+  "downloadProgressWindowDescription": "فتح نافذة تقدم تلقائيًا للتنزيلات الملتقطة من المتصفح فقط. يستمر التنزيل عند إغلاقها.",
   "@@locale": "ar",
   "label": "العربية",
   "error": "خطأ",
@@ -211,7 +215,7 @@
   "categoryName": "اسم الفئة",
   "categoryPath": "مسار الفئة",
   "autoCategorizeByExtension": "تصنيف تلقائي حسب نوع الملف",
-  "autoCategorizeByExtensionDescription": "توجيه التنزيلات إلى مجلد الفئة تلقائيًا حسب امتداد الملف عند الحفظ في مجلد التنزيل الافتراضي.",
+  "autoCategorizeByExtensionDescription": "توجيه التنزيلات إلى مجلد الفئة تلقائيًا حسب امتداد الملف عند الحفظ في مجلد التنزيل الافتراضي",
   "categoryExtensions": "امتدادات الملفات",
   "categoryExtensionsUsageHint": "افصل الامتدادات بفواصل أو مسافات ثم اضغط Enter.",
   "categoryExtensionsEmptyHint": "بدون الامتدادات، لن تُحفظ الملفات في هذا التصنيف تلقائيًا.",
@@ -483,5 +487,7 @@
   "trackerSubscriptionTrackerCount": "عدد المتتبعات",
   "trackerSubscriptionNotUpdated": "لم يُحدّث بعد",
   "actions": "الإجراءات",
-  "taskGroupDeleteImpact": "سيؤثر على {taskCount} من مهام التنزيل و{fileCount} من الملفات."
+  "taskGroupDeleteImpact": "سيؤثر على {taskCount} من مهام التنزيل و{fileCount} من الملفات.",
+  "runInBackground": "في الخلفية",
+  "downloadBackgroundHint": "يستمر التنزيل عند إغلاق هذه النافذة."
 }

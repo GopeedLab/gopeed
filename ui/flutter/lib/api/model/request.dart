@@ -4,6 +4,8 @@ part 'request.g.dart';
 
 @JsonSerializable(explicitToJson: true)
 class Request {
+  static const browserCaptureLabel = 'gopeed.browserCapture';
+
   String? rawUrl;
   String url;
   Object? extra;

@@ -1,4 +1,8 @@
 {
+  "unableOpenDownloadProgressWindow": "ダウンロードの進捗ウィンドウを開けませんでした",
+  "cancelDownload": "ダウンロードをキャンセル",
+  "downloadProgressWindow": "ダウンロード進捗ウィンドウ",
+  "downloadProgressWindowDescription": "ブラウザーから取得したダウンロードのみ、進捗ウィンドウを自動的に開きます。閉じてもダウンロードは継続します。",
   "@@locale": "ja",
   "label": "日本語",
   "error": "エラー",
@@ -211,7 +215,7 @@
   "categoryName": "カテゴリ名",
   "categoryPath": "カテゴリパス",
   "autoCategorizeByExtension": "ファイル種別で自動分類",
-  "autoCategorizeByExtensionDescription": "既定のダウンロードフォルダーに保存する際、拡張子に基づいて分類フォルダーへ自動的に振り分けます。",
+  "autoCategorizeByExtensionDescription": "既定のダウンロードフォルダーに保存する際、拡張子に基づいて分類フォルダーへ自動的に振り分けます",
   "categoryExtensions": "ファイル拡張子",
   "categoryExtensionsUsageHint": "カンマやスペースで拡張子を区切り、Enterで追加します。",
   "categoryExtensionsEmptyHint": "拡張子が未設定の場合、ファイルは自動的にこの分類へ保存されません。",
@@ -483,5 +487,7 @@
   "trackerSubscriptionTrackerCount": "Tracker 数",
   "trackerSubscriptionNotUpdated": "未更新",
   "actions": "操作",
-  "taskGroupDeleteImpact": "{taskCount} 件のダウンロードと {fileCount} 個のファイルが対象です。"
+  "taskGroupDeleteImpact": "{taskCount} 件のダウンロードと {fileCount} 個のファイルが対象です。",
+  "runInBackground": "バックグラウンド",
+  "downloadBackgroundHint": "このウィンドウを閉じてもダウンロードは続きます。"
 }

@@ -1,4 +1,8 @@
 {
+  "unableOpenDownloadProgressWindow": "Не вдалося відкрити вікно стану завантаження",
+  "cancelDownload": "Скасувати завантаження",
+  "downloadProgressWindow": "Вікно перебігу завантаження",
+  "downloadProgressWindowDescription": "Автоматично відкривати вікно перебігу лише для завантажень, перехоплених із браузера. Закриття вікна не зупиняє завантаження.",
   "@@locale": "uk",
   "label": "Українська",
   "error": "Помилка",
@@ -211,7 +215,7 @@
   "categoryName": "Назва категорії",
   "categoryPath": "Шлях категорії",
   "autoCategorizeByExtension": "Автокатегоризація за типом файлу",
-  "autoCategorizeByExtensionDescription": "Завантаження автоматично зберігаються в папку категорії за розширенням файлу, якщо вибрано папку завантаження за замовчуванням.",
+  "autoCategorizeByExtensionDescription": "Завантаження автоматично зберігаються в папку категорії за розширенням файлу, якщо вибрано папку завантаження за замовчуванням",
   "categoryExtensions": "Розширення файлів",
   "categoryExtensionsUsageHint": "Розділяйте розширення комами або пробілами та натискайте Enter.",
   "categoryExtensionsEmptyHint": "Без розширень файли не зберігатимуться в цю категорію автоматично.",
@@ -483,5 +487,7 @@
   "trackerSubscriptionTrackerCount": "Кількість трекерів",
   "trackerSubscriptionNotUpdated": "Ще не оновлено",
   "actions": "Дії",
-  "taskGroupDeleteImpact": "Вплине на {taskCount} завантажень і {fileCount} файлів."
+  "taskGroupDeleteImpact": "Вплине на {taskCount} завантажень і {fileCount} файлів.",
+  "runInBackground": "У фоні",
+  "downloadBackgroundHint": "Завантаження триватиме після закриття вікна."
 }

@@ -18,10 +18,11 @@ import 'peer_table.dart';
 import 'piece_map.dart';
 
 class TaskStatisticsTab extends ConsumerWidget {
-  const TaskStatisticsTab({super.key, required this.task, required this.mobile});
+  const TaskStatisticsTab({super.key, required this.task, required this.mobile, this.inline = false});
 
   final TaskRecord task;
   final bool mobile;
+  final bool inline;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -32,39 +33,46 @@ class TaskStatisticsTab extends ConsumerWidget {
         : AppDesignTokens.taskDetailsDesktopPadding;
 
     if (stats == null && statsAsync.isLoading) {
-      return Padding(padding: EdgeInsets.all(horizontalPadding), child: const _StatisticsSkeleton());
+      const skeleton = _StatisticsSkeleton();
+      return inline ? skeleton : SingleChildScrollView(padding: EdgeInsets.all(horizontalPadding), child: skeleton);
     }
     if (stats == null) {
       return const _StatisticsEmptyState();
     }
 
-    return SingleChildScrollView(
-      key: PageStorageKey<String>('task-statistics-${task.id}'),
-      padding: EdgeInsets.fromLTRB(horizontalPadding, horizontalPadding, horizontalPadding, 32),
-      child: switch (stats) {
-        HttpTaskStats() => _HttpStatistics(stats: stats, taskStatus: task.status),
-        BtTaskStats() => _BtStatistics(stats: stats, task: task),
-        Ed2kTaskStats() => _Ed2kStatistics(stats: stats),
-      },
-    );
+    final content = switch (stats) {
+      HttpTaskStats() => _HttpStatistics(stats: stats, taskStatus: task.status, inline: inline),
+      BtTaskStats() => _BtStatistics(stats: stats, task: task),
+      Ed2kTaskStats() => _Ed2kStatistics(stats: stats),
+    };
+    return inline
+        ? content
+        : SingleChildScrollView(
+            key: PageStorageKey<String>('task-statistics-${task.id}'),
+            padding: EdgeInsets.fromLTRB(horizontalPadding, horizontalPadding, horizontalPadding, 32),
+            child: content,
+          );
   }
 }
 
 class _HttpStatistics extends StatelessWidget {
-  const _HttpStatistics({required this.stats, required this.taskStatus});
+  const _HttpStatistics({required this.stats, required this.taskStatus, required this.inline});
 
   final HttpTaskStats stats;
   final TaskStatus taskStatus;
+  final bool inline;
 
   @override
   Widget build(BuildContext context) {
     final completed = stats.connections.where((connection) => connection.completed).length;
     final failed = stats.connections.where((connection) => connection.failed).length;
     final downloading = stats.connections.length - completed - failed;
+    final l10n = context.l10n;
+    final count = l10n.connectionCount(stats.connections.length);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _SectionTitle(context.l10n.connectionStatus, trailing: context.l10n.connectionCount(stats.connections.length)),
+        _SectionTitle(inline ? count : l10n.connectionStatus, trailing: inline ? null : count),
         const SizedBox(height: 12),
         _SummaryGrid(
           items: [

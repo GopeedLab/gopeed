@@ -1,4 +1,8 @@
 {
+  "unableOpenDownloadProgressWindow": "No se pudo abrir la ventana de progreso de la descarga",
+  "cancelDownload": "Cancelar descarga",
+  "downloadProgressWindow": "Ventana de progreso de descarga",
+  "downloadProgressWindowDescription": "Abrir automáticamente una ventana de progreso solo para las descargas capturadas del navegador. Cerrarla no detiene la descarga.",
   "@@locale": "es",
   "label": "Español",
   "error": "Error",
@@ -211,7 +215,7 @@
   "categoryName": "Nombre de categoría",
   "categoryPath": "Ruta de categoría",
   "autoCategorizeByExtension": "Categorizar automáticamente por tipo de archivo",
-  "autoCategorizeByExtensionDescription": "Las descargas se guardan automáticamente en la carpeta de categoría según la extensión del archivo al usar la carpeta de descargas predeterminada.",
+  "autoCategorizeByExtensionDescription": "Las descargas se guardan automáticamente en la carpeta de categoría según la extensión del archivo al usar la carpeta de descargas predeterminada",
   "categoryExtensions": "Extensiones de archivo",
   "categoryExtensionsUsageHint": "Separa las extensiones con comas o espacios y pulsa Intro.",
   "categoryExtensionsEmptyHint": "Sin extensiones, los archivos no se guardarán automáticamente en esta categoría.",
@@ -483,5 +487,7 @@
   "trackerSubscriptionTrackerCount": "Número de trackers",
   "trackerSubscriptionNotUpdated": "Sin actualizar",
   "actions": "Acciones",
-  "taskGroupDeleteImpact": "Afecta a {taskCount} descargas y {fileCount} archivos."
+  "taskGroupDeleteImpact": "Afecta a {taskCount} descargas y {fileCount} archivos.",
+  "runInBackground": "Segundo plano",
+  "downloadBackgroundHint": "La descarga continúa al cerrar esta ventana."
 }

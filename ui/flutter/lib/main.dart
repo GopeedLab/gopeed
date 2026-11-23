@@ -51,5 +51,7 @@ Future<void> main(List<String> args) async {
 
   await AppInitializer.ensureStorageInitialized();
   await AppWindowBootstrap.setupMainWindow(hidden: startupOptions.hidden);
-  runApp(const ProviderScope(child: GopeedApp()));
+  runApp(
+    ProviderScope(overrides: [appStartupOptionsProvider.overrideWithValue(startupOptions)], child: const GopeedApp()),
+  );
 }

@@ -1,4 +1,8 @@
 {
+  "unableOpenDownloadProgressWindow": "Не удалось открыть окно хода загрузки",
+  "cancelDownload": "Отменить загрузку",
+  "downloadProgressWindow": "Окно хода загрузки",
+  "downloadProgressWindowDescription": "Автоматически открывать окно прогресса только для загрузок, перехваченных из браузера. Закрытие окна не останавливает загрузку.",
   "@@locale": "ru",
   "label": "Русский",
   "error": "Ошибка",
@@ -211,7 +215,7 @@
   "categoryName": "Название категории",
   "categoryPath": "Путь категории",
   "autoCategorizeByExtension": "Автокатегоризация по типу файла",
-  "autoCategorizeByExtensionDescription": "Загрузки автоматически сохраняются в папку категории по расширению файла, если выбрана папка загрузки по умолчанию.",
+  "autoCategorizeByExtensionDescription": "Загрузки автоматически сохраняются в папку категории по расширению файла, если выбрана папка загрузки по умолчанию",
   "categoryExtensions": "Расширения файлов",
   "categoryExtensionsUsageHint": "Разделяйте расширения запятыми или пробелами и нажимайте Enter.",
   "categoryExtensionsEmptyHint": "Без расширений файлы не будут автоматически сохранены в эту категорию.",
@@ -483,5 +487,7 @@
   "trackerSubscriptionTrackerCount": "Число трекеров",
   "trackerSubscriptionNotUpdated": "Ещё не обновлено",
   "actions": "Действия",
-  "taskGroupDeleteImpact": "Затронет {taskCount} загрузок и {fileCount} файлов."
+  "taskGroupDeleteImpact": "Затронет {taskCount} загрузок и {fileCount} файлов.",
+  "runInBackground": "В фоне",
+  "downloadBackgroundHint": "Загрузка продолжится после закрытия окна."
 }

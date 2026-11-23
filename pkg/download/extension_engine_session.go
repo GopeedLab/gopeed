@@ -59,6 +59,21 @@ func (s *engineSession) Release() {
 	}
 }
 
+// Close releases retained resources when the owning event is cancelled.
+func (s *engineSession) Close() {
+	s.mu.Lock()
+	if s.closed {
+		s.mu.Unlock()
+		return
+	}
+	s.closed = true
+	s.mu.Unlock()
+	s.runClosers()
+	if s.engine != nil {
+		s.engine.Close()
+	}
+}
+
 func (s *engineSession) CloseIfIdle() {
 	s.mu.Lock()
 	shouldClose := s.refs == 0 && !s.closed

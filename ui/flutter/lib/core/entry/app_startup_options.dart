@@ -1,3 +1,7 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+final appStartupOptionsProvider = Provider<AppStartupOptions>((_) => const AppStartupOptions(hidden: false));
+
 class AppStartupOptions {
   const AppStartupOptions({required this.hidden});
 

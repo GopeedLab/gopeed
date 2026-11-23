@@ -373,6 +373,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     ),
                   if (Util.isDesktop())
                     SettingsItem(
+                      title: context.l10n.downloadProgressWindow,
+                      subtitle: context.l10n.downloadProgressWindowDescription,
+                      child: shad.Switch(
+                        key: const ValueKey('download-progress-window-switch'),
+                        value: config.extra.showDownloadProgressWindow,
+                        onChanged: (value) => _mutateConfig((next) => next.extra.showDownloadProgressWindow = value),
+                      ),
+                    ),
+                  if (Util.isDesktop())
+                    SettingsItem(
                       title: context.l10n.desktopNotification,
                       subtitle: context.l10n.desktopNotificationDescription,
                       child: shad.Switch(
@@ -651,7 +661,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   ),
                   SettingsItem(
                     title: context.l10n.enableDht,
-                    subtitle: context.l10n.restartRequired,
                     child: shad.Switch(
                       value: !config.protocolConfig.bt.disableDht,
                       onChanged: (value) => _mutateConfig((next) => next.protocolConfig.bt.disableDht = !value),
@@ -659,7 +668,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   ),
                   SettingsItem(
                     title: context.l10n.enablePex,
-                    subtitle: context.l10n.restartRequired,
                     child: shad.Switch(
                       value: !config.protocolConfig.bt.disablePex,
                       onChanged: (value) => _mutateConfig((next) => next.protocolConfig.bt.disablePex = !value),
@@ -1242,7 +1250,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final snapshot = DownloaderConfig.fromJson(config.toJson());
     _loadedSignature = _signature(snapshot);
     try {
-      await ref.read(settingsControllerProvider.notifier).save(snapshot);
+      final result = await ref.read(settingsControllerProvider.notifier).save(snapshot);
+      if (mounted && result.btRestartRequired) {
+        _toast(context.l10n.restartRequired, type: AppToastType.info);
+      }
       return true;
     } catch (error) {
       if (mounted) _toast(error.toString());

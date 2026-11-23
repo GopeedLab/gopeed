@@ -1,4 +1,8 @@
 {
+  "unableOpenDownloadProgressWindow": "다운로드 진행 창을 열 수 없습니다",
+  "cancelDownload": "다운로드 취소",
+  "downloadProgressWindow": "다운로드 진행 창",
+  "downloadProgressWindowDescription": "브라우저에서 가져온 다운로드에만 진행 창을 자동으로 엽니다. 창을 닫아도 다운로드는 계속됩니다.",
   "@@locale": "ko",
   "label": "한국어",
   "error": "오류",
@@ -211,7 +215,7 @@
   "categoryName": "카테고리 이름",
   "categoryPath": "카테고리 경로",
   "autoCategorizeByExtension": "파일 형식별 자동 분류",
-  "autoCategorizeByExtensionDescription": "기본 다운로드 폴더에 저장할 때 확장자에 따라 분류 폴더로 자동 이동합니다.",
+  "autoCategorizeByExtensionDescription": "기본 다운로드 폴더에 저장할 때 확장자에 따라 분류 폴더로 자동 이동합니다",
   "categoryExtensions": "파일 확장자",
   "categoryExtensionsUsageHint": "쉼표나 공백으로 확장자를 구분하고 Enter를 눌러 추가하세요.",
   "categoryExtensionsEmptyHint": "확장자가 없으면 파일이 이 분류로 자동 저장되지 않습니다.",
@@ -483,5 +487,7 @@
   "trackerSubscriptionTrackerCount": "트래커 수",
   "trackerSubscriptionNotUpdated": "아직 업데이트되지 않음",
   "actions": "작업",
-  "taskGroupDeleteImpact": "다운로드 {taskCount}개와 파일 {fileCount}개에 영향을 줍니다."
+  "taskGroupDeleteImpact": "다운로드 {taskCount}개와 파일 {fileCount}개에 영향을 줍니다.",
+  "runInBackground": "백그라운드",
+  "downloadBackgroundHint": "이 창을 닫아도 다운로드는 계속됩니다."
 }

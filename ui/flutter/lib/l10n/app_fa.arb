@@ -1,4 +1,8 @@
 {
+  "unableOpenDownloadProgressWindow": "پنجرهٔ پیشرفت دانلود باز نشد",
+  "cancelDownload": "لغو دانلود",
+  "downloadProgressWindow": "پنجرهٔ پیشرفت بارگیری",
+  "downloadProgressWindowDescription": "پنجرهٔ پیشرفت فقط برای بارگیری‌های دریافت‌شده از مرورگر به‌طور خودکار باز شود. بستن آن بارگیری را متوقف نمی‌کند.",
   "@@locale": "fa",
   "label": "فارسی",
   "error": "اررور",
@@ -211,7 +215,7 @@
   "categoryName": "نام دسته‌بندی",
   "categoryPath": "مسیر دسته‌بندی",
   "autoCategorizeByExtension": "دسته‌بندی خودکار بر اساس نوع فایل",
-  "autoCategorizeByExtensionDescription": "هنگام ذخیره در پوشه پیش‌فرض دانلود، دانلودها بر اساس پسوند فایل به پوشه دسته مربوطه منتقل می‌شوند.",
+  "autoCategorizeByExtensionDescription": "هنگام ذخیره در پوشه پیش‌فرض دانلود، دانلودها بر اساس پسوند فایل به پوشه دسته مربوطه منتقل می‌شوند",
   "categoryExtensions": "پسوندهای فایل",
   "categoryExtensionsUsageHint": "پسوندها را با ویرگول یا فاصله جدا کنید و Enter را بزنید.",
   "categoryExtensionsEmptyHint": "بدون پسوندها، فایل‌ها به‌صورت خودکار در این دسته ذخیره نمی‌شوند.",
@@ -483,5 +487,7 @@
   "trackerSubscriptionTrackerCount": "تعداد ردیاب‌ها",
   "trackerSubscriptionNotUpdated": "هنوز به‌روزرسانی نشده",
   "actions": "عملیات",
-  "taskGroupDeleteImpact": "بر {taskCount} بارگیری و {fileCount} پرونده تأثیر می‌گذارد."
+  "taskGroupDeleteImpact": "بر {taskCount} بارگیری و {fileCount} پرونده تأثیر می‌گذارد.",
+  "runInBackground": "پس‌زمینه",
+  "downloadBackgroundHint": "با بستن این پنجره دانلود ادامه می‌یابد."
 }
