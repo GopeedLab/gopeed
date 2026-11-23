@@ -521,6 +521,7 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 	if contentDisposition != "" {
 		file.Name = parseFilename(contentDisposition)
 	}
+	fromDisposition := file.Name != ""
 	if file.Name == "" {
 		file.Name = path.Base(httpReq.URL.Path)
 		if file.Name != "" {
@@ -531,7 +532,10 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 	if file.Name == "" || file.Name == "/" || file.Name == "." {
 		file.Name = httpReq.URL.Hostname()
 	}
-	file.Name = appendFilenameExtension(file.Name, resp.Header.Get("Content-Type"))
+	// A name given by Content-Disposition is kept as sent, like browsers do.
+	if !fromDisposition {
+		file.Name = appendFilenameExtension(file.Name, resp.Header.Get("Content-Type"))
+	}
 
 	res.Files = append(res.Files, file)
 	f.meta.Res = res
