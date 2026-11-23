@@ -1,0 +1,36 @@
+=== RUN   TestAsyncHTTP
+=== RUN   TestAsyncHTTP/goja
+    http_test.go:35: abort rejection: ReferenceError: DOMException is not defined
+=== RUN   TestAsyncHTTP/moejs
+    http_test.go:35: abort rejection: AbortError: This operation was aborted
+--- PASS: TestAsyncHTTP (0.04s)
+    --- PASS: TestAsyncHTTP/goja (0.02s)
+    --- PASS: TestAsyncHTTP/moejs (0.02s)
+=== RUN   TestLiveResolve
+=== RUN   TestLiveResolve/bilibili/goja
+    live_test.go:36: elapsed=1.205312291s
+    live_test.go:45: {"res":{"name":"李宏毅2024春《生成式人工智能导论》","range":false,"files":[{"name":"BV1BJ4m1e7g8.李宏毅2024春《生成式人工智能导论》(P1).480p.mp4","req":{"url":"blob:replay/1","rawUrl":"https://www.bilibili.com/video/BV1BJ4m1e7g8?p=1-3","labels":{"monkeyWie@bilibili":"1","bvid":"BV1BJ4m1e7g8","cid":1449518003,"p":0,"type":"merged","quality":80,"selectedQuality":32,"resolution":"480p"}}},{"name":"BV1BJ4m1e7g8.李宏毅2024春《生成式人工智能导论》(P2).480p.mp4","req":{"url":"blob:replay/2","rawUrl":"https://www.bilibili.com/video/BV1BJ4m1e7g8?p=1-3","labels":{"monkeyWie@bilibili":"1","bvid":"BV1BJ4m1e7g8","cid":1449532181,"p":1,"type":"merged","quality":80,"selectedQuality":32,"resolution":"480p"}}},{"name":"BV1BJ4m1e7g8.李宏毅2024春《生成式人工智能导论》(P3).480p.mp4","req":{"url":"blob:replay/3","rawUrl":"https://www.bilibili.com/video/BV1BJ4m1e7g8?p=1-3","labels":{"monkeyWie@bilibili":"1","bvid":"BV1BJ4m1e7g8","cid":1456854415,"p":2,"type":"merged","quality":80,"selectedQuality":32,"resolution":"480p"}}}]},"requests":[]}
+=== RUN   TestLiveResolve/bilibili/moejs
+    live_test.go:36: elapsed=521.812875ms
+    live_test.go:45: {"res":{"name":"李宏毅2024春《生成式人工智能导论》","range":false,"files":[{"name":"BV1BJ4m1e7g8.李宏毅2024春《生成式人工智能导论》(P1).480p.mp4","req":{"url":"blob:replay/1","rawUrl":"https://www.bilibili.com/video/BV1BJ4m1e7g8?p=1-3","labels":{"monkeyWie@bilibili":"1","bvid":"BV1BJ4m1e7g8","cid":1449518003,"p":0,"type":"merged","quality":80,"selectedQuality":32,"resolution":"480p"}}},{"name":"BV1BJ4m1e7g8.李宏毅2024春《生成式人工智能导论》(P2).480p.mp4","req":{"url":"blob:replay/2","rawUrl":"https://www.bilibili.com/video/BV1BJ4m1e7g8?p=1-3","labels":{"monkeyWie@bilibili":"1","bvid":"BV1BJ4m1e7g8","cid":1449532181,"p":1,"type":"merged","quality":80,"selectedQuality":32,"resolution":"480p"}}},{"name":"BV1BJ4m1e7g8.李宏毅2024春《生成式人工智能导论》(P3).480p.mp4","req":{"url":"blob:replay/3","rawUrl":"https://www.bilibili.com/video/BV1BJ4m1e7g8?p=1-3","labels":{"monkeyWie@bilibili":"1","bvid":"BV1BJ4m1e7g8","cid":1456854415,"p":2,"type":"merged","quality":80,"selectedQuality":32,"resolution":"480p"}}}]},"requests":[]}
+=== RUN   TestLiveResolve/youtube/goja
+    live_test.go:36: elapsed=1.994355417s
+    live_test.go:45: {"res":{"range":false,"files":[{"name":"Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster).mp4","req":{"url":"https://www.youtube.com/watch?v=dQw4w9WgXcQ","rawUrl":"https://www.youtube.com/watch?v=dQw4w9WgXcQ","labels":{"monkeyWie@youtube":"1","input":"https://www.youtube.com/watch?v=dQw4w9WgXcQ","quality":"1080p","fallbackToBest":"true","type":"merged"}}}]},"requests":[]}
+=== RUN   TestLiveResolve/youtube/moejs
+    live_test.go:36: elapsed=969.283625ms
+    live_test.go:45: {"res":{"range":false,"files":[{"name":"Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster).mp4","req":{"url":"https://www.youtube.com/watch?v=dQw4w9WgXcQ","rawUrl":"https://www.youtube.com/watch?v=dQw4w9WgXcQ","labels":{"monkeyWie@youtube":"1","input":"https://www.youtube.com/watch?v=dQw4w9WgXcQ","quality":"1080p","fallbackToBest":"true","type":"merged"}}}]},"requests":[]}
+=== RUN   TestLiveResolve/twitter/goja
+    live_test.go:36: elapsed=2.249496s
+    live_test.go:45: {"res":{"name":"twitter-status-1734145541599383880","files":[{"name":"twitter-status-1734145541599383880-1.mp4","req":{"url":"https://video.twimg.com/ext_tw_video/1734143688874561536/pu/vid/avc1/1280x720/hpx1Z8GQYa0FVgGb.mp4?tag=12"}}]},"requests":[]}
+=== RUN   TestLiveResolve/twitter/moejs
+    live_test.go:36: elapsed=2.231541167s
+    live_test.go:45: {"res":{"name":"twitter-status-1734145541599383880","files":[{"name":"twitter-status-1734145541599383880-1.mp4","req":{"url":"https://video.twimg.com/ext_tw_video/1734143688874561536/pu/vid/avc1/1280x720/hpx1Z8GQYa0FVgGb.mp4?tag=12"}}]},"requests":[]}
+--- PASS: TestLiveResolve (9.86s)
+    --- PASS: TestLiveResolve/bilibili/goja (1.28s)
+    --- PASS: TestLiveResolve/bilibili/moejs (0.61s)
+    --- PASS: TestLiveResolve/youtube/goja (2.24s)
+    --- PASS: TestLiveResolve/youtube/moejs (1.19s)
+    --- PASS: TestLiveResolve/twitter/goja (2.28s)
+    --- PASS: TestLiveResolve/twitter/moejs (2.26s)
+PASS
+ok  	github.com/GopeedLab/gopeed/experiments/moejs	10.511s

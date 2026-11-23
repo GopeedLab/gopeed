@@ -1,0 +1,12 @@
+=== RUN   TestAsyncHTTP
+=== RUN   TestAsyncHTTP/goja
+    http_test.go:46: abort rejection: ReferenceError: DOMException is not defined
+    http_test.go:56: default abort probe: AbortError
+=== RUN   TestAsyncHTTP/moejs
+    http_test.go:46: abort rejection: Error: evaluation cancel
+    http_test.go:56: default abort probe: AbortError
+--- PASS: TestAsyncHTTP (0.04s)
+    --- PASS: TestAsyncHTTP/goja (0.02s)
+    --- PASS: TestAsyncHTTP/moejs (0.02s)
+PASS
+ok  	github.com/GopeedLab/gopeed/experiments/moejs	0.631s

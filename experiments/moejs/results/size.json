@@ -1,0 +1,100 @@
+[
+  {
+    "scope": "interpreter-only",
+    "target": "darwin/arm64",
+    "engine": "goja",
+    "bytes": 9287106,
+    "gzip_bytes": 3286296
+  },
+  {
+    "scope": "interpreter-only",
+    "target": "darwin/arm64",
+    "engine": "moejs",
+    "bytes": 8113842,
+    "gzip_bytes": 3249483
+  },
+  {
+    "scope": "interpreter-only",
+    "target": "linux/amd64",
+    "engine": "goja",
+    "bytes": 9580706,
+    "gzip_bytes": 3505372
+  },
+  {
+    "scope": "interpreter-only",
+    "target": "linux/amd64",
+    "engine": "moejs",
+    "bytes": 8454306,
+    "gzip_bytes": 3492080
+  },
+  {
+    "scope": "interpreter-only",
+    "target": "windows/amd64",
+    "engine": "goja",
+    "bytes": 9819136,
+    "gzip_bytes": 3583977
+  },
+  {
+    "scope": "interpreter-only",
+    "target": "windows/amd64",
+    "engine": "moejs",
+    "bytes": 8700416,
+    "gzip_bytes": 3573843
+  },
+  {
+    "scope": "interpreter-only",
+    "target": "android/arm64",
+    "engine": "goja",
+    "bytes": 10027304,
+    "gzip_bytes": 3321271
+  },
+  {
+    "scope": "interpreter-only",
+    "target": "android/arm64",
+    "engine": "moejs",
+    "bytes": 8847656,
+    "gzip_bytes": 3283095
+  },
+  {
+    "scope": "real-cli",
+    "target": "darwin/arm64",
+    "engine": "goja-production",
+    "bytes": 52037266,
+    "gzip_bytes": 23744742
+  },
+  {
+    "scope": "real-cli",
+    "target": "darwin/arm64",
+    "engine": "goja-plus-moejs-webapi",
+    "bytes": 58783778,
+    "gzip_bytes": 26370331
+  },
+  {
+    "scope": "real-cli",
+    "target": "linux/amd64",
+    "engine": "goja-production",
+    "bytes": 53735586,
+    "gzip_bytes": 24612765
+  },
+  {
+    "scope": "real-cli",
+    "target": "linux/amd64",
+    "engine": "goja-plus-moejs-webapi",
+    "bytes": 60735650,
+    "gzip_bytes": 27436023
+  },
+  {
+    "scope": "real-cli",
+    "target": "windows/amd64",
+    "engine": "goja-production",
+    "bytes": 54965248,
+    "gzip_bytes": 24968301
+  },
+  {
+    "scope": "real-cli",
+    "target": "windows/amd64",
+    "engine": "goja-plus-moejs-webapi",
+    "bytes": 62106112,
+    "gzip_bytes": 27830298
+  }
+]
