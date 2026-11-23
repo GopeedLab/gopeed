@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/material.dart' show Colors;
+import 'package:flutter/services.dart' show MethodChannel;
 import 'package:flutter/widgets.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -10,6 +11,10 @@ import 'app_window_chrome.dart';
 import 'app_window_payload.dart';
 
 class AppWindowBootstrap {
+  static Future<void> setLinuxProgressWindowSize(Size size) => const MethodChannel(
+    'gopeed/progress_window',
+  ).invokeMethod<void>('setSize', {'width': size.width.round(), 'height': size.height.ceil()});
+
   static Future<void> setupMainWindow({bool hidden = false}) async {
     if (!AppWindowChrome.isDesktopWindow) {
       return;
@@ -61,6 +66,32 @@ class AppWindowBootstrap {
     await windowManager.ensureInitialized();
     final title = subWindowTitle(type, appLocalizationsFor(localeConfig));
 
+    if (type == AppWindowType.downloadProgress) {
+      if (defaultTargetPlatform == TargetPlatform.linux) {
+        await setLinuxProgressWindowSize(AppDesignTokens.downloadProgressWindowSize);
+      }
+      final progressOptions = WindowOptions(
+        size: AppDesignTokens.downloadProgressWindowSize,
+        center: true,
+        skipTaskbar: false,
+        backgroundColor: Colors.transparent,
+        title: title,
+        titleBarStyle: TitleBarStyle.hidden,
+      );
+      await windowManager.waitUntilReadyToShow(progressOptions, () async {
+        if (AppWindowChrome.usesCustomChrome) {
+          await windowManager.setAsFrameless();
+        }
+        await windowManager.setResizable(false);
+        await windowManager.setMaximizable(false);
+        if (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.macOS) {
+          await windowManager.setHasShadow(true);
+        }
+        await _showSubWindowInForeground();
+      });
+      return;
+    }
+
     final options = switch (type) {
       AppWindowType.createTask => WindowOptions(
         size: AppDesignTokens.childWindowSize,
@@ -95,6 +126,7 @@ class AppWindowBootstrap {
   static String subWindowTitle(AppWindowType type, AppLocalizations l10n) {
     return switch (type) {
       AppWindowType.createTask => 'Gopeed - ${l10n.create}',
+      AppWindowType.downloadProgress => l10n.downloadProgressTitle,
       _ => 'Gopeed',
     };
   }

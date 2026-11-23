@@ -35,6 +35,21 @@ void main() {
     expect(readsWhileSaving, 1, reason: 'the next GET must wait for the previous PUT');
   });
 
+  test('a child delete preference save survives a stale full config save', () async {
+    transport.config.extra.createHistory = ['existing'];
+    final snapshot = await host.capabilities.gopeed.getConfig();
+    snapshot.maxRunning = 7;
+    final save = host.registry.invoke(StorageMethods.saveLastDeleteTaskKeep.name, false);
+    await transport.firstPutStarted.future;
+    final saveConfig = host.capabilities.gopeed.putConfig(snapshot);
+    transport.releaseFirstPut.complete();
+    await save;
+    await saveConfig;
+    expect(await host.capabilities.storage.getLastDeleteTaskKeep(), isFalse);
+    expect(transport.config.maxRunning, 7);
+    expect(transport.config.extra.createHistory, ['existing']);
+  });
+
   test('history and config reads wait for previously requested saves', () async {
     final saving = host.capabilities.storage.saveCreateHistory(['A']);
     await transport.firstPutStarted.future;

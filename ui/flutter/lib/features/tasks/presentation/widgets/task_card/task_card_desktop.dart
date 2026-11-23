@@ -7,7 +7,6 @@ import '../../../../../core/window/app_window_chrome.dart';
 import '../../../../../shared/theme/app_design_tokens.dart';
 import '../../../../../shared/theme/app_palette.dart';
 import '../../../domain/task_record.dart';
-import '../task_progress_bar.dart';
 import 'task_card_parts.dart';
 
 class TaskCardDesktop extends StatefulWidget {
@@ -194,7 +193,6 @@ class _ProgressContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
-    final fillColor = taskCardFillColor(palette, task.status, isDark);
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -220,15 +218,7 @@ class _ProgressContent extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 6),
-        TaskProgressBar(
-          value: task.progress,
-          indeterminate: task.isIndeterminate,
-          trackColor: palette.brandTrack,
-          fillColor: fillColor,
-          highlightStartColor: fillColor,
-          highlightEndColor: fillColor,
-          shimmer: task.status == TaskStatus.downloading && !task.waiting,
-        ),
+        TaskCardProgressBar(task: task),
         const SizedBox(height: 6),
         TaskCardFooter(task: task, isError: isError),
       ],

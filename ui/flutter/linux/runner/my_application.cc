@@ -15,6 +15,39 @@ struct _MyApplication {
 
 G_DEFINE_TYPE(MyApplication, my_application, GTK_TYPE_APPLICATION)
 
+static void set_progress_window_size(FlMethodChannel*, FlMethodCall* call,
+                                     gpointer user_data) {
+  if (g_strcmp0(fl_method_call_get_name(call), "setSize") != 0) {
+    fl_method_call_respond_not_implemented(call, nullptr);
+    return;
+  }
+  FlValue* args = fl_method_call_get_args(call);
+  FlValue* width = fl_value_get_type(args) == FL_VALUE_TYPE_MAP
+                       ? fl_value_lookup_string(args, "width") : nullptr;
+  FlValue* height = fl_value_get_type(args) == FL_VALUE_TYPE_MAP
+                        ? fl_value_lookup_string(args, "height") : nullptr;
+  if (!width || !height || fl_value_get_type(width) != FL_VALUE_TYPE_INT ||
+      fl_value_get_type(height) != FL_VALUE_TYPE_INT ||
+      fl_value_get_int(width) < 1 || fl_value_get_int(width) > G_MAXINT ||
+      fl_value_get_int(height) < 1 || fl_value_get_int(height) > G_MAXINT) {
+    fl_method_call_respond_error(call, "invalid-size", "Invalid window size", nullptr, nullptr);
+    return;
+  }
+
+  FlView* view = fl_plugin_registrar_get_view(FL_PLUGIN_REGISTRAR(user_data));
+  GtkWidget* window = view ? gtk_widget_get_toplevel(GTK_WIDGET(view)) : nullptr;
+  if (!GTK_IS_WINDOW(window)) {
+    fl_method_call_respond_error(call, "window-closed", "Window is unavailable", nullptr, nullptr);
+    return;
+  }
+  // A non-resizable GTK window follows its child's size request. Drop the
+  // multi-window plugin's initial default size so it can also shrink.
+  gtk_window_set_default_size(GTK_WINDOW(window), -1, -1);
+  gtk_widget_set_size_request(GTK_WIDGET(view), fl_value_get_int(width),
+                              fl_value_get_int(height));
+  fl_method_call_respond_success(call, nullptr, nullptr);
+}
+
 // Implements GApplication::activate.
 static void my_application_activate(GApplication* application) {
   MyApplication* self = MY_APPLICATION(application);
@@ -77,6 +110,14 @@ static void my_application_activate(GApplication* application) {
   fl_register_plugins(FL_PLUGIN_REGISTRY(view));
   desktop_multi_window_plugin_set_window_created_callback([](FlPluginRegistry* registry) {
     fl_register_plugins(registry);
+    g_autoptr(FlPluginRegistrar) registrar =
+        fl_plugin_registry_get_registrar_for_plugin(registry, "GopeedProgressWindow");
+    g_autoptr(FlStandardMethodCodec) codec = fl_standard_method_codec_new();
+    g_autoptr(FlMethodChannel) channel = fl_method_channel_new(
+        fl_plugin_registrar_get_messenger(registrar), "gopeed/progress_window",
+        FL_METHOD_CODEC(codec));
+    fl_method_channel_set_method_call_handler(channel, set_progress_window_size,
+                                              g_object_ref(registrar), g_object_unref);
   });
 
   gtk_widget_grab_focus(GTK_WIDGET(view));

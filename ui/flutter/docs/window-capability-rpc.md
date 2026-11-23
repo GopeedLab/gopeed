@@ -146,10 +146,8 @@ not accept a group ID to append members to an existing group.
 
 ## 11. Opening Child Surfaces
 
-Use `AppRouter.openWindow(AppWindowPayload)` for child-window destinations.
-`AppRouter.openCreateTask(createTask: ...)` is the create-task convenience API.
-All entry points, including deep links, browser capture and the tray, use this
-API rather than selecting a presentation themselves:
+Use `AppRouter.openCreateTask(createTask: ...)` for task creation from the main
+window, deep links, browser capture and the tray:
 
 - Desktop launches an independent native child window through
   `AppWindowLauncher.open(payload)` and the existing capability transport.
@@ -159,13 +157,32 @@ API rather than selecting a presentation themselves:
 - If native child-window creation fails, the main window is brought forward
   and the same in-app modal is used as a fallback.
 
-`AppWindowContent` owns the destination paths and content builders shared with
-`ChildWindowApp`. For another child surface, add its payload type, register its
-path and content, and use `AppWindowPage` for its in-app route. The modal's
-preferred size can be supplied per destination. Keep backend and storage access
-on the existing capability API in either presentation.
+`AppWindowContent` owns the content builders shared with `ChildWindowApp`.
+Use `AppWindowPage` when the feature needs a routed modal. Keep backend and
+storage access on the existing capability API in either presentation.
 
 Create-task content reports cancellation or completion through `onClose` when
 hosted in-app. Cancellation pops only the child surface. Completion selects the
 downloading list and returns home. The route payload uses a serializable string
 so browser history can restore a modal and its initial request.
+
+Download progress uses `AppRouter.openDownloadProgress(taskId)` to launch a
+native desktop child window. Its payload contains only the task ID. If the
+window cannot open, the download continues. The task context menu reports a
+failed manual attempt, and automatic attempts leave the main window in place.
+The page reuses `TasksController` and `TaskStatisticsTab`. Closing the window
+keeps the task running. Completed tasks expose native file actions. The task
+context menu can open or reopen status windows independently of the automatic
+opening setting.
+
+The compact panel uses the same information rows as task details. It displays
+the latest task snapshot with the current speed, remaining time and progress.
+Connection statistics are fetched when the connection section is expanded.
+The child uses the existing task APIs through the main window capability host.
+
+On desktop, `DownloadProgressWindowController` observes successful task-list
+snapshots and opens one window per top-level task captured by the browser
+extension in the current app session (one per group). The session label allows
+captures in the first snapshot to open after a cold start while keeping older
+captures quiet. The `extra.showDownloadProgressWindow` preference defaults to
+true and controls future automatic openings without closing windows already in use.

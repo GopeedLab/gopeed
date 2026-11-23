@@ -10,12 +10,14 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../api/api.dart' as api;
+import '../../api/model/request.dart';
 import '../../core/libgopeed_boot.dart';
 import '../../core/capabilities/app_capabilities.dart';
 import '../../core/entry/app_startup_options.dart';
 import '../../core/utils/file_explorer.dart';
 import '../../core/window/app_window_bootstrap.dart';
 import '../../core/window/window_capability_transport.dart';
+import '../../features/tasks/application/download_progress_window_controller.dart';
 import '../../features/tasks/application/pending_update_task.dart';
 import '../../l10n/l10n.dart';
 import '../../shared/widgets/app_toast.dart';
@@ -201,6 +203,7 @@ class AppPlatformController extends AsyncNotifier<AppPlatformState> with WindowL
   }
 
   Future<void> _initHostRpc() async {
+    final captureSession = ref.read(downloadProgressWindowControllerProvider.notifier).captureSession;
     await HostRpcService.instance.start(
       onCreate: (createTask, silent) async {
         final pendingUpdate = ref.read(pendingUpdateTaskProvider);
@@ -210,6 +213,10 @@ class AppPlatformController extends AsyncNotifier<AppPlatformState> with WindowL
               .set(PendingUpdateRequest(task: pendingUpdate, createTask: createTask));
           await _showMainWindow();
           return;
+        }
+        final request = createTask.req;
+        if (request != null) {
+          request.labels = {...?request.labels, Request.browserCaptureLabel: captureSession};
         }
         if (silent) {
           await ref.read(gopeedServiceProvider).createTask(createTask);
