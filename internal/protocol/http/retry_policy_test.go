@@ -387,10 +387,10 @@ func TestFetcher_NewRetryPolicyFromConfig(t *testing.T) {
 	}{
 		{"no config", nil, 5, 5 * time.Second},
 		{"defaults", new(FetcherManager).DefaultConfig().(*config), 5, 5 * time.Second},
-		{"custom", &config{MaxRetries: 2, MaxRetryDelaySeconds: 9}, 2, 9 * time.Second},
+		{"custom", &config{MaxRetries: 2}, 2, 5 * time.Second},
 		{"zero", &config{}, 0, 5 * time.Second},
 		{"negative uses default", &config{MaxRetries: -3}, 5, 5 * time.Second},
-		{"unlimited", &config{MaxRetries: 2, UnlimitedRetries: true}, -1, 5 * time.Second},
+		{"unlimited", &config{MaxRetries: -1}, -1, 5 * time.Second},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

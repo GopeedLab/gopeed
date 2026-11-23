@@ -360,6 +360,40 @@ func TestDownloader_WhiteListIsCheckedOnEveryStart(t *testing.T) {
 	}
 }
 
+func newPreparedTaskRetryDownloader(t *testing.T) (*Downloader, <-chan struct{}, <-chan struct{}) {
+	t.Helper()
+	d := NewDownloader(nil)
+	if err := d.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = d.Close() })
+	// Let the first truncated response fail the task so the test controls when
+	// it resumes via Continue.
+	cfg, err := d.GetConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg.ProtocolConfig["http"] = map[string]any{"maxRetries": 0}
+	if err := d.PutConfig(cfg); err != nil {
+		t.Fatal(err)
+	}
+	failed, done := make(chan struct{}, 1), make(chan struct{}, 1)
+	d.Listener(func(event *Event) {
+		var signal chan struct{}
+		switch event.Key {
+		case EventKeyError:
+			signal = failed
+		case EventKeyDone:
+			signal = done
+		}
+		select {
+		case signal <- struct{}{}:
+		default:
+		}
+	})
+	return d, failed, done
+}
+
 // The white list is checked on every start, even for a task that was prepared
 // before the white list changed.
 func TestDownloader_WhiteListIsCheckedForAPreparedTask(t *testing.T) {
@@ -380,11 +414,10 @@ func TestDownloader_WhiteListIsCheckedForAPreparedTask(t *testing.T) {
 
 	downloadDir := t.TempDir()
 	allowedDir := t.TempDir()
-	downloader := newSetupCategoryDownloader(t)
+	downloader, failed, _ := newPreparedTaskRetryDownloader(t)
 	categoryDir := putCategoryConfig(t, downloader, downloadDir, true, []string{"data"})
 	downloader.cfg.WhiteDownloadDirs = []string{allowedDir, downloadDir, categoryDir}
 
-	failed := watchTaskError(t, downloader)
 	taskID, err := downloader.CreateDirect(&base.Request{URL: server.URL}, &base.Options{Path: downloadDir})
 	if err != nil {
 		t.Fatal(err)
@@ -403,7 +436,6 @@ func TestDownloader_WhiteListIsCheckedForAPreparedTask(t *testing.T) {
 	// not download into it.
 	downloader.cfg.WhiteDownloadDirs = []string{allowedDir}
 	requestsBeforeRetry := atomic.LoadInt32(&requests)
-	failed = watchTaskError(t, downloader)
 	if err := downloader.Continue(&TaskFilter{IDs: []string{taskID}}); err != nil {
 		t.Fatal(err)
 	}
@@ -434,10 +466,9 @@ func TestDownloader_PreparedTaskKeepsItsDirectory(t *testing.T) {
 	defer server.Close()
 
 	downloadDir := t.TempDir()
-	downloader := newSetupCategoryDownloader(t)
+	downloader, failed, done := newPreparedTaskRetryDownloader(t)
 	categoryDir := putCategoryConfig(t, downloader, downloadDir, true, []string{"data"})
 
-	failed := watchTaskError(t, downloader)
 	taskID, err := downloader.CreateDirect(&base.Request{URL: server.URL}, &base.Options{Path: downloadDir})
 	if err != nil {
 		t.Fatal(err)
@@ -457,8 +488,12 @@ func TestDownloader_PreparedTaskKeepsItsDirectory(t *testing.T) {
 
 	// The category no longer matches the file, the prepared task keeps the
 	// directory it was prepared with.
-	putCategoryConfig(t, downloader, downloadDir, true, []string{"iso"})
-	done := watchTaskDone(t, downloader)
+	func() {
+		// The first failure can still trigger a scheduler pass after its event.
+		downloader.lock.Lock()
+		defer downloader.lock.Unlock()
+		putCategoryConfig(t, downloader, downloadDir, true, []string{"iso"})
+	}()
 	if err := downloader.Continue(&TaskFilter{IDs: []string{taskID}}); err != nil {
 		t.Fatal(err)
 	}

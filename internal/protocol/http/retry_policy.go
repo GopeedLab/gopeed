@@ -7,8 +7,8 @@ import (
 )
 
 const (
-	defaultMaxRetries           = 5
-	defaultMaxRetryDelaySeconds = 5
+	defaultMaxRetries  = 5
+	maxRetryDelaySteps = 5
 )
 
 // retryPolicy decides when the failed requests of one download attempt are
@@ -270,21 +270,12 @@ func sleepContext(ctx context.Context, d time.Duration) bool {
 // configuration. streaming is optional, see retryPolicy.streaming.
 func (f *Fetcher) newRetryPolicy(streaming func() bool) *retryPolicy {
 	maxRetries := defaultMaxRetries
-	delaySeconds := defaultMaxRetryDelaySeconds
-	if f.config != nil {
-		switch {
-		case f.config.UnlimitedRetries:
-			maxRetries = -1
-		case f.config.MaxRetries >= 0:
-			maxRetries = f.config.MaxRetries
-		}
-		if f.config.MaxRetryDelaySeconds > 0 {
-			delaySeconds = f.config.MaxRetryDelaySeconds
-		}
+	if f.config != nil && f.config.MaxRetries >= -1 {
+		maxRetries = f.config.MaxRetries
 	}
 	unit := f.retryUnit
 	if unit <= 0 {
 		unit = time.Second
 	}
-	return newRetryPolicy(maxRetries, unit, time.Duration(delaySeconds)*unit, streaming)
+	return newRetryPolicy(maxRetries, unit, maxRetryDelaySteps*unit, streaming)
 }

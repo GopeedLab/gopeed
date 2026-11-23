@@ -9,13 +9,7 @@ type config struct {
 	UseServerCtime bool   `json:"useServerCtime"`
 	// MaxRetries is the number of retries each connection may make on its
 	// own while no other connection of the download is healthy; any valid
-	// response restores it for every unfinished connection. A negative value
-	// uses the default (5); zero gives no such retries.
+	// response restores it for every unfinished connection. The default is 5;
+	// -1 is unlimited and zero gives no such retries.
 	MaxRetries int `json:"maxRetries"`
-	// MaxRetryDelaySeconds caps the delay before a retry, which grows by one
-	// second per retry. Values below 1 use the default (5).
-	MaxRetryDelaySeconds int `json:"maxRetryDelaySeconds"`
-	// UnlimitedRetries keeps retrying failed connections until the download
-	// completes or is paused; MaxRetries is then ignored.
-	UnlimitedRetries bool `json:"unlimitedRetries"`
 }

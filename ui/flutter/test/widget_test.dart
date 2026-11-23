@@ -1693,17 +1693,14 @@ void main() {
     http() => settingsController.state.requireValue.config.protocolConfig.http;
     final httpBlock = find.byKey(const ValueKey('settings-http-block'));
     final maxRetries = find.byKey(const ValueKey('http-max-retries-input'));
-    final delay = find.byKey(const ValueKey('http-max-retry-delay-input'));
     final unlimited = find.byKey(const ValueKey('http-unlimited-retries-switch'));
     expect(find.descendant(of: httpBlock, matching: maxRetries), findsOneWidget);
-    expect(find.descendant(of: httpBlock, matching: delay), findsOneWidget);
     expect(find.descendant(of: httpBlock, matching: find.text('Max retries per connection')), findsOneWidget);
     expect(
       find.descendant(of: httpBlock, matching: find.textContaining('Each connection retries on its own.')),
       findsOneWidget,
     );
-    expect(tester.widget<shad.TextField>(maxRetries).controller!.text, '5');
-    expect(tester.widget<shad.TextField>(delay).controller!.text, '5');
+    expect(tester.widget<AppTextField>(maxRetries).controller!.text, '5');
 
     await tester.ensureVisible(maxRetries);
     await tester.pumpAndSettle();
@@ -1712,19 +1709,29 @@ void main() {
     expect(http().maxRetries, 3);
     expect(settingsController.state.requireValue.config.protocolConfig.hls.maxRetries, isNot(3));
 
-    await tester.enterText(delay, '90');
-    await tester.pump(const Duration(milliseconds: 700));
-    expect(tester.widget<shad.TextField>(delay).controller!.text, '60');
-    expect(http().maxRetryDelaySeconds, 60);
-
-    // With unlimited retries the count no longer applies, so it is hidden.
     await tester.ensureVisible(unlimited);
     await tester.pumpAndSettle();
     await tester.tap(unlimited);
     await tester.pumpAndSettle();
-    expect(http().unlimitedRetries, isTrue);
+    expect(http().toJson()['maxRetries'], -1);
+    expect(http().toJson(), isNot(contains('unlimitedRetries')));
+    expect(http().toJson(), isNot(contains('maxRetryDelaySeconds')));
     expect(maxRetries, findsNothing);
+
+    final connections = find.byKey(const ValueKey('http-connections-input'));
+    await tester.ensureVisible(connections);
+    await tester.pumpAndSettle();
+    await tester.enterText(connections, '8');
+    await tester.pump(const Duration(milliseconds: 700));
+    expect(http().connections, 8);
+    expect(http().maxRetries, -1);
+
+    await tester.ensureVisible(unlimited);
+    await tester.pumpAndSettle();
+    await tester.tap(unlimited);
+    await tester.pumpAndSettle();
     expect(http().maxRetries, 3);
+    expect(tester.widget<AppTextField>(maxRetries).controller!.text, '3');
     expect(tester.takeException(), isNull);
   });
 

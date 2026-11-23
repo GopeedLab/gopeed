@@ -73,10 +73,9 @@ func (fm *FetcherManager) AutoRename() bool {
 
 func (fm *FetcherManager) DefaultConfig() any {
 	return &config{
-		UserAgent:            DefaultUserAgent,
-		Connections:          16,
-		MaxRetries:           defaultMaxRetries,
-		MaxRetryDelaySeconds: defaultMaxRetryDelaySeconds,
+		UserAgent:   DefaultUserAgent,
+		Connections: 16,
+		MaxRetries:  defaultMaxRetries,
 	}
 }
 

@@ -44,7 +44,6 @@
   "ftpTlsImplicit": "TLS implícit (FTPS)",
   "maxRetries": "Reintents màxims",
   "useServerCtime": "Utilitza l'hora del servidor per a la creació de fitxers",
-  "maxRetryDelay": "Espera màxima entre reintents (segons)",
   "unlimitedRetries": "Reintents il·limitats",
   "maxRetriesPerConnection": "Màx. reintents per connexió",
   "httpRetriesDescription": "Cada connexió reintenta pel seu compte. Els reintents mentre una altra connexió descarrega no compten, i qualsevol resposta correcta restableix els reintents de totes les connexions.",

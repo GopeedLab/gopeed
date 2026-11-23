@@ -111,20 +111,19 @@ class FtpConfig {
 
 @JsonSerializable()
 class HttpConfig {
+  static const defaultMaxRetries = 5;
+  static const unlimitedMaxRetries = -1;
+
   String userAgent;
   int connections;
   bool useServerCtime;
   int maxRetries;
-  int maxRetryDelaySeconds;
-  bool unlimitedRetries;
 
   HttpConfig({
     this.userAgent = '',
     this.connections = 0,
     this.useServerCtime = false,
-    this.maxRetries = 5,
-    this.maxRetryDelaySeconds = 5,
-    this.unlimitedRetries = false,
+    this.maxRetries = HttpConfig.defaultMaxRetries,
   });
 
   factory HttpConfig.fromJson(Map<String, dynamic> json) => _$HttpConfigFromJson(json);
