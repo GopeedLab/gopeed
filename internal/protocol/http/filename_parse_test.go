@@ -188,10 +188,10 @@ func TestAppendFilenameExtension(t *testing.T) {
 			want:        "kubectl",
 		},
 		{
-			name:        "keeps name for plain text",
+			name:        "uses .txt for plain text",
 			filename:    "README",
 			contentType: "text/plain; charset=utf-8",
-			want:        "README",
+			want:        "README.txt",
 		},
 		{
 			name:        "ignores unknown content type",
