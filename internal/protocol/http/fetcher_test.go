@@ -248,6 +248,55 @@ func TestFetcher_ResolveFilenameFromContentType(t *testing.T) {
 	}
 }
 
+func TestFetcher_ResolveKeepsContentDispositionFilename(t *testing.T) {
+	server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
+		w.Header().Set("Content-Type", "application/pdf")
+		w.Header().Set("Content-Disposition", `attachment; filename="Annual Report"`)
+		w.WriteHeader(gohttp.StatusOK)
+	}))
+	defer server.Close()
+
+	fetcher := buildFetcher()
+	defer fetcher.Pause()
+
+	fetcher.Meta().Opts = &base.Options{
+		Name: test.DownloadName,
+		Path: test.Dir,
+	}
+	err := fetcher.Resolve(&base.Request{URL: server.URL + "/download"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got := fetcher.meta.Res.Files[0].Name; got != "Annual Report" {
+		t.Fatalf("resolved filename = %q, want %q", got, "Annual Report")
+	}
+}
+
+func TestFetcher_ResolvePlainTextFromURL(t *testing.T) {
+	server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.WriteHeader(gohttp.StatusOK)
+	}))
+	defer server.Close()
+
+	fetcher := buildFetcher()
+	defer fetcher.Pause()
+
+	fetcher.Meta().Opts = &base.Options{
+		Name: test.DownloadName,
+		Path: test.Dir,
+	}
+	err := fetcher.Resolve(&base.Request{URL: server.URL + "/README"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got := fetcher.meta.Res.Files[0].Name; got != "README.txt" {
+		t.Fatalf("resolved filename = %q, want %q", got, "README.txt")
+	}
+}
+
 func TestFetcher_ResolveWithHostHeader(t *testing.T) {
 	listener := test.StartTestHostHeaderServer()
 	defer listener.Close()

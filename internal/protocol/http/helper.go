@@ -326,6 +326,11 @@ func appendFilenameExtension(filename, contentType string) string {
 	if err != nil {
 		return filename
 	}
+	// Says nothing about the file type: an extensionless binary (kubectl)
+	// would become .bin.
+	if mediaType == "application/octet-stream" {
+		return filename
+	}
 
 	extensions, err := mime.ExtensionsByType(mediaType)
 	if err != nil || len(extensions) == 0 {
@@ -335,6 +340,10 @@ func appendFilenameExtension(filename, contentType string) string {
 	ext := path.Ext(filename)
 	if len(ext) > 1 && len(ext) <= 20 {
 		return filename
+	}
+	// The first registered extension for text/plain is .asc.
+	if mediaType == "text/plain" {
+		return filename + ".txt"
 	}
 	return filename + extensions[0]
 }
