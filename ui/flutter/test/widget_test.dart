@@ -1759,6 +1759,68 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('settings HTTP retries save into the HTTP protocol config', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(1024, 900));
+    final settingsController = FakeSettingsController();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appRuntimeControllerProvider.overrideWith(FakeRuntimeController.new),
+          appPlatformControllerProvider.overrideWith(FakePlatformController.new),
+          settingsControllerProvider.overrideWith(() => settingsController),
+        ],
+        child: const _SettingsTestApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Downloads'));
+    await tester.pumpAndSettle();
+
+    http() => settingsController.state.requireValue.config.protocolConfig.http;
+    final httpBlock = find.byKey(const ValueKey('settings-http-block'));
+    final maxRetries = find.byKey(const ValueKey('http-max-retries-input'));
+    final unlimited = find.byKey(const ValueKey('http-unlimited-retries-switch'));
+    expect(find.descendant(of: httpBlock, matching: maxRetries), findsOneWidget);
+    expect(find.descendant(of: httpBlock, matching: find.text('Max retries per connection')), findsOneWidget);
+    expect(
+      find.descendant(of: httpBlock, matching: find.textContaining('Each connection retries on its own.')),
+      findsOneWidget,
+    );
+    expect(tester.widget<AppTextField>(maxRetries).controller!.text, '5');
+
+    await tester.ensureVisible(maxRetries);
+    await tester.pumpAndSettle();
+    await tester.enterText(maxRetries, '3');
+    await tester.pump(const Duration(milliseconds: 700));
+    expect(http().maxRetries, 3);
+    expect(settingsController.state.requireValue.config.protocolConfig.hls.maxRetries, isNot(3));
+
+    await tester.ensureVisible(unlimited);
+    await tester.pumpAndSettle();
+    await tester.tap(unlimited);
+    await tester.pumpAndSettle();
+    expect(http().toJson()['maxRetries'], -1);
+    expect(http().toJson(), isNot(contains('unlimitedRetries')));
+    expect(http().toJson(), isNot(contains('maxRetryDelaySeconds')));
+    expect(maxRetries, findsNothing);
+
+    final connections = find.byKey(const ValueKey('http-connections-input'));
+    await tester.ensureVisible(connections);
+    await tester.pumpAndSettle();
+    await tester.enterText(connections, '8');
+    await tester.pump(const Duration(milliseconds: 700));
+    expect(http().connections, 8);
+    expect(http().maxRetries, -1);
+
+    await tester.ensureVisible(unlimited);
+    await tester.pumpAndSettle();
+    await tester.tap(unlimited);
+    await tester.pumpAndSettle();
+    expect(http().maxRetries, 3);
+    expect(tester.widget<AppTextField>(maxRetries).controller!.text, '3');
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('download directory keeps long text clear of its aligned picker action', (WidgetTester tester) async {
     await _setTestSize(tester, const Size(1024, 900));
     await tester.pumpWidget(

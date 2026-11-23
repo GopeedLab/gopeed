@@ -75,6 +75,7 @@ func (fm *FetcherManager) DefaultConfig() any {
 	return &config{
 		UserAgent:   DefaultUserAgent,
 		Connections: 16,
+		MaxRetries:  defaultMaxRetries,
 	}
 }
 

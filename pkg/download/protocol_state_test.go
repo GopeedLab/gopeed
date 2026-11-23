@@ -77,7 +77,7 @@ func TestFullConfigValidatesProtocolsAndPreservesExplicitValues(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := protocolObject(t, d, "http")
-	if got["connections"] != float64(0) || got["useServerCtime"] != false {
+	if got["connections"] != float64(0) || got["useServerCtime"] != false || got["maxRetries"] != float64(5) {
 		t.Fatal(got)
 	}
 	for _, invalid := range []any{map[string]any{"connections": "bad"}, map[string]any{"useServerCtime": "bad"}} {

@@ -673,6 +673,7 @@ func TestDownloader_Extension_BlobResumeAfterRestartViaOnError(t *testing.T) {
 		if err := downloader.Setup(); err != nil {
 			t.Fatal(err)
 		}
+		limitHTTPRetries(t, downloader)
 		return downloader
 	}
 
@@ -1001,6 +1002,7 @@ func TestDownloader_Extension_BlobUnknownSizePauseContinueKeepsSource(t *testing
 
 func TestDownloader_Extension_BlobRecoverOnError(t *testing.T) {
 	setupDownloader(func(downloader *Downloader) {
+		limitHTTPRetries(t, downloader)
 		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/blob_recover", false); err != nil {
 			t.Fatal(err)
 		}

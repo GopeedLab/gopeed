@@ -402,12 +402,35 @@ func TestDownloader_InternalBlobBypassesGlobalProxy(t *testing.T) {
 	}
 }
 
+// limitHTTPRetries gives HTTP connections a single retry each, for tests that
+// wait for a failing request to become a task error.
+func limitHTTPRetries(t *testing.T, d *Downloader) {
+	t.Helper()
+	cfg, err := d.GetConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var httpCfg map[string]any
+	if err := util.MapToStruct(cfg.ProtocolConfig["http"], &httpCfg); err != nil {
+		t.Fatal(err)
+	}
+	if httpCfg == nil {
+		httpCfg = map[string]any{}
+	}
+	httpCfg["maxRetries"] = 1
+	cfg.ProtocolConfig["http"] = httpCfg
+	if err := d.PutConfig(cfg); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestDownloader_RegistryMissUsesOrdinaryHTTPError(t *testing.T) {
 	downloader := NewDownloader(nil)
 	if err := downloader.Setup(); err != nil {
 		t.Fatal(err)
 	}
 	defer downloader.Clear()
+	limitHTTPRetries(t, downloader)
 
 	liveURL, err := downloader.blob.CreateBlob([]byte("unused"), "text/plain")
 	if err != nil {

@@ -67,6 +67,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   final _maxRunningController = TextEditingController();
   final _httpUserAgentController = TextEditingController();
   final _httpConnectionsController = TextEditingController();
+  final _httpMaxRetriesController = TextEditingController();
   final _ftpConnectionsController = TextEditingController();
   final _hlsConnectionsController = TextEditingController();
   final _hlsMaxRetriesController = TextEditingController();
@@ -102,6 +103,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     _maxRunningController,
     _httpUserAgentController,
     _httpConnectionsController,
+    _httpMaxRetriesController,
     _ftpConnectionsController,
     _hlsConnectionsController,
     _hlsMaxRetriesController,
@@ -466,6 +468,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ],
         );
       case _SettingsSection.downloads:
+        final unlimitedHttpRetries = config.protocolConfig.http.maxRetries == HttpConfig.unlimitedMaxRetries;
         return _SettingsSectionStack(
           children: [
             _SettingsBlock(
@@ -590,6 +593,29 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       child: shad.Switch(
                         value: config.archive.deleteAfterExtract,
                         onChanged: (value) => _mutateConfig((next) => next.archive.deleteAfterExtract = value),
+                      ),
+                    ),
+                  SettingsItem(
+                    title: context.l10n.unlimitedRetries,
+                    subtitle: context.l10n.httpRetriesDescription,
+                    child: shad.Switch(
+                      key: const ValueKey('http-unlimited-retries-switch'),
+                      value: unlimitedHttpRetries,
+                      onChanged: (value) => _mutateConfig((next) {
+                        next.protocolConfig.http.maxRetries = value
+                            ? HttpConfig.unlimitedMaxRetries
+                            : HttpConfig.defaultMaxRetries;
+                      }),
+                    ),
+                  ),
+                  if (!unlimitedHttpRetries)
+                    SettingsItem(
+                      title: context.l10n.maxRetriesPerConnection,
+                      child: _NumberSettingControl(
+                        fieldKey: const ValueKey('http-max-retries-input'),
+                        controller: _httpMaxRetriesController,
+                        min: 0,
+                        max: 100,
                       ),
                     ),
                 ],
@@ -1037,6 +1063,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     _maxRunningController.text = _config!.maxRunning.clamp(1, 256).toString();
     _httpUserAgentController.text = _config!.protocolConfig.http.userAgent;
     _httpConnectionsController.text = _config!.protocolConfig.http.connections.clamp(1, 256).toString();
+    final httpMaxRetries = _config!.protocolConfig.http.maxRetries;
+    // Keep a finite value ready for when the user turns off unlimited retries.
+    _httpMaxRetriesController.text = (httpMaxRetries < 0 ? HttpConfig.defaultMaxRetries : httpMaxRetries.clamp(0, 100))
+        .toString();
     _ftpConnectionsController.text = _config!.protocolConfig.ftp.connections.clamp(1, _ftpMaxConnections).toString();
     _hlsConnectionsController.text = _config!.protocolConfig.hls.segmentConnections.clamp(1, 256).toString();
     _hlsMaxRetriesController.text = _config!.protocolConfig.hls.maxRetries.clamp(0, 30).toString();
@@ -1141,6 +1171,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       min: 1,
       max: 256,
     );
+    if (config.protocolConfig.http.maxRetries != HttpConfig.unlimitedMaxRetries) {
+      config.protocolConfig.http.maxRetries = _boundedInt(
+        _httpMaxRetriesController,
+        fallback: config.protocolConfig.http.maxRetries,
+        min: 0,
+        max: 100,
+      );
+    }
     config.protocolConfig.ftp.connections = _boundedInt(
       _ftpConnectionsController,
       fallback: config.protocolConfig.ftp.connections,
