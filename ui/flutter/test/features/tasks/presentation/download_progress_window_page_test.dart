@@ -228,7 +228,8 @@ void main() {
 
   testWidgets('pause, resume and completion follow live task state', (tester) async {
     final tasks = await mount(tester);
-    expect(find.text('Cancel Download'), findsOneWidget);
+    final cancel = find.byKey(const ValueKey('download-progress-cancel'));
+    expect(find.descendant(of: cancel, matching: find.text('Cancel')), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('download-progress-pause')));
     await tester.pump();
     expect(tasks.actions, ['pause:download']);
@@ -242,7 +243,7 @@ void main() {
     expect(tester.widget<TaskProgressBar>(find.byType(TaskProgressBar)).value, 1.0);
     expect(find.byKey(const ValueKey('download-progress-pause')), findsNothing);
     expect(find.byKey(const ValueKey('download-progress-resume')), findsNothing);
-    expect(find.text('Cancel Download'), findsNothing);
+    expect(cancel, findsNothing);
     expect(tasks.actions, hasLength(2));
     await tester.pumpWidget(const SizedBox());
   });
@@ -320,25 +321,33 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
-  for (final width in [320.0, 500.0]) {
+  for (final (width, roomBelow, connectionCount, expansion, upwardShift) in [
+    (320.0, 0.0, 12, 160.0, 160.0),
+    (500.0, 235.0, 12, 235.0, 0.0),
+    (520.0, 400.0, 12, 340.0, 0.0),
+    (520.0, 400.0, 1, 340.0, 0.0),
+    (500.0, 160.0, 12, 160.0, 0.0),
+    (520.0, 155.0, 12, 160.0, 5.0),
+  ]) {
     testWidgets(
-      'progress and connections grow past the screen edge in place at width $width',
+      '$connectionCount connections fit the work area at width $width with $roomBelow below the compact window',
       (tester) async {
         const windowChannel = MethodChannel('window_manager');
         const screenChannel = MethodChannel('dev.leanflutter.plugins/screen_retriever');
         final messenger = tester.binding.defaultBinaryMessenger;
         const screenBottom = 900.0;
         final initialHeight = AppDesignTokens.downloadProgressWindowSize.height;
-        var bounds = Rect.fromLTWH(80, screenBottom - initialHeight, width, initialHeight);
+        final left = roomBelow == 235.0 ? 880.0 : 80.0;
+        var bounds = Rect.fromLTWH(left, screenBottom - initialHeight - roomBelow, width, initialHeight);
         var displayQueries = 0;
         var maximizeQueries = 0;
         final resizes = <Rect>[];
         void resize(Map args) {
-          expect(args.containsKey('x'), isFalse);
-          expect(args.containsKey('y'), isFalse);
+          final position = Offset(args['x'] as double? ?? bounds.left, args['y'] as double? ?? bounds.top);
           final size = Size((args['width'] as num).toDouble(), (args['height'] as num).toDouble());
-          bounds = bounds.topLeft & size;
-          resizes.add(bounds);
+          final next = position & size;
+          if (next != resizes.lastOrNull) resizes.add(next);
+          bounds = next;
           tester.view.physicalSize = size;
         }
 
@@ -359,21 +368,32 @@ void main() {
             case 'getBounds':
               return {'x': bounds.left, 'y': bounds.top, 'width': bounds.width, 'height': bounds.height};
             case 'setBounds':
-              expect(defaultTargetPlatform, isNot(TargetPlatform.linux));
-              resize(call.arguments as Map);
+              final args = call.arguments as Map;
+              if (defaultTargetPlatform == TargetPlatform.linux) {
+                expect(args.containsKey('width'), isFalse);
+                bounds = Offset(args['x'] as double, args['y'] as double) & bounds.size;
+              } else {
+                resize(args);
+              }
               return null;
           }
           throw MissingPluginException(call.method);
         });
         messenger.setMockMethodCallHandler(screenChannel, (call) async {
+          expect(call.method, 'getAllDisplays');
           displayQueries++;
           return {
             'displays': [
-              {
-                'id': 'primary',
-                'size': {'width': 800.0, 'height': screenBottom},
-                'visiblePosition': {'dx': 0.0, 'dy': 0.0},
-              },
+              for (final (id, x, bottom) in [
+                ('primary', 0.0, left < 800.0 ? screenBottom : 1040.0),
+                ('secondary', 800.0, left >= 800.0 ? screenBottom : 1040.0),
+              ])
+                {
+                  'id': id,
+                  'size': {'width': 800.0, 'height': bottom + 40.0},
+                  'visibleSize': {'width': 800.0, 'height': bottom - 20.0},
+                  'visiblePosition': {'dx': x, 'dy': 20.0},
+                },
             ],
           };
         });
@@ -385,19 +405,20 @@ void main() {
 
         final stats = HttpTaskStats(
           connections: List.filled(
-            12,
+            connectionCount,
             const HttpConnectionStats(downloaded: 2, total: 5, completed: false, failed: false, retryTimes: 0),
           ),
         );
         final tasks = await mount(tester, size: bounds.size, stats: stats);
         await tester.pump();
+        bounds = bounds.translate(0, screenBottom - roomBelow - bounds.bottom);
         final compact = bounds;
         resizes.clear();
         final details = find.byKey(const ValueKey('download-progress-details'));
         final pause = find.byKey(const ValueKey('download-progress-pause'));
         final cancel = find.byKey(const ValueKey('download-progress-cancel'));
         final bar = find.byType(TaskProgressBar);
-        if (width == 500) {
+        if (roomBelow == 235.0) {
           expect(compact.height, greaterThanOrEqualTo(initialHeight));
           final longName = '${'long-filename-' * 12}.zip';
           tasks.replace(TasksState(tasks: [_task(TaskStatus.downloading, name: longName)]));
@@ -422,7 +443,7 @@ void main() {
           expect(tester.getRect(bar).top, greaterThan(fieldViewport.bottom));
           expect(tester.getRect(bar).bottom, lessThan(tester.getRect(details).top));
           expect(bounds.topLeft, compact.topLeft);
-          expect(bounds.bottom, greaterThan(screenBottom));
+          expect(bounds.bottom, lessThanOrEqualTo(screenBottom));
           expect(tester.getRect(find.text('30 seconds remaining')).bottom, lessThanOrEqualTo(fieldViewport.bottom));
           tasks.emit(TaskStatus.downloading);
           await tester.pump();
@@ -442,33 +463,29 @@ void main() {
         await tester.tap(details);
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 250));
+        await tester.pump();
         final expanded = bounds;
-        expect(expanded.topLeft, compact.topLeft);
-        expect(expanded.width, compact.width);
-        final expectedHeight = math.min(
-          AppDesignTokens.downloadProgressExpandedHeight,
-          compact.height + AppDesignTokens.downloadProgressConnectionsHeight + AppDesignTokens.space8,
-        );
-        expect(expanded.height, expectedHeight);
-        expect(expanded.bottom, greaterThan(screenBottom));
         expect(find.byType(TaskStatisticsTab), findsOneWidget);
+        expect(expanded.topLeft, compact.topLeft.translate(0, -upwardShift));
+        expect(expanded.width, compact.width);
+        expect(expanded.height, compact.height + expansion);
+        expect(expanded.bottom, screenBottom - math.max(0, roomBelow - expansion));
         expect(find.text('Download Link'), findsNothing);
         expect(find.text('Storage Path'), findsNothing);
         final connections = find.byType(DownloadProgressConnections);
         expect(tester.getBottomLeft(connections).dy, expanded.height - AppDesignTokens.space8);
-        expect(
-          tester.getSize(connections).height,
-          lessThanOrEqualTo(AppDesignTokens.downloadProgressConnectionsHeight),
-        );
-        if (width == 500) {
-          expect(tester.getSize(connections).height, AppDesignTokens.downloadProgressConnectionsHeight);
-        }
+        expect(tester.getSize(connections).height, expanded.height - compact.height - AppDesignTokens.space8);
         final scrollbar = find.descendant(of: connections, matching: find.byType(Scrollbar));
         expect(tester.widget<Scrollbar>(scrollbar).thumbVisibility, isFalse);
         final scrollable = find.descendant(of: connections, matching: find.byType(Scrollable));
-        await tester.drag(scrollable, const Offset(0, -80));
-        await tester.pump(const Duration(milliseconds: 300));
-        expect(tester.state<ScrollableState>(scrollable).position.pixels, greaterThan(0));
+        final position = tester.state<ScrollableState>(scrollable).position;
+        if (connectionCount > 1) {
+          await tester.drag(scrollable, const Offset(0, -80));
+          await tester.pump(const Duration(milliseconds: 300));
+          expect(position.pixels, greaterThan(0));
+        } else {
+          expect(position.maxScrollExtent, 0);
+        }
         expect(tester.getTopLeft(details).dy, controlsTop);
         expect(pause.hitTestable(), findsOneWidget);
         expect(cancel.hitTestable(), findsOneWidget);
@@ -476,9 +493,9 @@ void main() {
         await tester.tap(details);
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 250));
-        expect(resizes, [expanded, compact]);
+        expect(resizes, [expanded, expanded.topLeft & compact.size]);
         expect(maximizeQueries, defaultTargetPlatform == TargetPlatform.macOS ? 0 : greaterThan(0));
-        expect(displayQueries, 0);
+        expect(displayQueries, greaterThanOrEqualTo(2));
         expect(find.byType(TaskStatisticsTab), findsNothing);
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox());
@@ -505,7 +522,7 @@ void main() {
       expect(tester.widget<Switch>(deleteSwitch).value, !deleteFiles);
       await tester.tap(deleteSwitch);
       await tester.pump();
-      await tester.tap(find.byType(SecondaryButton));
+      await tester.tap(find.descendant(of: find.byType(AlertDialog), matching: find.text('Cancel')));
       await tester.pump(const Duration(milliseconds: 300));
       expect(keepFiles, deleteFiles);
       expect(tasks.actions, isEmpty);

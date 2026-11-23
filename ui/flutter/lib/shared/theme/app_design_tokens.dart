@@ -5,8 +5,8 @@ class AppDesignTokens {
 
   static const Size childWindowSize = Size(820, 620);
   static const Size downloadProgressWindowSize = Size(500, 224);
-  static const double downloadProgressExpandedHeight = 620;
-  static const double downloadProgressConnectionsHeight = 340;
+  static const double downloadProgressDefaultDetailsHeight = 340;
+  static const double downloadProgressMinimumDetailsHeight = 160;
   static const double windowHeaderHeight = 30;
   static const double windowRadius = 12;
   // Leave room for native macOS traffic lights while keeping rail widths consistent across platforms.

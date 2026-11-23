@@ -38,19 +38,18 @@ class DownloadProgressActions extends StatelessWidget {
       runSpacing: AppDesignTokens.space8,
       children: [
         if (!completed) ...[
-          GhostButton(
+          SecondaryButton(
             key: const ValueKey('download-progress-cancel'),
             size: ButtonSize.small,
             density: ButtonDensity.dense,
             onPressed: busy ? null : onCancel,
-            child: Text(context.l10n.cancelDownload),
+            child: Text(context.l10n.cancel),
           ),
           if (task.canPause)
             AppPrimaryButton(
               key: const ValueKey('download-progress-pause'),
               size: ButtonSize.small,
               density: ButtonDensity.dense,
-              leading: const Icon(LucideIcons.pause, size: 14),
               onPressed: busy ? null : onPause,
               child: Text(context.l10n.pause),
             )
@@ -59,7 +58,6 @@ class DownloadProgressActions extends StatelessWidget {
               key: const ValueKey('download-progress-resume'),
               size: ButtonSize.small,
               density: ButtonDensity.dense,
-              leading: const Icon(LucideIcons.play, size: 14),
               onPressed: busy ? null : onResume,
               child: Text(context.l10n.continueAction),
             ),

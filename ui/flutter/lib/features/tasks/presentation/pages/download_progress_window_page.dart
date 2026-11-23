@@ -9,6 +9,7 @@ import 'package:window_manager/window_manager.dart';
 import '../../../../core/capabilities/app_capabilities.dart';
 import '../../../../core/utils/file_explorer.dart';
 import '../../../../core/window/app_window_bootstrap.dart';
+import '../../../../core/window/app_window_bounds.dart';
 import '../../../../core/window/app_window_chrome.dart';
 import '../../../../l10n/l10n.dart';
 import '../../../../shared/theme/app_design_tokens.dart';
@@ -36,7 +37,10 @@ class _DownloadProgressWindowPageState extends ConsumerState<DownloadProgressWin
   bool _detailsExpanded = false;
   bool _resizing = false;
   double _compactHeight = AppDesignTokens.downloadProgressWindowSize.height;
-  double _targetHeight = AppDesignTokens.downloadProgressWindowSize.height;
+  var _targetHeights = (
+    preferred: AppDesignTokens.downloadProgressWindowSize.height,
+    minimum: AppDesignTokens.downloadProgressWindowSize.height,
+  );
 
   @override
   void initState() {
@@ -95,9 +99,7 @@ class _DownloadProgressWindowPageState extends ConsumerState<DownloadProgressWin
                           final expanded = task != null && _detailsExpanded && !task.isGroup;
                           final bodyHeight = constraints.maxHeight;
                           final inset = MediaQuery.sizeOf(context).height - bodyHeight;
-                          final summaryHeight = expanded
-                              ? math.min(math.max(0.0, _compactHeight - inset), math.max(0.0, bodyHeight - 96))
-                              : bodyHeight;
+                          final summaryHeight = expanded ? (_compactHeight - inset).clamp(0.0, bodyHeight) : bodyHeight;
                           return Padding(
                             padding: const EdgeInsets.symmetric(horizontal: AppDesignTokens.space16),
                             child: Column(
@@ -115,7 +117,13 @@ class _DownloadProgressWindowPageState extends ConsumerState<DownloadProgressWin
                                           child: DownloadProgressHeader(
                                             task: task,
                                             onHeightDelta: (delta) {
-                                              if (task != null) _fitWindow(inset + summaryHeight + delta, expanded);
+                                              if (task == null || !mounted || _closing) return;
+                                              final compact = math.max(
+                                                AppDesignTokens.downloadProgressWindowSize.height,
+                                                (inset + summaryHeight + delta).ceilToDouble(),
+                                              );
+                                              if (compact != _compactHeight) setState(() => _compactHeight = compact);
+                                              _fitWindow(expanded);
                                             },
                                           ),
                                         ),
@@ -139,10 +147,7 @@ class _DownloadProgressWindowPageState extends ConsumerState<DownloadProgressWin
                                 ),
                                 if (expanded)
                                   SizedBox(
-                                    height: math.min(
-                                      AppDesignTokens.downloadProgressConnectionsHeight,
-                                      math.max(0.0, bodyHeight - summaryHeight - AppDesignTokens.space8),
-                                    ),
+                                    height: math.max(0.0, bodyHeight - summaryHeight - AppDesignTokens.space8),
                                     child: DownloadProgressConnections(task: task),
                                   ),
                               ],
@@ -163,45 +168,52 @@ class _DownloadProgressWindowPageState extends ConsumerState<DownloadProgressWin
     );
   }
 
-  void _fitWindow(double measuredHeight, bool expanded) {
+  void _fitWindow(bool expanded) {
     if (!AppWindowChrome.isDesktopWindow || _closing) return;
-    final compact = math.max(AppDesignTokens.downloadProgressWindowSize.height, measuredHeight.ceilToDouble());
-    if (compact != _compactHeight) setState(() => _compactHeight = compact);
-    final detailsHeight = (AppDesignTokens.downloadProgressExpandedHeight - compact).clamp(
-      96.0,
-      AppDesignTokens.downloadProgressConnectionsHeight + AppDesignTokens.space8,
+    final heights = (
+      preferred: _compactHeight + (expanded ? AppDesignTokens.downloadProgressDefaultDetailsHeight : 0.0),
+      minimum: _compactHeight + (expanded ? AppDesignTokens.downloadProgressMinimumDetailsHeight : 0.0),
     );
-    final height = expanded ? compact + detailsHeight : compact;
-    if (height == _targetHeight) return;
-    _targetHeight = height;
+    if (heights == _targetHeights) return;
+    _targetHeights = heights;
     if (!_resizing) unawaited(_resizeWindow());
   }
 
   Future<void> _resizeWindow() async {
     _resizing = true;
-    double target;
+    ({double preferred, double minimum}) target;
     do {
-      target = _targetHeight;
+      target = _targetHeights;
       try {
+        final platform = defaultTargetPlatform;
         // AppKit can report non-resizable windows as zoomed even at their compact size.
-        if ((defaultTargetPlatform != TargetPlatform.macOS && await windowManager.isMaximized()) ||
+        if ((platform != TargetPlatform.macOS && await windowManager.isMaximized()) ||
             await windowManager.isFullScreen()) {
           break;
         }
-        final size = await windowManager.getSize();
-        if (mounted && !_closing && target == _targetHeight) {
-          final nextSize = Size(size.width, target);
-          if (defaultTargetPlatform == TargetPlatform.linux) {
+        final current = await windowManager.getBounds();
+        final next = await fitWindowHeight(
+          current,
+          preferredHeight: target.preferred,
+          minimumHeight: target.minimum,
+          windowScale: platform == TargetPlatform.windows ? windowManager.getDevicePixelRatio() : null,
+        );
+        if (mounted && !_closing && target == _targetHeights) {
+          final move = next.topLeft != current.topLeft;
+          if (platform == TargetPlatform.linux) {
+            if (move) await windowManager.setPosition(next.topLeft);
             // A previous GTK size request may still be waiting for allocation.
-            await AppWindowBootstrap.setLinuxProgressWindowSize(nextSize);
-          } else if ((size.height - target).abs() >= 1) {
-            await windowManager.setSize(nextSize);
+            await AppWindowBootstrap.setLinuxProgressWindowSize(next.size);
+          } else if (move) {
+            await windowManager.setBounds(next);
+          } else if (next.height != current.height) {
+            await windowManager.setSize(next.size);
           }
         }
       } catch (error) {
         debugPrint('Unable to resize the download progress window: $error');
       }
-    } while (mounted && !_closing && target != _targetHeight);
+    } while (mounted && !_closing && target != _targetHeights);
     _resizing = false;
   }
 
