@@ -14,6 +14,7 @@ class TaskContextActions {
     required this.allSelected,
     required this.listeningForUpdate,
     required this.onShowDetails,
+    this.onShowDownloadProgress,
     required this.onOpenFile,
     required this.onOpenDirectory,
     required this.onBrowseFiles,
@@ -30,6 +31,7 @@ class TaskContextActions {
   final bool allSelected;
   final bool listeningForUpdate;
   final VoidCallback onShowDetails;
+  final VoidCallback? onShowDownloadProgress;
   final VoidCallback onOpenFile;
   final VoidCallback onOpenDirectory;
   final VoidCallback onBrowseFiles;
@@ -112,6 +114,13 @@ class TaskContextMenu extends StatelessWidget {
           onPressed: (_) => actions.onShowDetails(),
           child: Text(context.l10n.taskDetailsInfoTab),
         ),
+        if (actions.onShowDownloadProgress != null)
+          shad.MenuButton(
+            key: const ValueKey('task-context-download-progress'),
+            leading: const Icon(Icons.downloading, size: 16),
+            onPressed: (_) => actions.onShowDownloadProgress!(),
+            child: Text(context.l10n.downloadProgressWindow),
+          ),
         if (shouldShowTaskOpenFileAction(task))
           shad.MenuButton(
             key: const ValueKey('task-context-open-file'),

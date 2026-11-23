@@ -12,6 +12,7 @@ import '../../application/app_platform_controller.dart';
 import '../../../features/settings/presentation/widgets/app_update_dialog.dart';
 import '../../../features/tasks/application/pending_update_task.dart';
 import '../../../features/tasks/application/tasks_controller.dart';
+import '../../../features/tasks/application/download_progress_window_controller.dart';
 import '../../../features/tasks/presentation/widgets/pending_update_dialog.dart';
 import '../app_router.dart';
 import '../../../shared/widgets/app_toast.dart';
@@ -62,6 +63,7 @@ class _MainShellState extends ConsumerState<MainShell> {
       ref.watch(appPlatformControllerProvider);
       ref.watch(appDeepLinkControllerProvider);
       ref.watch(appNotificationControllerProvider);
+      ref.watch(downloadProgressWindowControllerProvider);
     }
     // Keep the nested Navigator mounted even while the runtime is starting.
     return widget.child;

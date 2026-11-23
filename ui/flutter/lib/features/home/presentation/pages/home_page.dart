@@ -474,6 +474,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       allSelected: allSelected,
       listeningForUpdate: listeningForUpdate,
       onShowDetails: () => _showTaskDetails(task),
+      onShowDownloadProgress: AppWindowChrome.isDesktopWindow ? () => unawaited(_showDownloadProgress(task.id)) : null,
       onOpenFile: () => unawaited(_openTask(task)),
       onOpenDirectory: () => unawaited(_revealTask(task)),
       onBrowseFiles: () =>
@@ -494,6 +495,11 @@ class _HomePageState extends ConsumerState<HomePage> {
       onUpdateUrl: () => unawaited(_showUpdateUrlDialog(task)),
       onToggleUpdateListener: () => _toggleUpdateListener(task),
     );
+  }
+
+  Future<void> _showDownloadProgress(String taskId) async {
+    final opened = await AppRouter.openDownloadProgress(taskId);
+    if (!opened && mounted) _showToast(context.l10n.unableOpenDownloadProgressWindow);
   }
 
   List<String> _contextTaskIds(TaskRecord task) {
@@ -518,8 +524,6 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   Future<void> _deleteTasks(List<String> ids) async {
     if (ids.isEmpty) return;
-    final runtime = ref.read(appRuntimeControllerProvider).value;
-    final config = runtime?.downloaderConfig;
     final selected =
         ref.read(tasksControllerProvider).value?.allTasks.where((task) => ids.contains(task.id)).toList() ??
         <TaskRecord>[];
@@ -530,37 +534,34 @@ class _HomePageState extends ConsumerState<HomePage> {
     ids = ids.where((id) => !groupedMemberIds.contains(id)).toList();
     selected.removeWhere((task) => groupedMemberIds.contains(task.id));
     final hasGroups = selected.any((task) => task.isGroup);
-    final keepFiles = await showTaskDeleteDialog(
-      context,
-      taskCount: ids.length,
-      memberCount: !hasGroups
-          ? null
-          : selected.fold<int>(0, (total, task) => total + (task.isGroup ? task.members.length : 1)),
-      // A task always downloads at least one file; records whose resource
-      // has no file list (plain single-file downloads) still count as one.
-      fileCount: !hasGroups
-          ? null
-          : selected.fold<int>(0, (total, task) => total + (task.files.isEmpty ? 1 : task.files.length)),
-      keepFiles: config?.extra.lastDeleteTaskKeep ?? true,
-    );
-    if (keepFiles == null || !mounted) return;
-
     await _runTaskAction(() async {
-      if (config != null) {
-        config.extra.lastDeleteTaskKeep = keepFiles;
-        await ref.read(gopeedServiceProvider).putConfig(config);
-      }
+      final keepFiles = await showRememberedTaskDeleteDialog(
+        context,
+        storage: ref.read(appStorageServiceProvider),
+        taskCount: ids.length,
+        memberCount: !hasGroups
+            ? null
+            : selected.fold<int>(0, (total, task) => total + (task.isGroup ? task.members.length : 1)),
+        // A task always downloads at least one file; records whose resource
+        // has no file list (plain single-file downloads) still count as one.
+        fileCount: !hasGroups
+            ? null
+            : selected.fold<int>(0, (total, task) => total + (task.files.isEmpty ? 1 : task.files.length)),
+      );
+      if (keepFiles == null || !mounted) return;
+
       await ref.read(tasksControllerProvider.notifier).deleteSelected(ids, force: !keepFiles);
       await ref.read(appRuntimeControllerProvider.notifier).reloadConfig();
-    });
-    if (!mounted) return;
-    _batchSelection.removeAll({...ids, ...groupedMemberIds});
-    setState(() {
-      _batchMode = false;
-      _expandedGroupIds.removeAll(ids);
-      if (_selectedTask != null && (ids.contains(_selectedTask!.id) || groupedMemberIds.contains(_selectedTask!.id))) {
-        _selectedTask = null;
-      }
+      if (!mounted) return;
+      _batchSelection.removeAll({...ids, ...groupedMemberIds});
+      setState(() {
+        _batchMode = false;
+        _expandedGroupIds.removeAll(ids);
+        if (_selectedTask != null &&
+            (ids.contains(_selectedTask!.id) || groupedMemberIds.contains(_selectedTask!.id))) {
+          _selectedTask = null;
+        }
+      });
     });
   }
 

@@ -270,10 +270,11 @@ void main() {
   testWidgets('desktop frame overlays global caption controls without insetting content', (WidgetTester tester) async {
     const windowChannel = MethodChannel('window_manager');
     debugDefaultTargetPlatformOverride = TargetPlatform.windows;
-    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
-      windowChannel,
-      (call) async => call.method == 'isMaximized' ? false : null,
-    );
+    final calls = <String>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(windowChannel, (call) async {
+      calls.add(call.method);
+      return call.method == 'isMaximized' || call.method == 'isFullScreen' ? false : null;
+    });
     addTearDown(() {
       debugDefaultTargetPlatformOverride = null;
       tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(windowChannel, null);
@@ -283,17 +284,34 @@ void main() {
       shad.ShadcnApp(
         theme: AppTheme.light(),
         materialTheme: AppTheme.materialLight(),
-        home: const AppWindowFrame(child: SizedBox.expand(key: ValueKey('window-content'))),
+        home: const AppWindowFrame(
+          title: 'archive.zip',
+          resizable: false,
+          child: SizedBox.expand(key: ValueKey('window-content')),
+        ),
       ),
     );
     await tester.pump();
 
-    expect(find.byType(DesktopWindowHeader), findsOneWidget);
-    expect(find.byType(DragToResizeArea), findsOneWidget);
-    expect(
-      find.descendant(of: find.byType(DesktopWindowHeader), matching: find.byType(WindowCaptionControls)),
-      findsOneWidget,
-    );
+    final header = find.byType(DesktopWindowHeader);
+    expect(find.descendant(of: header, matching: find.text('archive.zip')), findsOneWidget);
+    expect(find.descendant(of: header, matching: find.byType(Image)), findsOneWidget);
+    expect(find.byType(DragToResizeArea), findsNothing);
+    final controls = find.descendant(of: header, matching: find.byType(WindowCaptionControls));
+    final buttons = find.descendant(of: controls, matching: find.byType(GestureDetector));
+    expect(buttons, findsNWidgets(3));
+    expect(tester.widget<GestureDetector>(buttons.at(1)).onTap, isNull);
+    await tester.tap(buttons.at(1));
+    final title = find.text('archive.zip');
+    await tester.tap(title);
+    await tester.pump(const Duration(milliseconds: 60));
+    await tester.tap(title);
+    await tester.drag(title, const Offset(50, 10));
+    expect(calls, contains('startDragging'));
+    expect(calls, isNot(contains('maximize')));
+    await tester.tap(buttons.first);
+    await tester.tap(buttons.last);
+    expect(calls, containsAllInOrder(['minimize', 'close']));
     expect(tester.getSize(find.byType(DesktopWindowHeader)).height, AppDesignTokens.windowHeaderHeight);
     expect(tester.getTopLeft(find.byKey(const ValueKey('window-content'))), Offset.zero);
 
@@ -1430,6 +1448,34 @@ void main() {
     expect(tester.getTopLeft(mobileHeader).dy, 32);
     expect(tester.getSize(mobileHeader).height, 56);
   });
+
+  testWidgets(
+    'download progress window setting defaults on and can be toggled',
+    (tester) async {
+      await _setTestSize(tester, const Size(1024, 768));
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            appRuntimeControllerProvider.overrideWith(FakeRuntimeController.new),
+            appPlatformControllerProvider.overrideWith(FakePlatformController.new),
+            settingsControllerProvider.overrideWith(FakeSettingsController.new),
+          ],
+          child: const _SettingsTestApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final toggle = find.byKey(const ValueKey('download-progress-window-switch'));
+      expect(tester.widget<shad.Switch>(toggle).value, isTrue);
+      await tester.ensureVisible(toggle);
+      await tester.tap(toggle);
+      await tester.pumpAndSettle();
+      expect(tester.widget<shad.Switch>(toggle).value, isFalse);
+      await tester.tap(toggle);
+      await tester.pumpAndSettle();
+      expect(tester.widget<shad.Switch>(toggle).value, isTrue);
+    },
+    variant: TargetPlatformVariant({TargetPlatform.windows}),
+  );
 
   testWidgets('settings use three top-level entries and ordered groups', (WidgetTester tester) async {
     await _setTestSize(tester, const Size(1024, 768));

@@ -1,14 +1,20 @@
 import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/material.dart' show Colors;
+import 'package:flutter/services.dart' show MethodChannel;
 import 'package:flutter/widgets.dart';
 import 'package:window_manager/window_manager.dart';
 
+import '../../api/model/downloader_config.dart';
 import '../../l10n/l10n.dart';
 import '../../shared/theme/app_design_tokens.dart';
 import 'app_window_chrome.dart';
 import 'app_window_payload.dart';
 
 class AppWindowBootstrap {
+  static Future<void> setLinuxProgressWindowSize(Size size) => const MethodChannel(
+    'gopeed/progress_window',
+  ).invokeMethod<void>('setSize', {'width': size.width.round(), 'height': size.height.ceil()});
+
   static Future<void> setupMainWindow({bool hidden = false}) async {
     if (!AppWindowChrome.isDesktopWindow) {
       return;
@@ -29,12 +35,27 @@ class AppWindowBootstrap {
       if (AppWindowChrome.usesCustomChrome) {
         await windowManager.setAsFrameless();
       }
-      await windowManager.setHasShadow(true);
+      if (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.macOS) {
+        await windowManager.setHasShadow(true);
+      }
       if (!hidden) {
         await windowManager.show();
         await windowManager.focus();
       }
     });
+  }
+
+  static Future<void> restoreMainWindowState(WindowStateConfig windowState, {required bool hidden}) async {
+    final width = windowState.width;
+    final height = windowState.height;
+    if (width != null && height != null && width > 0 && height > 0) {
+      await windowManager.setSize(Size(width, height));
+      await windowManager.center();
+    }
+    // On Windows, maximizing a hidden window also shows it.
+    if (!hidden && windowState.isMaximized) {
+      await windowManager.maximize();
+    }
   }
 
   static Future<void> setupSubWindow(AppWindowType type, {String localeConfig = ''}) async {
@@ -44,6 +65,32 @@ class AppWindowBootstrap {
 
     await windowManager.ensureInitialized();
     final title = subWindowTitle(type, appLocalizationsFor(localeConfig));
+
+    if (type == AppWindowType.downloadProgress) {
+      if (defaultTargetPlatform == TargetPlatform.linux) {
+        await setLinuxProgressWindowSize(AppDesignTokens.downloadProgressWindowSize);
+      }
+      final progressOptions = WindowOptions(
+        size: AppDesignTokens.downloadProgressWindowSize,
+        center: true,
+        skipTaskbar: false,
+        backgroundColor: Colors.transparent,
+        title: title,
+        titleBarStyle: TitleBarStyle.hidden,
+      );
+      await windowManager.waitUntilReadyToShow(progressOptions, () async {
+        if (AppWindowChrome.usesCustomChrome) {
+          await windowManager.setAsFrameless();
+        }
+        await windowManager.setResizable(false);
+        await windowManager.setMaximizable(false);
+        if (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.macOS) {
+          await windowManager.setHasShadow(true);
+        }
+        await _showSubWindowInForeground();
+      });
+      return;
+    }
 
     final options = switch (type) {
       AppWindowType.createTask => WindowOptions(
@@ -69,7 +116,9 @@ class AppWindowBootstrap {
         await windowManager.setAsFrameless();
       }
       await windowManager.setTitle(title);
-      await windowManager.setHasShadow(true);
+      if (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.macOS) {
+        await windowManager.setHasShadow(true);
+      }
       await _showSubWindowInForeground();
     });
   }
@@ -77,6 +126,7 @@ class AppWindowBootstrap {
   static String subWindowTitle(AppWindowType type, AppLocalizations l10n) {
     return switch (type) {
       AppWindowType.createTask => 'Gopeed - ${l10n.create}',
+      AppWindowType.downloadProgress => l10n.downloadProgressTitle,
       _ => 'Gopeed',
     };
   }

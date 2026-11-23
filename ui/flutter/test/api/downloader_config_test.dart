@@ -6,6 +6,14 @@ import 'package:gopeed/api/model/downloader_config.dart';
 import 'package:path/path.dart' as path;
 
 void main() {
+  test('download progress windows default on and respect an explicit off setting', () {
+    expect(DownloaderConfig().extra.showDownloadProgressWindow, isTrue);
+    expect(ExtraConfig.fromJson(null).showDownloadProgressWindow, isTrue);
+    expect(ExtraConfig.fromJson({}).showDownloadProgressWindow, isTrue);
+    final config = DownloaderConfig()..extra.showDownloadProgressWindow = false;
+    expect(DownloaderConfig.fromJson(config.toJson()).extra.showDownloadProgressWindow, isFalse);
+  });
+
   test('auto-start tasks uses the backend-owned top-level config field', () {
     final config = DownloaderConfig(autoStartTasks: true);
     final json = config.toJson();

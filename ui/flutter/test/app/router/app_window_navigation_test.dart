@@ -124,6 +124,26 @@ void main() {
     variant: TargetPlatformVariant({TargetPlatform.macOS}),
   );
 
+  testWidgets(
+    'native download progress failure leaves the main window in place',
+    (tester) async {
+      await mount(tester);
+      final home = tester.state(find.byType(HomePage));
+      final windowCalls = <String>[];
+      messenger.setMockMethodCallHandler(windowManagerChannel, (call) async {
+        windowCalls.add(call.method);
+        return null;
+      });
+      expect(await AppRouter.openDownloadProgress('missing'), isFalse);
+      await tester.pumpAndSettle();
+      expect(windowCalls, isEmpty);
+      expect(find.byKey(const ValueKey('app-window-modal')), findsNothing);
+      expect(tester.state(find.byType(HomePage)), same(home));
+      await unmount(tester);
+    },
+    variant: TargetPlatformVariant({TargetPlatform.macOS}),
+  );
+
   testWidgets('modal fits phone, tablet and desktop viewports', (tester) async {
     await mount(tester);
     final router = GoRouter.of(AppRouter.rootNavigatorKey.currentContext!);

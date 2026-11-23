@@ -1,4 +1,8 @@
 {
+  "unableOpenDownloadProgressWindow": "Nem sikerült megnyitni a letöltés állapotablakát",
+  "cancelDownload": "Letöltés megszakítása",
+  "downloadProgressWindow": "Letöltési folyamatablak",
+  "downloadProgressWindowDescription": "Folyamatablak automatikus megnyitása csak a böngészőből átvett letöltéseknél. Bezárása nem állítja le a letöltést.",
   "@@locale": "hu",
   "label": "Magyar",
   "error": "Hiba",
@@ -480,5 +484,7 @@
   "trackerSubscriptionTrackerCount": "Trackerek száma",
   "trackerSubscriptionNotUpdated": "Még nem frissült",
   "actions": "Műveletek",
-  "taskGroupDeleteImpact": "{taskCount} letöltést és {fileCount} fájlt érint."
+  "taskGroupDeleteImpact": "{taskCount} letöltést és {fileCount} fájlt érint.",
+  "runInBackground": "Háttérben",
+  "downloadBackgroundHint": "Az ablak bezárása nem állítja le a letöltést."
 }

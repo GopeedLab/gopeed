@@ -1,4 +1,5 @@
 import 'package:flutter/widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
 import '../app/application/app_appearance_controller.dart';
@@ -12,17 +13,17 @@ import '../shared/theme/app_component_themes.dart';
 import '../shared/theme/app_theme.dart';
 import '../shared/theme/app_theme_color.dart';
 
-class ChildWindowApp extends StatefulWidget {
+class ChildWindowApp extends ConsumerStatefulWidget {
   const ChildWindowApp({super.key, required this.payload, required this.session});
 
   final AppWindowPayload payload;
   final ChildWindowSession session;
 
   @override
-  State<ChildWindowApp> createState() => _ChildWindowAppState();
+  ConsumerState<ChildWindowApp> createState() => _ChildWindowAppState();
 }
 
-class _ChildWindowAppState extends State<ChildWindowApp> with WidgetsBindingObserver {
+class _ChildWindowAppState extends ConsumerState<ChildWindowApp> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
@@ -64,9 +65,10 @@ class _ChildWindowAppState extends State<ChildWindowApp> with WidgetsBindingObse
     };
     final locale = supportedLocaleFromConfig(appearance.locale);
 
+    final type = widget.payload.type;
     return shad.ShadcnApp(
       debugShowCheckedModeBanner: false,
-      onGenerateTitle: (context) => AppWindowBootstrap.subWindowTitle(widget.payload.type, context.l10n),
+      onGenerateTitle: (context) => AppWindowBootstrap.subWindowTitle(type, context.l10n),
       theme: AppTheme.light(themeColor),
       darkTheme: AppTheme.dark(themeColor),
       materialTheme: isLightTheme ? AppTheme.materialLight(themeColor) : AppTheme.materialDark(themeColor),
@@ -75,13 +77,22 @@ class _ChildWindowAppState extends State<ChildWindowApp> with WidgetsBindingObse
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       builder: (context, child) => AppComponentThemes(child: child ?? const SizedBox.shrink()),
-      home: AppWindowFrame(child: Builder(builder: _buildPage)),
+      home: Builder(
+        builder: (context) => AppWindowFrame(
+          title: type == AppWindowType.downloadProgress ? AppWindowBootstrap.subWindowTitle(type, context.l10n) : null,
+          resizable: type != AppWindowType.downloadProgress,
+          child: Builder(builder: _buildPage),
+        ),
+      ),
     );
   }
 
   Widget _buildPage(BuildContext context) {
     return switch (widget.payload.type) {
-      AppWindowType.createTask => AppWindowContent.build(widget.payload, windowController: widget.session.controller),
+      AppWindowType.createTask || AppWindowType.downloadProgress => AppWindowContent.build(
+        widget.payload,
+        windowController: widget.session.controller,
+      ),
       _ => shad.Scaffold(child: Center(child: Text(context.l10n.unsupportedWindowPayload))),
     };
   }

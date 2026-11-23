@@ -36,11 +36,48 @@ void main() {
     );
     try {
       await container.read(appDeepLinkControllerProvider.future);
+      await Future<void>.delayed(Duration.zero);
       expect(container.read(pendingExtensionInstallProvider)?.url, initialUrl);
       container.read(pendingExtensionInstallProvider.notifier).clear();
       platform.emit(link('https://github.com/author/second'));
       await Future<void>.delayed(Duration.zero);
       expect(container.read(pendingExtensionInstallProvider)?.url, 'https://github.com/author/second');
+    } finally {
+      container.dispose();
+      await Future<void>.delayed(Duration.zero);
+      AppLinksPlatform.instance = originalPlatform;
+      await platform.close();
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+        const MethodChannel('window_manager'),
+        null,
+      );
+    }
+  });
+
+  test('handles the cold-start link only once', () async {
+    final originalPlatform = AppLinksPlatform.instance;
+    final link = Uri.parse('gopeed:///extension').replace(
+      queryParameters: {
+        'params': base64Encode(utf8.encode(jsonEncode({'url': 'https://github.com/author/once'}))),
+      },
+    );
+    final platform = _FakeAppLinksPlatform(initialLink: link);
+    AppLinksPlatform.instance = platform;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+      const MethodChannel('window_manager'),
+      (_) async => false,
+    );
+    final container = ProviderContainer(
+      overrides: [appRuntimeControllerProvider.overrideWith(_FakeRuntimeController.new)],
+    );
+    var handled = 0;
+    container.listen(pendingExtensionInstallProvider, (_, next) {
+      if (next != null) handled++;
+    });
+    try {
+      await container.read(appDeepLinkControllerProvider.future);
+      await Future<void>.delayed(Duration.zero);
+      expect(handled, 1);
     } finally {
       container.dispose();
       await Future<void>.delayed(Duration.zero);
@@ -104,12 +141,24 @@ void main() {
   });
 }
 
+/// Mirrors the native app_links plugins: the initial link is returned by
+/// [getInitialLink] and is also delivered once to the first stream listener.
 class _FakeAppLinksPlatform extends AppLinksPlatform {
-  _FakeAppLinksPlatform({this.initialLink});
+  _FakeAppLinksPlatform({this.initialLink}) {
+    _links = StreamController<Uri>.broadcast(
+      onListen: () {
+        if (!_initialLinkSent && initialLink != null) {
+          _initialLinkSent = true;
+          _links.add(initialLink!);
+        }
+      },
+    );
+  }
 
   final Uri? initialLink;
+  var _initialLinkSent = false;
   void emit(Uri uri) => _links.add(uri);
-  final _links = StreamController<Uri>.broadcast();
+  late final StreamController<Uri> _links;
 
   bool get hasListener => _links.hasListener;
 
