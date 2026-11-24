@@ -66,6 +66,46 @@ Future<void> open(
 }
 
 void main() {
+  for (final initialName in ['', 'meeting-notes']) {
+    testWidgets('single file rename selects the stem (initial name: "$initialName")', (tester) async {
+      final source = PendingDownload(
+        id: 'report',
+        request: Request(url: 'https://example.com/download'),
+        options: Options(name: initialName),
+      );
+      CreateTaskBatch? submitted;
+      final registry = CapabilityRegistry(createAppCapabilityCodecs())
+        ..bind(GopeedMethods.resolve, (_) => resolved('report.pdf'))
+        ..bind(GopeedMethods.createTaskBatch, (batch) {
+          submitted = batch;
+          return CreateTaskBatchResult(taskIds: ['task']);
+        });
+      await open(tester, [source], registry);
+
+      final rename = find.byKey(const ValueKey('resolve-rename-input'));
+      expect(rename, findsOneWidget);
+      await tester.tap(rename);
+      await tester.pump();
+      final editable = tester.widget<EditableText>(find.descendant(of: rename, matching: find.byType(EditableText)));
+      final expectedStem = initialName.isEmpty ? 'report' : initialName;
+      expect(editable.controller.text, '$expectedStem.pdf');
+      expect(editable.controller.selection, TextSelection(baseOffset: 0, extentOffset: expectedStem.length));
+
+      if (initialName.isEmpty) {
+        final suffix = editable.controller.selection.textAfter(editable.controller.text);
+        tester.testTextInput.updateEditingValue(
+          TextEditingValue(text: 'meeting-notes$suffix', selection: const TextSelection.collapsed(offset: 13)),
+        );
+      } else {
+        await tester.enterText(rename, 'meeting-notes.txt');
+      }
+      await tester.pump();
+      await tester.tap(find.byKey(const ValueKey('resolve-create-button')));
+      await tester.pumpAndSettle();
+      expect(submitted?.reqs?.single.opts?.name, initialName.isEmpty ? 'meeting-notes.pdf' : 'meeting-notes.txt');
+    });
+  }
+
   testWidgets('cancel releases a ready preview resource', (tester) async {
     final released = <String>[];
     final registry = CapabilityRegistry(createAppCapabilityCodecs())
@@ -191,7 +231,7 @@ void main() {
     );
     response.complete(resolved('resolved-file.txt'));
     await tester.pumpAndSettle();
-    expect(find.text('resolved-file.txt'), findsOneWidget);
+    expect(find.descendant(of: find.byType(ResolveFileTree), matching: find.text('resolved-file.txt')), findsOneWidget);
     expect(find.byType(FileTreeHorizontalViewport), findsOneWidget);
     expect(source.selected, {0});
     expect(tester.takeException(), isNull);
