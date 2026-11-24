@@ -17,7 +17,7 @@ on:
       - "Dockerfile"
 
 env:
-  GO_VERSION: "1.26.11"
+  GO_VERSION: "1.27.4"
 
 permissions:
   contents: write
