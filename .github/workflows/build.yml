@@ -213,6 +213,8 @@ jobs:
     needs: [get-release]
     env:
       MACOSX_DEPLOYMENT_TARGET: "13.0"
+      CGO_CFLAGS: "-O2 -g -mmacosx-version-min=13.0"
+      CGO_CXXFLAGS: "-O2 -g -mmacosx-version-min=13.0"
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v5
@@ -237,6 +239,8 @@ jobs:
     runs-on: macos-latest
     env:
       MACOSX_DEPLOYMENT_TARGET: "13.0"
+      CGO_CFLAGS: "-O2 -g -mmacosx-version-min=13.0"
+      CGO_CXXFLAGS: "-O2 -g -mmacosx-version-min=13.0"
     strategy:
       matrix:
         channel: [arm64, amd64, universal]
