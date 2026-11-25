@@ -1,12 +1,14 @@
 module github.com/GopeedLab/gopeed
 
-go 1.26.0
+go 1.27.0
+
+toolchain go1.27.4
 
 require (
 	codeberg.org/gruf/go-ffmpreg v0.6.23-0.20260827095416-df1836cb5be0
 	github.com/GopeedLab/webview_go v0.0.0-20260918010912-0d4c27bb7914
 	github.com/RoaringBitmap/roaring/v2 v2.16.0
-	github.com/anacrolix/torrent v1.62.0
+	github.com/anacrolix/torrent v1.63.1-0.20261124060611-f601c604a677
 	github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5
 	github.com/bodgit/sevenzip v1.6.1
 	github.com/dop251/goja v0.0.0-20260106131823-651366fbe6e3
@@ -43,7 +45,7 @@ require (
 	github.com/STARRY-S/zip v0.2.3 // indirect
 	github.com/anacrolix/btree v0.1.1 // indirect
 	github.com/anacrolix/go-utp v0.0.0-20260908033909-9f1664acf866 // indirect
-	github.com/anacrolix/missinggo/v2 v2.11.0 // indirect
+	github.com/anacrolix/missinggo/v2 v2.12.0 // indirect
 	github.com/andybalholm/brotli v1.2.0 // indirect
 	github.com/bodgit/plumbing v1.3.0 // indirect
 	github.com/bodgit/windows v1.0.1 // indirect
@@ -83,13 +85,13 @@ require (
 	github.com/anacrolix/chansync v0.8.0 // indirect
 	github.com/anacrolix/dht/v2 v2.23.1-0.20260525063928-ec3a9bd99456 // indirect
 	github.com/anacrolix/envpprof v1.5.0 // indirect
-	github.com/anacrolix/generics v0.2.0
+	github.com/anacrolix/generics v0.2.1-0.20261118011427-05a545e5bbda
 	github.com/anacrolix/go-libutp v1.5.2-0.20260908013213-836dd42cdde6 // indirect
 	github.com/anacrolix/log v0.17.1-0.20251118025802-918f1157b7bb // indirect
 	github.com/anacrolix/missinggo v1.3.0 // indirect
 	github.com/anacrolix/missinggo/perf v1.0.0 // indirect
 	github.com/anacrolix/mmsg v1.1.1 // indirect
-	github.com/anacrolix/multiless v0.4.0 // indirect
+	github.com/anacrolix/multiless v0.4.1-0.20261117234141-fbc4e053da19 // indirect
 	github.com/anacrolix/stm v0.5.0 // indirect
 	github.com/anacrolix/sync v0.6.0 // indirect
 	github.com/anacrolix/upnp v0.1.4 // indirect
@@ -97,7 +99,6 @@ require (
 	github.com/benbjohnson/immutable v0.4.3 // indirect
 	github.com/bits-and-blooms/bitset v1.24.4 // indirect
 	github.com/bradfitz/iter v0.0.0-20191230175014-e8f45d346db8 // indirect
-	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cloudflare/circl v1.6.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dlclark/regexp2 v1.11.5 // indirect
@@ -158,7 +159,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.45.0 // indirect
 	golang.org/x/crypto v0.57.0 // indirect
 	golang.org/x/net v0.60.0
-	golang.org/x/sys v0.48.0 // indirect
+	golang.org/x/sys v0.48.0
 	golang.org/x/text v0.42.0
 	golang.org/x/time v0.15.0
 	gopkg.in/warnings.v0 v0.1.2 // indirect

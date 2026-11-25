@@ -13,7 +13,7 @@ on:
         default: "false"
 
 env:
-  GO_VERSION: "1.26.11"
+  GO_VERSION: "1.27.4"
   FLUTTER_VERSION: "3.41.6"
   GA4_MEASUREMENT_ID: ${{ secrets.GA4_MEASUREMENT_ID }}
   GA4_API_SECRET: ${{ secrets.GA4_API_SECRET }}
@@ -211,6 +211,10 @@ jobs:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'macos' }}
     runs-on: macos-15-intel
     needs: [get-release]
+    env:
+      MACOSX_DEPLOYMENT_TARGET: "13.0"
+      CGO_CFLAGS: "-O2 -g -mmacosx-version-min=13.0"
+      CGO_CXXFLAGS: "-O2 -g -mmacosx-version-min=13.0"
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v5
@@ -233,6 +237,10 @@ jobs:
   build-macos:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'macos' }}
     runs-on: macos-latest
+    env:
+      MACOSX_DEPLOYMENT_TARGET: "13.0"
+      CGO_CFLAGS: "-O2 -g -mmacosx-version-min=13.0"
+      CGO_CXXFLAGS: "-O2 -g -mmacosx-version-min=13.0"
     strategy:
       matrix:
         channel: [arm64, amd64, universal]

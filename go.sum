@@ -32,8 +32,6 @@ github.com/Masterminds/semver/v3 v3.2.1/go.mod h1:qvl/7zhW3nngYb5+80sSMF+FG2BjYr
 github.com/Microsoft/go-winio v0.5.2/go.mod h1:WpS1mjBmmwHBEWmogvA2mj8546UReBk4v8QkMxJ6pZY=
 github.com/Microsoft/go-winio v0.6.2 h1:F2VQgta7ecxGYO8k3ZZz3RS8fVIXVxONVUPlNERoyfY=
 github.com/Microsoft/go-winio v0.6.2/go.mod h1:yd8OoFMLzJbo9gZq8j5qaps8bJ9aShtEA8Ipt1oGCvU=
-github.com/OneOfOne/xxhash v1.2.2 h1:KMrpdQIwFcEqXDklaen+P1axHaj9BSKzvpUUfnHldSE=
-github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
 github.com/ProtonMail/go-crypto v1.1.6 h1:ZcV+Ropw6Qn0AX9brlQLAUXfqLBc7Bl+f/DmNxpLfdw=
 github.com/ProtonMail/go-crypto v1.1.6/go.mod h1:rA3QumHc/FZ8pAHreoekgiAbzpNsfQAosU5td4SnOrE=
 github.com/RoaringBitmap/roaring v0.4.7/go.mod h1:8khRDP4HmeXns4xIj9oGrKSz7XTQiJx2zgh7AcNke4w=
@@ -67,8 +65,8 @@ github.com/anacrolix/envpprof v1.1.0/go.mod h1:My7T5oSqVfEn4MD4Meczkw/f5lSIndGAK
 github.com/anacrolix/envpprof v1.5.0 h1:eMI07YWjk86b+8N9A4k0OtLSS472/1Z0qraAW2oPZb4=
 github.com/anacrolix/envpprof v1.5.0/go.mod h1:OQPV3SNK6uVAlXL4slcZVXv+xLcE0ybWgVKcUfr5fE8=
 github.com/anacrolix/generics v0.0.0-20230113004304-d6428d516633/go.mod h1:ff2rHB/joTV03aMSSn/AZNnaIpUw0h3njetGsaXcMy8=
-github.com/anacrolix/generics v0.2.0 h1:gPwGOs14irokFN9kUP1i1A0Bn0FPT7/hWWD3hHKSKNw=
-github.com/anacrolix/generics v0.2.0/go.mod h1:NGehhfeXJPBujPx0s6cstSj8B+TERsTY32Xckfx5ftc=
+github.com/anacrolix/generics v0.2.1-0.20261118011427-05a545e5bbda h1:5HIc35cO5DcS+7qi0gkiOpYvgR1+1qW5R+Mv3Y+iADM=
+github.com/anacrolix/generics v0.2.1-0.20261118011427-05a545e5bbda/go.mod h1:BbZLaObiu7avjsAtpXg5SOZaMTItExoq3rdfECWx28k=
 github.com/anacrolix/go-libutp v1.5.2-0.20260908013213-836dd42cdde6 h1:eWpL7T6AXAC/Q5ttYsviaWIBEg4eBpB6LH/LCST8pBc=
 github.com/anacrolix/go-libutp v1.5.2-0.20260908013213-836dd42cdde6/go.mod h1:qJ59Ax77trj2F6OIydwSHtvMpPZSo/zZPPHosbIJQDk=
 github.com/anacrolix/go-utp v0.0.0-20260908033909-9f1664acf866 h1:JMYl7Xp9ZQwUFOzij7Ng+hrhbOymWY2B32p+IeZ8J3M=
@@ -89,12 +87,12 @@ github.com/anacrolix/missinggo/perf v1.0.0 h1:7ZOGYziGEBytW49+KmYGTaNfnwUqP1HBsy
 github.com/anacrolix/missinggo/perf v1.0.0/go.mod h1:ljAFWkBuzkO12MQclXzZrosP5urunoLS0Cbvb4V0uMQ=
 github.com/anacrolix/missinggo/v2 v2.2.0/go.mod h1:o0jgJoYOyaoYQ4E2ZMISVa9c88BbUBVQQW4QeRkNCGY=
 github.com/anacrolix/missinggo/v2 v2.5.1/go.mod h1:WEjqh2rmKECd0t1VhQkLGTdIWXO6f6NLjp5GlMZ+6FA=
-github.com/anacrolix/missinggo/v2 v2.11.0 h1:9vYHTNHa5q8tLeDbA6XWFyYeKrxrhfw7GZe9KpS2Wnw=
-github.com/anacrolix/missinggo/v2 v2.11.0/go.mod h1:gcZICf9xhHZEuLIaxXG1gRg4hpbL7lqgVrq5jsYtQU4=
+github.com/anacrolix/missinggo/v2 v2.12.0 h1:AnkaqrWDTfS8vGcxuYUBvrAj8+izhQs+QfNOMstnsdA=
+github.com/anacrolix/missinggo/v2 v2.12.0/go.mod h1:OySvjvTuLZvy1mpf+8OQsoT45r1CPn+TLwbgjDsBIJ8=
 github.com/anacrolix/mmsg v1.1.1 h1:4ce/3I5kM7qSF6T5A8MOmDCfac3UqYlk5Bzh5XsWebM=
 github.com/anacrolix/mmsg v1.1.1/go.mod h1:lPCXEN1eDDQtKktdKEzdw+roswx6wWPpeXAl/WpWVDU=
-github.com/anacrolix/multiless v0.4.0 h1:lqSszHkliMsZd2hsyrDvHOw4AbYWa+ijQ66LzbjqWjM=
-github.com/anacrolix/multiless v0.4.0/go.mod h1:zJv1JF9AqdZiHwxqPgjuOZDGWER6nyE48WBCi/OOrMM=
+github.com/anacrolix/multiless v0.4.1-0.20261117234141-fbc4e053da19 h1:gY4oyZ3z/cJLGB9d0iiGEiJbOG4OB6pG69vK8o/Lqk4=
+github.com/anacrolix/multiless v0.4.1-0.20261117234141-fbc4e053da19/go.mod h1:ZlIrPeWchipwq3CxFtCKRWvcnDa0PjB/+tT3nWzmPdA=
 github.com/anacrolix/stm v0.2.0/go.mod h1:zoVQRvSiGjGoTmbM0vSLIiaKjWtNPeTvXUSdJQA4hsg=
 github.com/anacrolix/stm v0.5.0 h1:9df1KBpttF0TzLgDq51Z+TEabZKMythqgx89f1FQJt8=
 github.com/anacrolix/stm v0.5.0/go.mod h1:MOwrSy+jCm8Y7HYfMAwPj7qWVu7XoVvjOiYwJmpeB/M=
@@ -103,8 +101,8 @@ github.com/anacrolix/sync v0.6.0/go.mod h1:zigHZiBXkcjo9uNACGCpovT+wNKMbzjO1qN2+
 github.com/anacrolix/tagflag v0.0.0-20180109131632-2146c8d41bf0/go.mod h1:1m2U/K6ZT+JZG0+bdMK6qauP49QT4wE5pmhJXOKKCHw=
 github.com/anacrolix/tagflag v1.0.0/go.mod h1:1m2U/K6ZT+JZG0+bdMK6qauP49QT4wE5pmhJXOKKCHw=
 github.com/anacrolix/tagflag v1.1.0/go.mod h1:Scxs9CV10NQatSmbyjqmqmeQNwGzlNe0CMUMIxqHIG8=
-github.com/anacrolix/torrent v1.62.0 h1:oWY/q8XdpkJaRd4QkSOaYWUXCmwR3PoLZEo5sneEPuA=
-github.com/anacrolix/torrent v1.62.0/go.mod h1:gmJQGJUN/XDHLWSKeHTPEH9nAM2E7Mr5cI1NidmdvSU=
+github.com/anacrolix/torrent v1.63.1-0.20261124060611-f601c604a677 h1:jz85AUwsqgNXQxxl8WDhMOx/mQ21NOOU1aSooTERAq0=
+github.com/anacrolix/torrent v1.63.1-0.20261124060611-f601c604a677/go.mod h1:/v2G2JDa2lwfMysybYA0n9bEeSj2ku3TVE1WS+4vaT4=
 github.com/anacrolix/upnp v0.1.4 h1:+2t2KA6QOhm/49zeNyeVwDu1ZYS9dB9wfxyVvh/wk7U=
 github.com/anacrolix/upnp v0.1.4/go.mod h1:Qyhbqo69gwNWvEk1xNTXsS5j7hMHef9hdr984+9fIic=
 github.com/andybalholm/brotli v1.2.0 h1:ukwgCxwYrmACq68yiUqwIWnGY0cTPox/M94sVwToPjQ=
@@ -135,8 +133,6 @@ github.com/bradfitz/iter v0.0.0-20190303215204-33e6a9893b0c/go.mod h1:PyRFw1Lt2w
 github.com/bradfitz/iter v0.0.0-20191230175014-e8f45d346db8 h1:GKTyiRCL6zVf5wWaqKnf+7Qs6GbEPfd4iMOitWzXJx8=
 github.com/bradfitz/iter v0.0.0-20191230175014-e8f45d346db8/go.mod h1:spo1JLcs67NmW1aVLEgtA8Yy1elc+X8y5SRW1sFW4Og=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
-github.com/cespare/xxhash v1.1.0 h1:a6HrQnmkObjyL+Gs60czilIUGqrzKutQD6XZog3p+ko=
-github.com/cespare/xxhash v1.1.0/go.mod h1:XrSqR1VqqWfGrhpAt58auRo0WTKS1nRRg3ghfAqPWnc=
 github.com/cespare/xxhash/v2 v2.1.1/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
 github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs=
 github.com/cespare/xxhash/v2 v2.3.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
@@ -510,7 +506,6 @@ github.com/smartystreets/goconvey v0.0.0-20181108003508-044398e4856c/go.mod h1:X
 github.com/smartystreets/goconvey v0.0.0-20190306220146-200a235640ff/go.mod h1:KSQcGKpxUMHk3nbYzs/tIBAM2iDooCn0BmttHOJEbLs=
 github.com/sorairolake/lzip-go v0.3.8 h1:j5Q2313INdTA80ureWYRhX+1K78mUXfMoPZCw/ivWik=
 github.com/sorairolake/lzip-go v0.3.8/go.mod h1:JcBqGMV0frlxwrsE9sMWXDjqn3EeVf0/54YPsw66qkU=
-github.com/spaolacci/murmur3 v0.0.0-20180118202830-f09979ecbc72/go.mod h1:JwIasOWyU6f++ZhiEuf87xNszmSA2myDM2Kzu9HwQUA=
 github.com/spaolacci/murmur3 v1.1.0 h1:7c1g84S4BPRrfL5Xrdp6fOJ206sU9y293DDHaoy0bLI=
 github.com/spaolacci/murmur3 v1.1.0/go.mod h1:JwIasOWyU6f++ZhiEuf87xNszmSA2myDM2Kzu9HwQUA=
 github.com/spf13/afero v1.15.0 h1:b/YBCLWAJdFWJTN9cLhiXXcD7mzKn9Dm86dNnfyQw1I=
