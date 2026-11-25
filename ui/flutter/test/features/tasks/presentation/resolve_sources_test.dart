@@ -161,7 +161,7 @@ void main() {
     });
   }
 
-  testWidgets('ED2K uses a file icon and filename while BT uses its resource name and folder icon', (tester) async {
+  testWidgets('resolved files use type icons and BT keeps its resource folder icon', (tester) async {
     final ed2k =
         PendingDownload(
             id: 'ed2k',
@@ -187,7 +187,7 @@ void main() {
             res: Resource(
               name: 'torrent resource',
               hash: 'infohash',
-              files: [FileInfo(name: 'torrent-file.bin')],
+              files: [FileInfo(name: 'movie.MKV')],
             ),
           )
           ..selected.add(0);
@@ -202,6 +202,9 @@ void main() {
     expect(find.text('payload.bin'), findsOneWidget);
     expect(find.text('torrent resource'), findsOneWidget);
     expect(find.byIcon(GopeedIcons.folderBt), findsOneWidget);
+    expect(find.text('movie.MKV'), findsOneWidget);
+    expect(find.byIcon(GopeedIcons.fileVideo), findsOneWidget);
+    expect(find.byIcon(GopeedIcons.file), findsOneWidget);
     expect(find.text(ed2k.request.url), findsNothing);
     expect(tester.takeException(), isNull);
   });
@@ -258,7 +261,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(pending.isGroup, extension);
       expect(find.byIcon(GopeedIcons.folderBt), extension ? findsNothing : findsOneWidget);
-      expect(find.byIcon(GopeedIcons.file), findsNWidgets(2));
+      expect(find.byIcon(GopeedIcons.fileText), findsNWidgets(2));
       expect(find.byIcon(shad.BootstrapIcons.folder2), extension ? findsOneWidget : findsNothing);
       expect(tester.takeException(), isNull);
     });
