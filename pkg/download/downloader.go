@@ -335,6 +335,9 @@ func (d *Downloader) Setup() error {
 							return
 						}
 						task.statusLock.Lock()
+						if !task.Uploading && task.Progress != nil && task.Progress.UploadSpeed != 0 {
+							task.Progress.UploadSpeed = 0
+						}
 						if task.Status != base.DownloadStatusRunning && !task.Uploading {
 							task.statusLock.Unlock()
 							task.lock.Unlock()
