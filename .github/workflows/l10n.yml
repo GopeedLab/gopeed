@@ -37,8 +37,10 @@ jobs:
       run:
         working-directory: ui/flutter
     steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
+      - uses: actions/checkout@v4.4.0
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2.23.0
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
       - run: flutter pub get

@@ -51,7 +51,9 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v3.7.0
+        with:
+          persist-credentials: false
       - name: Enable long paths for flutter main branch checks
         run: |
           git config --global core.longpaths true
@@ -81,10 +83,10 @@ jobs:
           "CLANGARM64_ROOT=$target" >> $env:GITHUB_ENV
           $b >> $env:GITHUB_PATH
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v5.6.0
         with:
           go-version: ${{ env.GO_VERSION }}
-      - uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2.23.0
         with:
           channel: ${{ matrix.flutter_channel || 'stable' }}
           flutter-version: ${{ matrix.flutter_version || env.FLUTTER_VERSION }}
@@ -211,13 +213,17 @@ jobs:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'macos' }}
     runs-on: macos-15-intel
     needs: [get-release]
+    permissions:
+      contents: read
     env:
       MACOSX_DEPLOYMENT_TARGET: "13.0"
       CGO_CFLAGS: "-O2 -g -mmacosx-version-min=13.0"
       CGO_CXXFLAGS: "-O2 -g -mmacosx-version-min=13.0"
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v3.7.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v5.6.0
         with:
           go-version: ${{ env.GO_VERSION }}
       - name: Build
@@ -227,7 +233,7 @@ jobs:
           go build -tags nosqlite -ldflags="-w -s -X github.com/GopeedLab/gopeed/pkg/base.Version=$VERSION" -buildmode=c-shared -o libgopeed.dylib github.com/GopeedLab/gopeed/bind/desktop
           go build -ldflags="-w -s" github.com/GopeedLab/gopeed/cmd/host
           go build -ldflags="-w -s" github.com/GopeedLab/gopeed/cmd/updater
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4.6.2
         with:
           name: macos-amd64-lib
           path: |
@@ -246,21 +252,23 @@ jobs:
         channel: [arm64, amd64, universal]
     needs: [get-release, build-macos-amd64-lib]
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v3.7.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v5.6.0
         with:
           go-version: ${{ env.GO_VERSION }}
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v3.9.1
         with:
           node-version: 16
-      - uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2.23.0
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
       - name: Install appdmg
         run: |
           python3 -m pip install setuptools --break-system-packages
           npm install -g appdmg
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4.3.0
         with:
           name: macos-amd64-lib
           path: ui/flutter/lib-amd64
@@ -324,7 +332,7 @@ jobs:
             mv dist/Gopeed-v$VERSION-macos.dmg dist/Gopeed-v$VERSION-macos-amd64.dmg
           fi
       - name: Upload
-        uses: shogo82148/actions-upload-release-asset@v1
+        uses: shogo82148/actions-upload-release-asset@v1.10.7
         with:
           upload_url: ${{ needs.get-release.outputs.upload_url }}
           asset_path: ui/flutter/build/macos/Build/Products/Release/dist/*
@@ -337,11 +345,13 @@ jobs:
         os: [ubuntu-22.04, ubuntu-22.04-arm]
     needs: [get-release]
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v3.7.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v5.6.0
         with:
           go-version: ${{ env.GO_VERSION }}
-      - uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2.23.0
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: master
@@ -423,7 +433,7 @@ jobs:
           mv gopeed-*-linux.deb Gopeed-v${VERSION}-linux-${ARCH}.deb
           mv gopeed-*-linux.rpm Gopeed-v${VERSION}-linux-${ARCH}.rpm
       - name: Upload
-        uses: shogo82148/actions-upload-release-asset@v1
+        uses: shogo82148/actions-upload-release-asset@v1.10.7
         with:
           upload_url: ${{ needs.get-release.outputs.upload_url }}
           asset_path: ui/flutter/dist/*/*
@@ -432,9 +442,13 @@ jobs:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'snap' }}
     runs-on: ubuntu-24.04
     needs: [get-release]
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v3.7.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v5.6.0
         with:
           go-version: ${{ env.GO_VERSION }}
       - name: Install Snap host build dependencies
@@ -578,15 +592,17 @@ jobs:
     runs-on: ubuntu-latest
     needs: [get-release]
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v3.7.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v5.6.0
         with:
           go-version: ${{ env.GO_VERSION }}
-      - uses: actions/setup-java@v3
+      - uses: actions/setup-java@v3.14.2
         with:
           distribution: "zulu"
           java-version: "17"
-      - uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2.23.0
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
       - name: Build
@@ -610,7 +626,7 @@ jobs:
           cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk dist/Gopeed-v$VERSION-android-arm64-v8a.apk
           cp build/app/outputs/flutter-apk/app-x86_64-release.apk dist/Gopeed-v$VERSION-android-x86_64.apk
       - name: Upload
-        uses: shogo82148/actions-upload-release-asset@v1
+        uses: shogo82148/actions-upload-release-asset@v1.10.7
         with:
           upload_url: ${{ needs.get-release.outputs.upload_url }}
           asset_path: ui/flutter/dist/*
@@ -620,11 +636,13 @@ jobs:
     runs-on: macos-26
     needs: [get-release]
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v3.7.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v5.6.0
         with:
           go-version: ${{ env.GO_VERSION }}
-      - uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2.23.0
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
       - name: Build
@@ -643,7 +661,7 @@ jobs:
           mkdir dist
           mv Payload.zip dist/Gopeed-v$VERSION-ios.ipa
       - name: Upload
-        uses: shogo82148/actions-upload-release-asset@v1
+        uses: shogo82148/actions-upload-release-asset@v1.10.7
         with:
           upload_url: ${{ needs.get-release.outputs.upload_url }}
           asset_path: ui/flutter/dist/*
@@ -653,11 +671,13 @@ jobs:
     runs-on: ubuntu-latest
     needs: [get-release]
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v3.7.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v5.6.0
         with:
           go-version: ${{ env.GO_VERSION }}
-      - uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2.23.0
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
       - name: Build
@@ -692,12 +712,12 @@ jobs:
               || true
             done
           done
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4.6.2
         with:
           name: web-dist
           path: dist/zip/
       - name: Upload
-        uses: shogo82148/actions-upload-release-asset@v1
+        uses: shogo82148/actions-upload-release-asset@v1.10.7
         with:
           upload_url: ${{ needs.get-release.outputs.upload_url }}
           asset_path: dist/zip/*
@@ -707,10 +727,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: [get-release, build-web]
     steps:
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5.6.0
         with:
           python-version: "3.8.18"
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4.3.0
         with:
           name: web-dist
           path: dist/zip/
@@ -755,7 +775,7 @@ jobs:
             [[ -f build/${sname} ]] && cp -ra build/${sname} ../dist/qnap/${dname}
           done
       - name: Upload
-        uses: shogo82148/actions-upload-release-asset@v1
+        uses: shogo82148/actions-upload-release-asset@v1.10.7
         with:
           upload_url: ${{ needs.get-release.outputs.upload_url }}
           asset_path: dist/qnap/*
@@ -764,21 +784,25 @@ jobs:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'docker' }}
     runs-on: ubuntu-latest
     needs: [get-release]
+    permissions:
+      contents: read
     steps:
       - name: Remove unnecessary files
         run: |
           sudo rm -rf /usr/share/dotnet
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
-      - uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2.23.0
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v3.7.0
+        with:
+          persist-credentials: false
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
+        uses: docker/setup-qemu-action@v2.2.0
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v2.10.0
       - name: Login to DockerHub
-        uses: docker/login-action@v1
+        uses: docker/login-action@v1.14.1
         with:
           username: liwei2633
           password: ${{ secrets.DOCKER_PASSWORD }}
@@ -791,7 +815,7 @@ jobs:
           rm -rf cmd/web/dist
           cp -r ui/flutter/build/web cmd/web/dist
       - name: Build and push
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v2.10.0
         env:
           VERSION: ${{ needs.get-release.outputs.version }}
         with:
