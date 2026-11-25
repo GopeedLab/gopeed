@@ -14,9 +14,9 @@
 
 ## 🚀 簡介
 
-Gopeed（**Go Speed** 的縮寫）是一款以 Go 與 Flutter 開發的免費開源高速下載器，支援桌面、行動裝置及 Web。
+**Gopeed 是一款免費開源的現代化高速下載器**，適用於桌面、行動裝置和 Web。支援 **HTTP/HTTPS、FTP/FTPS/FTPES、HLS（`.m3u8`）、BitTorrent 種子、磁力連結和 ed2k**。
 
-除了日常任務管理，Gopeed 也提供瀏覽器整合、JavaScript 擴充、REST API、命令列工具及可自行託管的 Web UI，方便進階使用者擴充與自動化下載流程。
+瀏覽器下載可以直接交給 Gopeed。JavaScript 擴充功能可以接入更多下載來源，並呼叫內建的 FFmpeg 合併音訊與視訊軌。你也可以透過 MCP 讓 AI 助理管理下載，使用 REST API 或 CLI 將任務自動化，或自行架設 Web 介面。
 
 瀏覽 ✈ [官方網站](https://gopeed.com)
 
