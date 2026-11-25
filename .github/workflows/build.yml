@@ -211,6 +211,8 @@ jobs:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'macos' }}
     runs-on: macos-15-intel
     needs: [get-release]
+    permissions:
+      contents: read
     env:
       MACOSX_DEPLOYMENT_TARGET: "13.0"
       CGO_CFLAGS: "-O2 -g -mmacosx-version-min=13.0"
@@ -432,6 +434,8 @@ jobs:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'snap' }}
     runs-on: ubuntu-24.04
     needs: [get-release]
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v5
@@ -764,6 +768,8 @@ jobs:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'docker' }}
     runs-on: ubuntu-latest
     needs: [get-release]
+    permissions:
+      contents: read
     steps:
       - name: Remove unnecessary files
         run: |
