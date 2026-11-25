@@ -4,31 +4,16 @@
 
 ## 分支說明
 
-請先 fork Gopeed，從最新的 `main` 建立開發分支，再向 `main` 提交 PR。
+本項目只有一個分支，即 `main` 分支，如果您想要參與 Gopeed 的開發，請先 fork 該項目，再在您自己的 fork 中進行開發，開發完成後再開啟PR，以合併至 `main` 分支。
 
-## 本機開發
+## 離線開發
 
-使用與 CI 一致的 Go 1.27.4 和 Flutter 3.41.6（Dart 3.11.4）。可先透過 Web 介面除錯，在儲存庫根目錄啟動 Go REST API。
-
-```sh
-go run -tags nosqlite ./cmd/api
-```
-
-API 監聽 `127.0.0.1:9999`。在另一個終端機中從儲存庫根目錄執行 Flutter Web。
-
-```sh
-cd ui/flutter
-flutter pub get
-flutter gen-l10n
-flutter run -d chrome
-```
-
-開發桌面或行動裝置版本時，需要為目標平台編譯 Go 繫結。建置步驟請見 [README](README_zh-TW.md)。
+建議使用 web 端進行開發與調試，首先啟動服務，使用指令 `go run cmd/api/main.go` 啟動 ，該服務默認連接埠為 `9999`，接著以 `debug` 模式啟動前端 flutter 項目即可。
 
 ## 翻譯
 
-Flutter 翻譯檔位於 `ui/flutter/lib/l10n`，請以 `app_en.arb` 為來源範本，修改或新增
-`app_<locale>.arb`（例如 `app_de.arb` 或 `app_zh_TW.arb`）。每個語言都必須與英文範本包含相同的訊息 key。
+Flutter 翻譯檔位於 [`ui/flutter/lib/l10n`](ui/flutter/lib/l10n)，請以 [`app_en.arb`](ui/flutter/lib/l10n/app_en.arb) 為來源範本，修改或新增
+`app_<locale>.arb`（例如 [`app_de.arb`](ui/flutter/lib/l10n/app_de.arb) 或 [`app_zh_TW.arb`](ui/flutter/lib/l10n/app_zh_TW.arb)）。每個語言都必須與英文範本包含相同的訊息 key。
 
 只翻譯訊息值，不要修改 `{count}`、`{name}` 等大括號中的變數名稱。以 `@` 開頭的中繼資料 key 不需要翻譯。
 提交時只需包含修改過的 ARB 來源檔，不需要產生或提交 `app_localizations*.dart`。PR 的 CI
@@ -78,24 +63,12 @@ Flutter 翻譯檔位於 `ui/flutter/lib/l10n`，請以 `app_en.arb` 為來源範
 
    `running`、`paused`、`other` 是程式傳入的分支值，不能翻譯；只翻譯其後大括號內的顯示文字。
 
-## 程式碼檢查
+## flutter開發
 
-使用 `gofmt` 格式化修改過的 Go 檔案，再從儲存庫根目錄執行 Go 測試。
+每次提交PR前請務必執行 `dart format ./ui/flutter`
 
-```sh
-go test -tags nosqlite ./...
+如果需要編輯 api/models，請打開build_runner watcher:
+
 ```
-
-使用 `dart format` 格式化修改過的 Dart 檔案。依照上文安裝 Flutter 相依套件並產生在地化程式碼後，從儲存庫根目錄執行以下檢查。
-
-```sh
-cd ui/flutter
-flutter analyze
-flutter test
-```
-
-若修改了 `lib/api/model/` 內含註解的模型，請在 `ui/flutter` 重新產生 JSON 序列化程式碼。
-
-```sh
-dart run build_runner build
+flutter pub run build_runner watch
 ```
