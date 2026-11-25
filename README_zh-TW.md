@@ -86,7 +86,7 @@ Flutter 應用程式位於 `ui/flutter`。Windows、macOS 和 Linux 透過 Dart 
 ### 🌍 開發環境
 
 1. Go 1.27.4
-2. Flutter 3.41.6 (Dart 3.11.4)
+2. Flutter 3.41.6
 
 ### 📋 克隆項目
 

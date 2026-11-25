@@ -90,7 +90,7 @@ The Flutter app lives in `ui/flutter`. Windows, macOS, and Linux call the Go cor
 ### 🌍 Environment
 
 1. Go 1.27.4
-2. Flutter 3.41.6 (Dart 3.11.4)
+2. Flutter 3.41.6
 
 ### 📋 Clone
 

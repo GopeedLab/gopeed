@@ -80,7 +80,7 @@ Flutter アプリは `ui/flutter` にあります。Windows、macOS、Linux で�
 ### 🌍 環境
 
 1. Go 1.27.4
-2. Flutter 3.41.6 (Dart 3.11.4)
+2. Flutter 3.41.6
 
 ### 📋 クローン
 

@@ -90,7 +90,7 @@ Flutter 应用位于 `ui/flutter`。Windows、macOS 和 Linux 通过 Dart FFI �
 ### 🌍 环境要求
 
 1. Go 1.27.4
-2. Flutter 3.41.6 (Dart 3.11.4)
+2. Flutter 3.41.6
 
 ### 📋 克隆项目
 

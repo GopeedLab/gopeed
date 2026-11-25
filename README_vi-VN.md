@@ -86,7 +86,7 @@ Nếu bạn thích dự án này, xin vui lòng xem xét [quyên góp](https://g
 ### 🌍 Môi trường phát triển
 
 1. Go 1.27.4
-2. Flutter 3.41.6 (Dart 3.11.4)
+2. Flutter 3.41.6
 
 ### 📋 Sao chép kho mã nguồn
 
