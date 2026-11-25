@@ -59,20 +59,20 @@ Gopeed を AI Agent と連携すると、自然言語でダウンロードを管
 
 ## ⬇️ インストール
 
-### 🧪 Gopeed 2.0.0 Beta
+### Gopeed 2.0.0
 
-Gopeed 2.0.0 は現在パブリックベータ版です。刷新されたインターフェース、デスクトップおよびモバイルから FFI で Go コアへ直接接続するネイティブ通信アーキテクチャ、より統一されたクロスプラットフォーム体験、強化されたタスク管理、より柔軟な API、MCP による AI Agent 連携機能を導入しています。一部の機能はまだ不完全または不安定な場合がありますので、ぜひお試しいただき、問題があればフィードバックをお寄せください。
-
-- [Gopeed 2.0.0 Beta 3 をダウンロード](https://github.com/GopeedLab/gopeed/releases/tag/v2.0.0-beta.3)
-
-機能と安定性が正式リリースの基準に達した時点で、Gopeed 2.0.0 正式版を公開します。ベータ版のユーザーは正式版へ直接アップデートできます。既存の安定版ユーザーが自動的にベータチャンネルへ移行することはありません。
-
-### 安定版
+Gopeed 2.0.0 では、デスクトップ、モバイル、Web のインターフェースを刷新し、タスク管理を強化しました。ネイティブアプリは Go のダウンロードコアに直接接続し、MCP を通じて AI アシスタントと連携できます。
 
 - [公式サイトからダウンロード](https://gopeed.com)
 - [GitHub Releases](https://github.com/GopeedLab/gopeed/releases/latest)
 
-### 🛠️ コマンドツール
+### 🛠️ コマンドラインツール
+
+Gopeed 2.0.0 のソースコードのルートディレクトリからインストールします。
+
+```bash
+go install -tags nosqlite ./cmd/gopeed
+```
 
 ## 📱 WeChat 公式アカウント
 
@@ -86,14 +86,12 @@ Gopeed 2.0.0 は現在パブリックベータ版です。刷新されたイン�
 
 ## 👨‍💻 開発
 
-このプロジェクトは二つの部分に分かれており、フロントエンドでは `flutter` を、バックエンドでは `Golang` を使用し、両者は `http` プロトコルで通信する。ユニックスシステムでは `unix socket` を、ウィンドウズシステムでは `tcp` プロトコルを使用します。
-
-> フロントコードは `ui/flutter` ディレクトリにあります。
+Flutter アプリは `ui/flutter` にあります。Windows、macOS、Linux では Dart FFI を使い、Android と iOS ではプラットフォームチャネルと gomobile を使って Go コアを呼び出します。Flutter Web は Go の REST API を使います。ネイティブアプリでも外部連携用に REST API を有効にできます。
 
 ### 🌍 環境
 
-1. Go 言語 1.25+
-2. Flutter 3.41+
+1. Go 1.27.4
+2. Flutter 3.41.6 (Dart 3.11.4)
 
 ### 📋 クローン
 
@@ -103,7 +101,7 @@ git clone git@github.com:GopeedLab/gopeed.git
 
 ### 🤝 コントリビュート
 
-[CONTRIBUTING.md](/CONTRIBUTING_ja-JP.md) をご参照ください
+[CONTRIBUTING_ja-JP.md](CONTRIBUTING_ja-JP.md) をご参照ください
 
 ### 🏗️ ビルド
 
@@ -175,7 +173,7 @@ flutter build web
 cd ../../
 rm -rf cmd/web/dist
 cp -r ui/flutter/build/web cmd/web/dist
-go build -tags nosqlite,web -ldflags="-s -w" -o bin/ github.com/GopeedLab/gopeed/cmd/web
+CGO_ENABLED=0 go build -tags nosqlite,web -ldflags="-s -w" -o bin/ github.com/GopeedLab/gopeed/cmd/web
 ```
 
 ## ❤️ 感謝

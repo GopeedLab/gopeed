@@ -59,25 +59,19 @@ Sau khi kết nối Gopeed với AI Agent, bạn có thể quản lý tải xu�
 
 ## ⬇️ Tải về
 
-### 🧪 Gopeed 2.0.0 Beta
+### Gopeed 2.0.0
 
-Gopeed 2.0.0 hiện đang trong giai đoạn beta công khai, với giao diện được thiết kế lại, kiến trúc giao tiếp native kết nối trực tiếp ứng dụng desktop và di động với lõi Go qua FFI, trải nghiệm đa nền tảng nhất quán hơn, khả năng quản lý tác vụ được cải thiện, API linh hoạt hơn và khả năng tích hợp AI Agent qua MCP. Một số tính năng có thể vẫn chưa hoàn thiện hoặc chưa ổn định, vì vậy hãy dùng thử và gửi phản hồi nếu bạn gặp vấn đề.
-
-- [Tải Gopeed 2.0.0 Beta 3](https://github.com/GopeedLab/gopeed/releases/tag/v2.0.0-beta.3)
-
-Khi các tính năng và độ ổn định đáp ứng tiêu chuẩn phát hành, chúng tôi sẽ phát hành Gopeed 2.0.0 chính thức. Người dùng bản beta có thể nâng cấp trực tiếp lên bản chính thức, trong khi người dùng bản ổn định hiện tại sẽ không tự động được chuyển sang kênh beta.
-
-### Bản ổn định
+Gopeed 2.0.0 mang đến giao diện mới trên máy tính, thiết bị di động và web, cải thiện việc quản lý tác vụ, kết nối ứng dụng native trực tiếp với lõi tải xuống Go và tích hợp trợ lý AI qua MCP.
 
 - [Tải xuống từ trang web chính thức](https://gopeed.com)
 - [GitHub Releases](https://github.com/GopeedLab/gopeed/releases/latest)
 
 ### 🛠️ Công cụ lệnh
 
-Sử dụng `go install`:
+Cài đặt công cụ dòng lệnh từ thư mục gốc của mã nguồn Gopeed 2.0.0.
 
 ```bash
-go install github.com/GopeedLab/gopeed/cmd/gopeed@latest
+go install -tags nosqlite ./cmd/gopeed
 ```
 
 ## 📱 WeChat Official Account
@@ -90,18 +84,16 @@ Theo dõi tài khoản chính thức để nhận các cập nhật và tin tứ
 
 Nếu bạn thích dự án này, xin vui lòng xem xét [quyên góp](https://gopeed.com/docs/donate) để hỗ trợ phát triển dự án này, cảm ơn bạn!
 
-## 👨‍💻 Development
+## 👨‍💻 Phát triển
 
-Dự án này được chia thành hai phần, phần giao diện sử dụng `flutter`, phần backend sử dụng `Golang`, và hai phía giao tiếp thông qua giao thức `http`. Trên hệ thống unix, sử dụng `unix socket`, và trên hệ thống windows, sử dụng giao thức `tcp`.
+Ứng dụng Flutter nằm trong `ui/flutter`. Windows, macOS và Linux gọi lõi Go qua Dart FFI. Android và iOS dùng kênh nền tảng và gomobile. Flutter Web dùng REST API của Go. Ứng dụng native cũng có thể bật API này để tích hợp với công cụ bên ngoài.
 
-> Mã giao diện nằm trong thư mục `ui/flutter`.
+### 🌍 Môi trường phát triển
 
-### 🌍 Environment
+1. Go 1.27.4
+2. Flutter 3.41.6 (Dart 3.11.4)
 
-1. Golang 1.25+
-2. Flutter 3.41+
-
-### 📋 Clone
+### 📋 Sao chép kho mã nguồn
 
 ```bash
 git clone git@github.com:GopeedLab/gopeed.git
@@ -181,7 +173,7 @@ flutter build web
 cd ../../
 rm -rf cmd/web/dist
 cp -r ui/flutter/build/web cmd/web/dist
-go build -tags nosqlite,web -ldflags="-s -w" -o bin/ github.com/GopeedLab/gopeed/cmd/web
+CGO_ENABLED=0 go build -tags nosqlite,web -ldflags="-s -w" -o bin/ github.com/GopeedLab/gopeed/cmd/web
 ```
 
 ## ❤️ Tín dụng

@@ -59,25 +59,19 @@ Gopeed（**Go Speed** 的縮寫）是一款以 Go 與 Flutter 開發的高速、
 
 ## ⬇️ 下載
 
-### 🧪 Gopeed 2.0.0 Beta
+### Gopeed 2.0.0
 
-Gopeed 2.0.0 目前處於公開 Beta 測試階段，引入了全新介面、透過 FFI 直連 Go 核心的原生通訊架構、更一致的跨平台體驗、更完善的任務管理、更靈活的 API，以及透過 MCP 串接 AI Agent 的能力。部分功能仍可能不夠完善或穩定，歡迎搶先體驗並向我們回報問題。
-
-- [下載 Gopeed 2.0.0 Beta 3](https://github.com/GopeedLab/gopeed/releases/tag/v2.0.0-beta.3)
-
-當功能完整度與穩定性達到正式發布標準後，我們會發布 Gopeed 2.0.0 正式版。已安裝 Beta 版本的使用者可以直接升級至最終正式版，現有穩定版使用者則不會被自動切換至 Beta 頻道。
-
-### 正式穩定版
+Gopeed 2.0.0 帶來涵蓋桌面、行動裝置和 Web 的全新介面、更完善的任務管理、直連 Go 下載核心的原生橋接，以及透過 MCP 串接 AI 助理的功能。
 
 - [官方網站下載](https://gopeed.com)
 - [GitHub Releases](https://github.com/GopeedLab/gopeed/releases/latest)
 
 ### 🛠️ 使用 CLI 安裝
 
-使用`go install`安裝：
+在 Gopeed 2.0.0 原始碼的根目錄安裝命令列工具。
 
 ```bash
-go install github.com/GopeedLab/gopeed/cmd/gopeed@latest
+go install -tags nosqlite ./cmd/gopeed
 ```
 
 ## 📱 微信公眾號
@@ -92,14 +86,12 @@ go install github.com/GopeedLab/gopeed/cmd/gopeed@latest
 
 ## 👨‍💻 開發
 
-該項目分為前端與後端，前端使用`flutter`編寫，後端使用`Golang`編寫，兩邊通過`http`協定進行通訊，在 unix 系統下，則使用`unix socket`，在 windows 系統下，則使用`tcp`協定。
-
-> 前端代碼位於`ui/flutter`目錄內。
+Flutter 應用程式位於 `ui/flutter`。Windows、macOS 和 Linux 透過 Dart FFI 呼叫 Go 核心，Android 和 iOS 則使用平台通道與 gomobile。Flutter Web 使用 Go REST API，原生用戶端也可啟用該 API 供外部整合使用。
 
 ### 🌍 開發環境
 
-1. Golang 1.25+
-2. Flutter 3.41+
+1. Go 1.27.4
+2. Flutter 3.41.6 (Dart 3.11.4)
 
 ### 📋 克隆項目
 
@@ -181,7 +173,7 @@ flutter build web
 cd ../../
 rm -rf cmd/web/dist
 cp -r ui/flutter/build/web cmd/web/dist
-go build -tags nosqlite,web -ldflags="-s -w" -o bin/ github.com/GopeedLab/gopeed/cmd/web
+CGO_ENABLED=0 go build -tags nosqlite,web -ldflags="-s -w" -o bin/ github.com/GopeedLab/gopeed/cmd/web
 ```
 
 ## ❤️ 感謝

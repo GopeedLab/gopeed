@@ -1,17 +1,7 @@
-# Gopeed
+# Gopeed Flutter client
 
-A new Flutter project.
+The Gopeed 2.0 client runs on Windows, macOS, Linux, Android, iOS, and the web. Desktop uses Dart FFI to call the Go core. Android and iOS use platform channels and gomobile. The web client uses the Go REST API.
 
-## Getting Started
+Use Go 1.27.4 and Flutter 3.41.6 (Dart 3.11.4). The [contributing guide](../../CONTRIBUTING.md) covers local web development, code generation, and tests. The [project README](../../README.md) has the platform build commands.
 
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+See the [backend transport architecture](docs/backend-transport-architecture.md) and [desktop window capability contract](docs/window-capability-rpc.md) before changing how the client calls Go or how desktop windows share state.

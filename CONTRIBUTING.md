@@ -3,17 +3,28 @@
 Firstly, thank you for your interest in contributing to Gopeed. This guide will help you better
 participate in the development of Gopeed.
 
-## Branch description
+## Branches
 
-This project only has one main branch, namely the `main` branch. If you want to participate in the
-development of Gopeed, please fork this project first, and then develop in your fork project. After
-development is completed, submit a PR to this project and merge it into the `main` branch.
+Fork Gopeed, create a branch from the latest `main`, and open a pull request targeting `main`.
 
 ## Local development
 
-It is recommended to develop and debug through the web. First, start the backend service, and start
-it by the command line `go run cmd/api/main.go`, the default port of the service is `9999`, and then
-start the front-end flutter project in `debug` mode to run.
+Use Go 1.27.4 and Flutter 3.41.6 (Dart 3.11.4), matching the CI toolchains. For a quick development setup, start the Go REST API from the repository root.
+
+```sh
+go run -tags nosqlite ./cmd/api
+```
+
+The API listens on `127.0.0.1:9999`. In another terminal at the repository root, run the Flutter app in Chrome.
+
+```sh
+cd ui/flutter
+flutter pub get
+flutter gen-l10n
+flutter run -d chrome
+```
+
+Desktop and mobile development requires building the Go bindings for the target platform. See the build instructions in the [README](README.md).
 
 ## Translation
 
@@ -72,12 +83,24 @@ The following examples show both the ARB definition and the text users see after
    `running`, `paused`, and `other` are values supplied by the app. Do not translate them; translate only
    the display text inside the following braces.
 
-## flutter development
+## Code checks
 
-Don't forget to run`dart format ./ui/flutter`before you commit to keep your code in standard dart format
+Format changed Go files with `gofmt` and run the Go tests from the repository root.
 
-Turn on build_runner watcher if you want to edit api/models:
-
+```sh
+go test -tags nosqlite ./...
 ```
-flutter pub run build_runner watch
+
+Format changed Dart files with `dart format`. After installing Flutter dependencies and generating localizations as shown above, run the Flutter checks from the repository root.
+
+```sh
+cd ui/flutter
+flutter analyze
+flutter test
+```
+
+If you change annotated models in `lib/api/model/`, regenerate their JSON serializers from `ui/flutter`.
+
+```sh
+dart run build_runner build
 ```

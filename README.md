@@ -59,25 +59,19 @@ Connect Gopeed to an AI agent and manage downloads with natural language. For ex
 
 ## ⬇️ Download
 
-### 🧪 Gopeed 2.0.0 Beta
+### Gopeed 2.0.0
 
-Gopeed 2.0.0 is currently in public beta, introducing a redesigned interface, a native communication architecture that connects desktop and mobile clients directly to the Go core through FFI, a more consistent cross-platform experience, improved task management, more flexible API support, and MCP-based AI agent integration. Some features may still be incomplete or unstable, so please try it and report any issues you encounter.
-
-- [Download Gopeed 2.0.0 Beta 3](https://github.com/GopeedLab/gopeed/releases/tag/v2.0.0-beta.3)
-
-Once the features and stability meet our release standards, we will publish the official Gopeed 2.0.0 release. Beta users will be able to upgrade directly to the final release, while existing stable users will not be automatically moved onto the beta channel.
-
-### Stable release
+Gopeed 2.0.0 introduces a redesigned interface across desktop, mobile, and web, improved task management, a native bridge to the Go download core, and MCP integration for AI assistants.
 
 - [Official Download](https://gopeed.com)
 - [GitHub Releases](https://github.com/GopeedLab/gopeed/releases/latest)
 
 ### 🛠️ Command-line tool
 
-Install the CLI with `go install`:
+Install the CLI from the root of the Gopeed 2.0.0 source tree.
 
 ```bash
-go install github.com/GopeedLab/gopeed/cmd/gopeed@latest
+go install -tags nosqlite ./cmd/gopeed
 ```
 
 ## 🔌 Browser Extension
@@ -96,14 +90,12 @@ If Gopeed is useful to you, please consider [supporting its development](https:/
 
 ## 👨‍💻 Development
 
-Gopeed consists of a Flutter front end and a Go back end. They communicate over HTTP, using Unix sockets on Unix-like systems and TCP on Windows.
-
-> The front-end source is located in the `ui/flutter` directory.
+The Flutter app lives in `ui/flutter`. Windows, macOS, and Linux call the Go core through Dart FFI. Android and iOS use platform channels and gomobile. Flutter Web uses the Go REST API, which native clients can also enable for external integrations.
 
 ### 🌍 Environment
 
-1. Go 1.25+
-2. Flutter 3.41+
+1. Go 1.27.4
+2. Flutter 3.41.6 (Dart 3.11.4)
 
 ### 📋 Clone
 
@@ -185,7 +177,7 @@ flutter build web
 cd ../../
 rm -rf cmd/web/dist
 cp -r ui/flutter/build/web cmd/web/dist
-go build -tags nosqlite,web -ldflags="-s -w" -o bin/ github.com/GopeedLab/gopeed/cmd/web
+CGO_ENABLED=0 go build -tags nosqlite,web -ldflags="-s -w" -o bin/ github.com/GopeedLab/gopeed/cmd/web
 ```
 
 ## ❤️ Credits

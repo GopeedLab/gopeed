@@ -3,17 +3,28 @@
 Trước tiên, cảm ơn bạn đã quan tâm đến việc đóng góp cho Gopeed. Hướng dẫn này sẽ giúp bạn tham gia
 phát triển Gopeed một cách tốt hơn.
 
-## Mô tả nhánh
+## Nhánh phát triển
 
-Dự án này chỉ có một nhánh chính duy nhất, đó là nhánh `main`. Nếu bạn muốn tham gia vào
-phát triển Gopeed, hãy fork dự án này trước, sau đó phát triển trong dự án fork của bạn. Sau khi
-hoàn thành phát triển, gửi một PR đến dự án này và merge vào nhánh `main`.
+Hãy fork Gopeed, tạo nhánh làm việc từ `main` mới nhất và gửi pull request vào `main`.
 
 ## Phát triển cục bộ
 
-Đề nghị phát triển và gỡ lỗi thông qua web. Đầu tiên, khởi động dịch vụ backend bằng cách chạy
-lệnh `go run cmd/api/main.go` trong dòng lệnh, cổng mặc định của dịch vụ là `9999`, sau đó
-khởi động dự án flutter frontend trong chế độ `debug` để chạy.
+Dùng Go 1.27.4 và Flutter 3.41.6 (Dart 3.11.4) như trong CI. Để phát triển trên web, hãy khởi động REST API của Go từ thư mục gốc của kho mã nguồn.
+
+```sh
+go run -tags nosqlite ./cmd/api
+```
+
+API lắng nghe tại `127.0.0.1:9999`. Mở một cửa sổ dòng lệnh khác tại thư mục gốc của kho mã nguồn và chạy ứng dụng Flutter trong Chrome.
+
+```sh
+cd ui/flutter
+flutter pub get
+flutter gen-l10n
+flutter run -d chrome
+```
+
+Khi phát triển cho máy tính hoặc thiết bị di động, hãy biên dịch bindings Go cho nền tảng đích theo hướng dẫn trong [README](README_vi-VN.md).
 
 ## Dịch thuật
 
@@ -72,8 +83,24 @@ Các ví dụ sau hiển thị cả định nghĩa trong ARB và nội dung ngư
    `running`, `paused` và `other` là các giá trị do ứng dụng truyền vào nên không được dịch; chỉ dịch phần chữ
    hiển thị trong dấu ngoặc theo sau chúng.
 
-## Phát triển flutter
+## Kiểm tra mã nguồn
 
-Đừng quên chạy `dart format ./ui/flutter` trước khi commit để giữ mã của bạn theo định dạng dart chuẩn.
+Dùng `gofmt` để định dạng các tệp Go đã sửa, rồi chạy kiểm thử Go từ thư mục gốc của kho mã nguồn.
 
-Bật build_runner watcher nếu bạn muốn chỉnh sửa api/models:
+```sh
+go test -tags nosqlite ./...
+```
+
+Dùng `dart format` để định dạng các tệp Dart đã sửa. Sau khi cài các gói phụ thuộc của Flutter và sinh mã bản địa hóa theo hướng dẫn trên, hãy chạy các lệnh kiểm tra sau từ thư mục gốc của kho mã nguồn.
+
+```sh
+cd ui/flutter
+flutter analyze
+flutter test
+```
+
+Nếu sửa các mô hình có annotation trong `lib/api/model/`, hãy tạo lại mã tuần tự hóa JSON từ `ui/flutter`.
+
+```sh
+dart run build_runner build
+```

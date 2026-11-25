@@ -4,13 +4,26 @@
 
 ## 分支说明
 
-本项目只有一个主分支，即 `main` 分支，如果您想要参与到 Gopeed 的开发中来，请先 fork 本项目，然后在您的 fork 项目中进行开发，开发完成后再向本项目提交
-PR，合并到 `main` 分支。
+先 fork Gopeed，从最新的 `main` 创建开发分支，再向 `main` 提交 PR。
 
 ## 本地开发
 
-建议通过 web 端进行开发调试，首先启动后端服务，通过命令行 `go run cmd/api/main.go` 启动 ，服务启动默认端口为 `9999`，然后以 `debug` 模式启动前端
-flutter 项目即可运行。
+使用与 CI 一致的 Go 1.27.4 和 Flutter 3.41.6（Dart 3.11.4）。可以先通过 Web 端调试，在仓库根目录启动 Go REST API。
+
+```sh
+go run -tags nosqlite ./cmd/api
+```
+
+API 监听 `127.0.0.1:9999`。在另一个终端中从仓库根目录运行 Flutter Web。
+
+```sh
+cd ui/flutter
+flutter pub get
+flutter gen-l10n
+flutter run -d chrome
+```
+
+开发桌面端或移动端时，需要为目标平台编译 Go 绑定。构建步骤见 [README](README_zh-CN.md)。
 
 ## 翻译
 
@@ -65,12 +78,24 @@ Flutter 国际化文件位于 `ui/flutter/lib/l10n`，请以 `app_en.arb` 为源
 
    `running`、`paused`、`other` 是程序传入的分支值，不能翻译；只翻译它们后面花括号内的显示文字。
 
-## flutter开发
+## 代码检查
 
-每次提交前请务必`dart format ./ui/flutter`
+用 `gofmt` 格式化修改过的 Go 文件，再在仓库根目录运行 Go 测试。
 
-如果要编辑api/models，请打开build_runner watcher:
-
+```sh
+go test -tags nosqlite ./...
 ```
-flutter pub run build_runner watch
+
+用 `dart format` 格式化修改过的 Dart 文件。按上文安装 Flutter 依赖并生成国际化代码后，从仓库根目录运行以下检查。
+
+```sh
+cd ui/flutter
+flutter analyze
+flutter test
+```
+
+如果修改了 `lib/api/model/` 中带注解的模型，请在 `ui/flutter` 重新生成 JSON 序列化代码。
+
+```sh
+dart run build_runner build
 ```

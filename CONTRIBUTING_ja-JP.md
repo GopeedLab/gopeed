@@ -3,17 +3,28 @@
 まず最初に、Gopeed への貢献に興味を持っていただきありがとうございます。このガイドは、あなたが Gopeed の
 開発に参加するための手助けとなるでしょう。
 
-## ブランチの説明
+## ブランチ
 
-このプロジェクトのメインブランチは `main` ブランチのみです。Gopeed の開発に参加したい場合は、
-まずこのプロジェクトをフォークし、フォークしたプロジェクトで開発を行ってください。開発が完了したら、
-このプロジェクトに PR を提出し、`main` ブランチにマージしてください。
+Gopeed をフォークし、最新の `main` から作業ブランチを作成して、`main` 宛てにプルリクエストを送ってください。
 
 ## ローカル開発
 
-開発およびデバッグはウェブ上で行うことを推奨する。まずバックエンドのサービスを起動し、
-コマンドライン `go run cmd/api/main.go` で起動する。サービスのデフォルトポートは `9999` で、
-次にフロントエンドの flutter プロジェクトを `debug` モードで起動して実行します。
+CI と同じ Go 1.27.4 と Flutter 3.41.6（Dart 3.11.4）を使用してください。Web で動作を確認する場合は、リポジトリのルートから Go の REST API を起動します。
+
+```sh
+go run -tags nosqlite ./cmd/api
+```
+
+API は `127.0.0.1:9999` で待ち受けます。別のターミナルでリポジトリのルートを開き、Chrome で Flutter アプリを実行します。
+
+```sh
+cd ui/flutter
+flutter pub get
+flutter gen-l10n
+flutter run -d chrome
+```
+
+デスクトップ版やモバイル版を開発する場合は、対象プラットフォーム向けの Go バインディングをビルドします。手順は [README](README_ja-JP.md) を参照してください。
 
 ## 翻訳
 
@@ -70,12 +81,24 @@ Flutter の翻訳ファイルは `ui/flutter/lib/l10n` にあります。`app_en
 
    `running`、`paused`、`other` はアプリが渡す分岐値なので翻訳せず、その後の中括弧内にある表示文字だけを翻訳します。
 
-## flutter での開発
+## コードの確認
 
-コミットする前に `dart format ./ui/flutter` を実行し、コードを標準の dart フォーマットにしておくことを忘れないでください
+変更した Go ファイルを `gofmt` で整形し、リポジトリのルートから Go のテストを実行します。
 
-api/models を編集したい場合は build_runner watcher をオンにします:
-
+```sh
+go test -tags nosqlite ./...
 ```
-flutter pub run build_runner watch
+
+変更した Dart ファイルを `dart format` で整形します。上記の手順で Flutter の依存関係を取得し、ローカライズコードを生成した後、リポジトリのルートから以下のチェックを実行します。
+
+```sh
+cd ui/flutter
+flutter analyze
+flutter test
+```
+
+`lib/api/model/` のアノテーション付きモデルを変更した場合は、`ui/flutter` から JSON シリアライザーを再生成します。
+
+```sh
+dart run build_runner build
 ```
