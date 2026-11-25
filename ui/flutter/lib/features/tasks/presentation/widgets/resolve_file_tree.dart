@@ -10,6 +10,7 @@ import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
 import '../../../../shared/widgets/file_tree_view.dart';
 import '../../../../util/util.dart';
+import '../../domain/task_record.dart';
 
 typedef PendingFileKey = (String, int);
 
@@ -158,8 +159,9 @@ class _ResolveFileTreeState extends State<ResolveFileTree> {
   Widget _sourceIcon(BuildContext context, FileTreeNode<PendingFileKey> node) {
     final source = node.item == null ? _sourcesByRootKey[node.key] : _sourcesById[node.item!.data.$1];
     final palette = AppPalette.of(context);
+    final defaultIcon = node.isFolder ? BootstrapIcons.folder2 : taskFileTypeIcon(node.label);
     if (source == null) {
-      return Icon(node.isFolder ? BootstrapIcons.folder2 : GopeedIcons.file, size: 18, color: palette.textSecondary);
+      return Icon(defaultIcon, size: 18, color: palette.textSecondary);
     }
     final pending = source;
     final message = pending.loading
@@ -177,9 +179,7 @@ class _ResolveFileTreeState extends State<ResolveFileTree> {
                     ? Icons.error_outline
                     : node.isFolder && pending.isBt
                     ? GopeedIcons.folderBt
-                    : node.isFolder
-                    ? BootstrapIcons.folder2
-                    : GopeedIcons.file,
+                    : defaultIcon,
                 size: 18,
                 color: pending.resolveError != null ? palette.error : palette.textSecondary,
               ),
