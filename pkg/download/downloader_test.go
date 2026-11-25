@@ -2218,6 +2218,54 @@ func TestDownloader_GetTask(t *testing.T) {
 	}
 }
 
+func TestDownloader_ClearsUploadSpeedAfterSeedingStops(t *testing.T) {
+	storage := NewMemStorage()
+	if err := storage.Setup([]string{bucketTask}); err != nil {
+		t.Fatal(err)
+	}
+	task := &Task{
+		ID:       "finished-seeding",
+		Protocol: "bt",
+		Status:   base.DownloadStatusDone,
+		Meta:     &fetcher.FetcherMeta{Req: &base.Request{URL: "magnet:?xt=urn:btih:0000000000000000000000000000000000000000"}},
+		Progress: &Progress{UploadSpeed: 128, Uploaded: 1024},
+	}
+	if err := storage.Put(bucketTask, task.ID, task); err != nil {
+		t.Fatal(err)
+	}
+	downloader := NewDownloader(&DownloaderConfig{
+		Storage:         storage,
+		StorageDir:      t.TempDir(),
+		TempDir:         t.TempDir(),
+		RefreshInterval: 10,
+	})
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := downloader.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+
+	for deadline := time.Now().Add(time.Second); ; {
+		status, err := downloader.RuntimeStatus(task.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if status.Status != base.DownloadStatusDone || status.Uploaded != 1024 {
+			t.Fatalf("unexpected task status after seeding stopped: %+v", status)
+		}
+		if status.UploadSpeed == 0 {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("upload speed after seeding stopped = %d, want 0", status.UploadSpeed)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
 func TestDownloader_RuntimeStatus(t *testing.T) {
 	meta := &fetcher.FetcherMeta{
 		Res: &base.Resource{
