@@ -14,7 +14,7 @@
 
 ## 🚀 Giới thiệu
 
-Gopeed (viết tắt của **Go Speed**) là trình quản lý tải xuống nhanh, hiện đại, miễn phí và mã nguồn mở, được xây dựng bằng Go và Flutter. Gopeed hỗ trợ HTTP, HTTPS, BitTorrent, Magnet và ed2k trên máy tính, thiết bị di động và Web.
+Gopeed (viết tắt của **Go Speed**) là trình quản lý tải xuống tốc độ cao, miễn phí và mã nguồn mở, được xây dựng bằng Go và Flutter cho máy tính, thiết bị di động và web.
 
 Ngoài việc quản lý tải xuống hằng ngày, Gopeed còn hỗ trợ tích hợp trình duyệt, tiện ích JavaScript, REST API, CLI và Web UI có thể tự lưu trữ để mở rộng và tự động hóa quy trình.
 
@@ -22,10 +22,19 @@ Truy cập ✈ [Trang web chính thức](https://gopeed.com)
 
 ![Ảnh chụp màn hình ứng dụng](_docs/img/ui-concept-en.webp)
 
+## Tính năng mới trong Gopeed 2.0.0
+
+Gopeed 2.0.0 mang đến giao diện mới trên máy tính, thiết bị di động và web, cải thiện việc quản lý tác vụ, kết nối ứng dụng native trực tiếp với lõi tải xuống Go và tích hợp trợ lý AI qua MCP.
+
+- **FTP, FTPS và FTPES** — tải tệp hoặc cả thư mục qua FTP, với tùy chọn TLS ngầm định (`ftps://`) hoặc TLS tường minh (`ftpes://`).
+- **Tải HLS tích hợp** — tải danh sách phát `.m3u8` theo yêu cầu và ghép các phân đoạn thành một tệp có thể phát.
+- **BitTorrent** — cải thiện khả năng kết nối với tracker WebTorrent.
+- **FFmpeg tích hợp** — tiện ích JavaScript có thể dùng môi trường WebAssembly đi kèm Gopeed để ghép luồng hình ảnh và âm thanh riêng biệt mà không cần mã hóa lại. [API tiện ích FFmpeg](pkg/download/engine/ffmpeg/README.md)
+
 ## ✨ Tính năng chính
 
 - ⚡ **Tải xuống tốc độ cao** — kết hợp nhiều tác vụ, truyền HTTP phân đoạn qua nhiều kết nối và tải BitTorrent P2P để tận dụng tối đa băng thông.
-- 🧲 **Đa giao thức** — quản lý HTTP, HTTPS, BitTorrent, Magnet và ed2k trong một giao diện.
+- 🧲 **Đa giao thức** — tải qua HTTP/HTTPS, FTP/FTPS/FTPES và HLS (M3U8), hoặc dùng tệp BitTorrent, liên kết magnet và liên kết ed2k.
 - 🌱 **Bộ công cụ BT đầy đủ** — hỗ trợ khám phá Peer qua DHT, truyền tải uTP, Web Seed, chọn tệp, quản lý Tracker, xem Peer/mảnh và kiểm soát seed theo tỷ lệ hoặc thời gian.
 - 📋 **Quản lý tác vụ thực tế** — tạm dừng, tiếp tục, thử lại, thao tác hàng loạt, tìm kiếm, bộ lọc, danh mục và khôi phục khi khởi động.
 - 🪶 **Trải nghiệm native gọn nhẹ** — giao diện chính được Flutter kết xuất native. Không Electron. Không vỏ bọc WebView. Kích thước nhỏ hơn, ít tốn tài nguyên hơn và phản hồi nhanh hơn.
@@ -59,19 +68,15 @@ Sau khi kết nối Gopeed với AI Agent, bạn có thể quản lý tải xu�
 
 ## ⬇️ Tải về
 
-### Gopeed 2.0.0
-
-Gopeed 2.0.0 mang đến giao diện mới trên máy tính, thiết bị di động và web, cải thiện việc quản lý tác vụ, kết nối ứng dụng native trực tiếp với lõi tải xuống Go và tích hợp trợ lý AI qua MCP.
-
 - [Tải xuống từ trang web chính thức](https://gopeed.com)
 - [GitHub Releases](https://github.com/GopeedLab/gopeed/releases/latest)
 
 ### 🛠️ Công cụ lệnh
 
-Cài đặt công cụ dòng lệnh từ thư mục gốc của mã nguồn Gopeed 2.0.0.
+Sử dụng `go install`:
 
 ```bash
-go install -tags nosqlite ./cmd/gopeed
+go install github.com/GopeedLab/gopeed/cmd/gopeed@latest
 ```
 
 ## 📱 WeChat Official Account

@@ -14,7 +14,7 @@
 
 ## 🚀 介绍
 
-Gopeed（全称 **Go Speed**，也叫“够快下载器”）是一款使用 Go 和 Flutter 开发的高速、现代、免费开源下载器，支持 HTTP、HTTPS、BitTorrent、磁力链接和 ed2k，并覆盖桌面端、移动端与 Web。
+Gopeed（全称 **Go Speed**，也叫“够快下载器”）是一款使用 Go 和 Flutter 开发的免费开源高速下载器，支持桌面端、移动端与 Web。
 
 除了日常下载任务管理，Gopeed 还提供浏览器接管、JavaScript 扩展、REST API、命令行工具和可自托管 Web UI，方便高级用户扩展和自动化自己的下载流程。
 
@@ -22,10 +22,19 @@ Gopeed（全称 **Go Speed**，也叫“够快下载器”）是一款使用 Go 
 
 ![应用截图](_docs/img/ui-concept-zh-CN.webp)
 
+## Gopeed 2.0.0 新功能
+
+Gopeed 2.0.0 带来了覆盖桌面、移动端和 Web 的全新界面、更完善的任务管理、直连 Go 下载核心的原生桥接，以及通过 MCP 接入 AI 助手的能力。
+
+- **FTP、FTPS 和 FTPES** — 支持下载文件和目录，支持隐式 TLS（`ftps://`）和显式 TLS（`ftpes://`）。
+- **原生 HLS 下载** — 支持直接下载点播 `.m3u8` 播放列表，将媒体分片合并为一个可播放文件。
+- **BitTorrent** — 改进与 WebTorrent Tracker 的通信。
+- **内置 FFmpeg** — JavaScript 扩展可直接调用随 Gopeed 分发的 WebAssembly 运行时，将独立视频轨与音频轨免转码合并。 [FFmpeg 扩展 API](pkg/download/engine/ffmpeg/README.md)
+
 ## ✨ 主要特性
 
 - ⚡ **高速下载** — 多任务并发、HTTP 多连接分段传输和 BitTorrent P2P 下载，充分利用可用带宽。
-- 🧲 **多协议支持** — 在同一个界面管理 HTTP、HTTPS、BitTorrent、磁力链接和 ed2k。
+- 🧲 **多协议支持** — 支持 HTTP/HTTPS、FTP/FTPS/FTPES、HLS（M3U8）、BitTorrent 种子、磁力链接和 ed2k 链接。
 - 🌱 **完整 BT 能力** — 支持 DHT 节点发现、uTP 传输、Web Seed、按文件选择下载、Tracker 管理、Peer/分片统计，以及按分享率或时间控制做种。
 - 📋 **实用任务管理** — 暂停、续传、重试、批量操作、搜索、状态筛选、下载分类和启动恢复。
 - 🪶 **轻量原生体验** — 主界面使用 Flutter 原生渲染，非 Electron，非 WebView 的套壳，安装包更轻量、运行开销更低、响应更流畅。
@@ -59,19 +68,15 @@ Gopeed（全称 **Go Speed**，也叫“够快下载器”）是一款使用 Go 
 
 ## ⬇️ 下载
 
-### Gopeed 2.0.0
-
-Gopeed 2.0.0 带来了覆盖桌面、移动端和 Web 的全新界面、更完善的任务管理、直连 Go 下载核心的原生桥接，以及通过 MCP 接入 AI 助手的能力。
-
 - [官方网站下载](https://gopeed.com)
 - [GitHub Releases](https://github.com/GopeedLab/gopeed/releases/latest)
 
 ### 🛠️ 命令行工具
 
-在 Gopeed 2.0.0 源码的根目录安装命令行工具。
+使用`go install`安装：
 
 ```bash
-go install -tags nosqlite ./cmd/gopeed
+go install github.com/GopeedLab/gopeed/cmd/gopeed@latest
 ```
 
 ## 🔌 浏览器扩展

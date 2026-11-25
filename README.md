@@ -14,7 +14,7 @@
 
 ## 🚀 Introduction
 
-Gopeed (short for **Go Speed**) is a fast, modern, free, and open-source download manager built with Go and Flutter. It supports HTTP, HTTPS, BitTorrent, magnet links, and ed2k on desktop, mobile, and the web.
+Gopeed (short for **Go Speed**) is a fast, modern, free, and open-source download manager for desktop, mobile, and the web, built with Go and Flutter.
 
 Beyond core download management, Gopeed offers browser integration, JavaScript extensions, a REST API, a CLI, and a self-hosted web UI for customization and automation.
 
@@ -22,10 +22,19 @@ Visit ✈ [Official Website](https://gopeed.com)
 
 ![Application screenshot](_docs/img/ui-concept-en.webp)
 
+## What’s new in Gopeed 2.0.0
+
+Gopeed 2.0.0 introduces a redesigned interface across desktop, mobile, and web, improved task management, a native bridge to the Go download core, and MCP integration for AI assistants.
+
+- **FTP, FTPS, and FTPES** — download files and directories over FTP with optional implicit TLS (`ftps://`) or explicit TLS (`ftpes://`).
+- **Native HLS downloads** — download on-demand `.m3u8` playlists and save their segments as a single playable file.
+- **BitTorrent** — improved communication with WebTorrent trackers.
+- **Built-in FFmpeg** — JavaScript extensions can use the bundled WebAssembly runtime to merge separate video and audio tracks without re-encoding. [FFmpeg extension API](pkg/download/engine/ffmpeg/README.md)
+
 ## ✨ Features
 
 - ⚡ **High-speed downloads** — combine concurrent tasks, multi-connection HTTP transfers, and peer-to-peer BitTorrent downloads to make the most of your bandwidth.
-- 🧲 **Multiple protocols** — download HTTP/HTTPS files, torrents, magnet links, and ed2k resources from a single app.
+- 🧲 **Multiple protocols** — download over HTTP/HTTPS, FTP/FTPS/FTPES, and HLS (M3U8), or use BitTorrent files, magnet links, and ed2k links.
 - 🌱 **Full-featured BitTorrent** — use DHT peer discovery, uTP transport, Web Seeds, selective file downloads, tracker management, peer and piece statistics, and ratio- or time-based seeding limits.
 - 📋 **Flexible task management** — pause, resume, retry, run batch operations, search, filter by status, organize with categories, and recover tasks after a restart.
 - 🪶 **Lightweight native experience** — the main interface is rendered natively with Flutter. No Electron. No WebView shell. Enjoy a smaller footprint, lower overhead, and responsive performance.
@@ -59,19 +68,15 @@ Connect Gopeed to an AI agent and manage downloads with natural language. For ex
 
 ## ⬇️ Download
 
-### Gopeed 2.0.0
-
-Gopeed 2.0.0 introduces a redesigned interface across desktop, mobile, and web, improved task management, a native bridge to the Go download core, and MCP integration for AI assistants.
-
 - [Official Download](https://gopeed.com)
 - [GitHub Releases](https://github.com/GopeedLab/gopeed/releases/latest)
 
 ### 🛠️ Command-line tool
 
-Install the CLI from the root of the Gopeed 2.0.0 source tree.
+Install the CLI with `go install`:
 
 ```bash
-go install -tags nosqlite ./cmd/gopeed
+go install github.com/GopeedLab/gopeed/cmd/gopeed@latest
 ```
 
 ## 🔌 Browser Extension
