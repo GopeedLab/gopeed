@@ -10,13 +10,13 @@
 
 <a href="https://trendshift.io/repositories/7953" target="_blank"><img src="https://trendshift.io/api/badge/repositories/7953" alt="GopeedLab%2Fgopeed | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 
+[Official Website](https://gopeed.com) · [Extension Store](https://gopeed.com/store) · [Download](https://gopeed.com/#downloads)
+
 [English](/README.md) | [中文](/README_zh-CN.md) | [日本語](/README_ja-JP.md) | [正體中文](/README_zh-TW.md) | [Tiếng Việt](/README_vi-VN.md)
 
 ## 🚀 Introduction
 
 **Gopeed is a modern, high-speed download manager for desktop, mobile, and the web.** It’s free and open source, with support for **HTTP, FTP, HLS, BitTorrent files, magnet links, and ed2k**.
-
-Visit ✈ [Official Website](https://gopeed.com)
 
 ![Application screenshot](_docs/img/ui-concept-en.webp)
 

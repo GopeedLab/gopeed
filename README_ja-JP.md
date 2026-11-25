@@ -10,13 +10,13 @@
 
 <a href="https://trendshift.io/repositories/7953" target="_blank"><img src="https://trendshift.io/api/badge/repositories/7953" alt="GopeedLab%2Fgopeed | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 
+[公式サイト](https://gopeed.com) · [拡張機能ストア](https://gopeed.com/store) · [ダウンロード](https://gopeed.com/#downloads)
+
 [English](/README.md) | [中文](/README_zh-CN.md) | [日本語](/README_ja-JP.md) | [正體中文](/README_zh-TW.md) | [Tiếng Việt](/README_vi-VN.md)
 
 ## 🚀 はじめに
 
 **Gopeed は、デスクトップ、モバイル、Web で使えるモダンな高速ダウンロードマネージャーです。** 無料のオープンソースソフトウェアで、**HTTP、FTP、HLS、BitTorrent ファイル、マグネットリンク、ed2k** に対応しています。
-
-✈ [公式サイト](https://gopeed.com)
 
 ![アプリのスクリーンショット](_docs/img/ui-concept-en.webp)
 

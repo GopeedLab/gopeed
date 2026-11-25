@@ -10,13 +10,13 @@
 
 <a href="https://trendshift.io/repositories/7953" target="_blank"><img src="https://trendshift.io/api/badge/repositories/7953" alt="GopeedLab%2Fgopeed | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 
+[Trang web chính thức](https://gopeed.com) · [Cửa hàng tiện ích](https://gopeed.com/store) · [Tải xuống](https://gopeed.com/#downloads)
+
 [English](/README.md) | [中文](/README_zh-CN.md) | [日本語](/README_ja-JP.md) | [正體中文](/README_zh-TW.md) | [Tiếng Việt](/README_vi-VN.md)
 
 ## 🚀 Giới thiệu
 
 **Gopeed là trình quản lý tải xuống hiện đại, tốc độ cao dành cho máy tính, thiết bị di động và web.** Gopeed miễn phí, mã nguồn mở và hỗ trợ **HTTP, FTP, HLS, tệp BitTorrent, liên kết magnet và ed2k**.
-
-Truy cập ✈ [Trang web chính thức](https://gopeed.com)
 
 ![Ảnh chụp màn hình ứng dụng](_docs/img/ui-concept-en.webp)
 

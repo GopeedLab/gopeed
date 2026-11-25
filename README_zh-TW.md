@@ -10,13 +10,13 @@
 
 <a href="https://trendshift.io/repositories/7953" target="_blank"><img src="https://trendshift.io/api/badge/repositories/7953" alt="GopeedLab%2Fgopeed | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 
+[官方網站](https://gopeed.com) · [擴充商店](https://gopeed.com/store) · [下載連結](https://gopeed.com/#downloads)
+
 [English](/README.md) | [中文](/README_zh-CN.md) | [日本語](/README_ja-JP.md) | [正體中文](/README_zh-TW.md) | [Tiếng Việt](/README_vi-VN.md)
 
 ## 🚀 簡介
 
 **Gopeed 是一款免費開源的現代化高速下載器**，適用於桌面、行動裝置和 Web。支援 **HTTP、FTP、HLS、BitTorrent 種子、磁力連結和 ed2k**。
-
-瀏覽 ✈ [官方網站](https://gopeed.com)
 
 ![應用程式截圖](_docs/img/ui-concept-en.webp)
 
