@@ -22,20 +22,11 @@ Truy cập ✈ [Trang web chính thức](https://gopeed.com)
 
 ![Ảnh chụp màn hình ứng dụng](_docs/img/ui-concept-en.webp)
 
-## Tính năng mới trong Gopeed 2.0.0
-
-Gopeed 2.0.0 mang đến giao diện mới trên máy tính, thiết bị di động và web, cải thiện việc quản lý tác vụ, kết nối ứng dụng native trực tiếp với lõi tải xuống Go và tích hợp trợ lý AI qua MCP.
-
-- **FTP, FTPS và FTPES** — tải tệp hoặc cả thư mục qua FTP, với tùy chọn TLS ngầm định (`ftps://`) hoặc TLS tường minh (`ftpes://`).
-- **Tải HLS tích hợp** — tải danh sách phát `.m3u8` theo yêu cầu và ghép các phân đoạn thành một tệp có thể phát.
-- **BitTorrent** — cải thiện khả năng kết nối với tracker WebTorrent.
-- **FFmpeg tích hợp** — tiện ích JavaScript có thể dùng môi trường WebAssembly đi kèm Gopeed để ghép luồng hình ảnh và âm thanh riêng biệt mà không cần mã hóa lại. [API tiện ích FFmpeg](pkg/download/engine/ffmpeg/README.md)
-
 ## ✨ Tính năng chính
 
 - ⚡ **Tải xuống tốc độ cao** — kết hợp nhiều tác vụ, truyền HTTP phân đoạn qua nhiều kết nối và tải BitTorrent P2P để tận dụng tối đa băng thông.
-- 🧲 **Đa giao thức** — tải qua HTTP/HTTPS, FTP/FTPS/FTPES và HLS (M3U8), hoặc dùng tệp BitTorrent, liên kết magnet và liên kết ed2k.
-- 🌱 **Bộ công cụ BT đầy đủ** — hỗ trợ khám phá Peer qua DHT, truyền tải uTP, Web Seed, chọn tệp, quản lý Tracker, xem Peer/mảnh và kiểm soát seed theo tỷ lệ hoặc thời gian.
+- 🧲 **Đa giao thức** — tải qua HTTP/HTTPS, FTP/FTPS/FTPES, HLS hoặc dùng tệp BitTorrent, liên kết magnet và ed2k. FTP hỗ trợ tải tệp và thư mục. HLS ghép các phân đoạn của danh sách phát `.m3u8` theo yêu cầu thành một tệp có thể phát.
+- 🌱 **Bộ công cụ BT đầy đủ** — hỗ trợ khám phá Peer qua DHT, truyền tải uTP, Web Seed, chọn tệp, quản lý tracker (bao gồm tracker WebTorrent), xem Peer/mảnh và kiểm soát seed theo tỷ lệ hoặc thời gian.
 - 📋 **Quản lý tác vụ thực tế** — tạm dừng, tiếp tục, thử lại, thao tác hàng loạt, tìm kiếm, bộ lọc, danh mục và khôi phục khi khởi động.
 - 🪶 **Trải nghiệm native gọn nhẹ** — giao diện chính được Flutter kết xuất native. Không Electron. Không vỏ bọc WebView. Kích thước nhỏ hơn, ít tốn tài nguyên hơn và phản hồi nhanh hơn.
 - 💻 **Đa nền tảng** — Windows, macOS, Linux, Android, iOS, Web, Docker và QNAP.
@@ -44,6 +35,7 @@ Gopeed 2.0.0 mang đến giao diện mới trên máy tính, thiết bị di đ�
 - 🗣️ **Hơn 20 ngôn ngữ giao diện** — gồm tiếng Việt, tiếng Anh, tiếng Trung giản thể và phồn thể, tiếng Nhật, tiếng Hàn cùng nhiều ngôn ngữ khác.
 - 🌐 **Tích hợp trình duyệt** — gửi tải xuống từ Chrome, Edge, Firefox và các trình duyệt tương thích sang Gopeed.
 - 🧩 **Tiện ích JavaScript** — thêm nguồn tải từ nền tảng video, kho mô hình AI, lưu trữ đám mây và nhiều dịch vụ khác.
+- 🎬 **FFmpeg tích hợp** — tiện ích JavaScript có thể dùng môi trường WebAssembly đi kèm Gopeed để ghép luồng hình ảnh và âm thanh riêng biệt mà không cần mã hóa lại. [API tiện ích FFmpeg](pkg/download/engine/ffmpeg/README.md)
 - 🤖 **Tích hợp AI** — cung cấp giao diện MCP để kết nối với các AI Agent tương thích và tạo, kiểm tra hoặc quản lý tác vụ tải xuống bằng ngôn ngữ tự nhiên.
 - 🔌 **Giao diện mở** — REST API, CLI, Web UI có xác thực, webhook và script sau khi tải.
 - 🛠️ **Công cụ tích hợp** — Header/User-Agent tùy chỉnh, proxy, mirror GitHub, thông báo và tự động giải nén.

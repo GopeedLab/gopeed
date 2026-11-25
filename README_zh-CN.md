@@ -22,20 +22,11 @@ Gopeed（全称 **Go Speed**，也叫“够快下载器”）是一款使用 Go 
 
 ![应用截图](_docs/img/ui-concept-zh-CN.webp)
 
-## Gopeed 2.0.0 新功能
-
-Gopeed 2.0.0 带来了覆盖桌面、移动端和 Web 的全新界面、更完善的任务管理、直连 Go 下载核心的原生桥接，以及通过 MCP 接入 AI 助手的能力。
-
-- **FTP、FTPS 和 FTPES** — 支持下载文件和目录，支持隐式 TLS（`ftps://`）和显式 TLS（`ftpes://`）。
-- **原生 HLS 下载** — 支持直接下载点播 `.m3u8` 播放列表，将媒体分片合并为一个可播放文件。
-- **BitTorrent** — 改进与 WebTorrent Tracker 的通信。
-- **内置 FFmpeg** — JavaScript 扩展可直接调用随 Gopeed 分发的 WebAssembly 运行时，将独立视频轨与音频轨免转码合并。 [FFmpeg 扩展 API](pkg/download/engine/ffmpeg/README.md)
-
 ## ✨ 主要特性
 
 - ⚡ **高速下载** — 多任务并发、HTTP 多连接分段传输和 BitTorrent P2P 下载，充分利用可用带宽。
-- 🧲 **多协议支持** — 支持 HTTP/HTTPS、FTP/FTPS/FTPES、HLS（M3U8）、BitTorrent 种子、磁力链接和 ed2k 链接。
-- 🌱 **完整 BT 能力** — 支持 DHT 节点发现、uTP 传输、Web Seed、按文件选择下载、Tracker 管理、Peer/分片统计，以及按分享率或时间控制做种。
+- 🧲 **多协议支持** — 支持 HTTP/HTTPS、FTP/FTPS/FTPES、HLS、BitTorrent 种子、磁力链接和 ed2k 链接。FTP 支持下载文件和目录，HLS 支持将点播 `.m3u8` 的分片合并为一个可播放文件。
+- 🌱 **完整 BT 能力** — 支持 DHT 节点发现、uTP 传输、Web Seed、按文件选择下载、Tracker 管理（含 WebTorrent Tracker）、Peer/分片统计，以及按分享率或时间控制做种。
 - 📋 **实用任务管理** — 暂停、续传、重试、批量操作、搜索、状态筛选、下载分类和启动恢复。
 - 🪶 **轻量原生体验** — 主界面使用 Flutter 原生渲染，非 Electron，非 WebView 的套壳，安装包更轻量、运行开销更低、响应更流畅。
 - 💻 **全平台覆盖** — 支持 Windows、macOS、Linux、Android、iOS 和 Web，并提供 Docker、QNAP 部署方式。
@@ -44,6 +35,7 @@ Gopeed 2.0.0 带来了覆盖桌面、移动端和 Web 的全新界面、更完�
 - 🗣️ **20+ 种界面语言** — 支持简体中文、繁体中文、英语、日语、韩语等多种语言。
 - 🌐 **浏览器接管** — 支持 Chrome、Edge、Firefox 等兼容浏览器，将下载任务直接发送到 Gopeed。
 - 🧩 **JavaScript 扩展** — 扩展视频网站、AI 模型站、网盘等更多下载源。
+- 🎬 **内置 FFmpeg** — JavaScript 扩展可直接调用随 Gopeed 分发的 WebAssembly 运行时，将独立视频轨与音频轨免转码合并。 [FFmpeg 扩展 API](pkg/download/engine/ffmpeg/README.md)
 - 🤖 **AI 接入** — 开放 MCP 接口，可接入 AI Agent，通过自然语言创建、查询和管理下载任务。
 - 🔌 **开放接口** — 通过 REST API、CLI、带身份认证的 Web UI、Webhook 和下载后脚本进行自动化。
 - 🛠️ **常用内置能力** — 自定义 Header 与 User-Agent、代理、GitHub 镜像、通知和自动解压。

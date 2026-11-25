@@ -22,20 +22,11 @@ Gopeed（**Go Speed** の略）は、Go と Flutter で開発された無料の�
 
 ![アプリのスクリーンショット](_docs/img/ui-concept-en.webp)
 
-## Gopeed 2.0.0 の新機能
-
-Gopeed 2.0.0 では、デスクトップ、モバイル、Web のインターフェースを刷新し、タスク管理を強化しました。ネイティブアプリは Go のダウンロードコアに直接接続し、MCP を通じて AI アシスタントと連携できます。
-
-- **FTP、FTPS、FTPES** — ファイルやディレクトリをダウンロードできます。暗黙的 TLS（`ftps://`）と明示的 TLS（`ftpes://`）に対応します。
-- **ネイティブ HLS ダウンロード** — オンデマンドの `.m3u8` プレイリストをダウンロードし、メディアセグメントを 1 つの再生可能なファイルにまとめます。
-- **BitTorrent** — WebTorrent トラッカーとの通信を改善しました。
-- **FFmpeg 内蔵** — JavaScript 拡張は、Gopeed に同梱された WebAssembly ランタイムで、別々の映像トラックと音声トラックを再エンコードせずに結合できます。 [FFmpeg 拡張 API](pkg/download/engine/ffmpeg/README.md)
-
 ## ✨ 主な機能
 
 - ⚡ **高速ダウンロード** — 複数タスク、HTTP のマルチ接続分割転送、BitTorrent の P2P ダウンロードで帯域を最大限に活用します。
-- 🧲 **マルチプロトコル** — HTTP/HTTPS、FTP/FTPS/FTPES、HLS（M3U8）、BitTorrent ファイル、マグネットリンク、ed2k リンクに対応します。
-- 🌱 **充実した BT 機能** — DHT によるピア検出、uTP 転送、Web Seed、ファイル選択、Tracker 管理、Peer/ピース統計、共有率または時間によるシード制御。
+- 🧲 **マルチプロトコル** — HTTP/HTTPS、FTP/FTPS/FTPES、HLS、BitTorrent ファイル、マグネットリンク、ed2k リンクに対応します。FTP ではファイルとディレクトリをダウンロードでき、オンデマンド HLS（`.m3u8`）ではセグメントを 1 つの再生可能なファイルにまとめます。
+- 🌱 **充実した BT 機能** — DHT によるピア検出、uTP 転送、Web Seed、ファイル選択、トラッカー管理（WebTorrent 対応）、Peer/ピース統計、共有率または時間によるシード制御。
 - 📋 **タスク管理** — 一時停止、再開、再試行、一括操作、検索、状態フィルター、カテゴリ、起動時復元。
 - 🪶 **軽量なネイティブ体験** — メイン UI は Flutter でネイティブ描画。Electron 非採用。WebView ラッパーでもありません。パッケージサイズと実行時オーバーヘッドを抑え、軽快な応答性を実現します。
 - 💻 **クロスプラットフォーム** — Windows、macOS、Linux、Android、iOS、Web、Docker、QNAP に対応。
@@ -44,6 +35,7 @@ Gopeed 2.0.0 では、デスクトップ、モバイル、Web のインターフ
 - 🗣️ **20 以上の UI 言語** — 日本語、英語、簡体字・繁体字中国語、韓国語など多くの言語に対応。
 - 🌐 **ブラウザー連携** — Chrome、Edge、Firefox などのダウンロードを Gopeed に送信できます。
 - 🧩 **JavaScript 拡張** — 動画サイト、AI モデルハブ、クラウドストレージなどのダウンロード元を追加できます。
+- 🎬 **FFmpeg 内蔵** — JavaScript 拡張は、Gopeed に同梱された WebAssembly ランタイムで、別々の映像トラックと音声トラックを再エンコードせずに結合できます。 [FFmpeg 拡張 API](pkg/download/engine/ffmpeg/README.md)
 - 🤖 **AI 連携** — MCP インターフェースを通じて対応する AI Agent と連携し、自然言語でダウンロードタスクを作成・確認・管理できます。
 - 🔌 **オープンなインターフェース** — REST API、CLI、認証付き Web UI、Webhook、完了後スクリプトに対応。
 - 🛠️ **便利な内蔵機能** — カスタム Header/User-Agent、Proxy、GitHub ミラー、通知、自動展開。

@@ -22,20 +22,11 @@ Visit ✈ [Official Website](https://gopeed.com)
 
 ![Application screenshot](_docs/img/ui-concept-en.webp)
 
-## What’s new in Gopeed 2.0.0
-
-Gopeed 2.0.0 introduces a redesigned interface across desktop, mobile, and web, improved task management, a native bridge to the Go download core, and MCP integration for AI assistants.
-
-- **FTP, FTPS, and FTPES** — download files and directories over FTP with optional implicit TLS (`ftps://`) or explicit TLS (`ftpes://`).
-- **Native HLS downloads** — download on-demand `.m3u8` playlists and save their segments as a single playable file.
-- **BitTorrent** — improved communication with WebTorrent trackers.
-- **Built-in FFmpeg** — JavaScript extensions can use the bundled WebAssembly runtime to merge separate video and audio tracks without re-encoding. [FFmpeg extension API](pkg/download/engine/ffmpeg/README.md)
-
 ## ✨ Features
 
 - ⚡ **High-speed downloads** — combine concurrent tasks, multi-connection HTTP transfers, and peer-to-peer BitTorrent downloads to make the most of your bandwidth.
-- 🧲 **Multiple protocols** — download over HTTP/HTTPS, FTP/FTPS/FTPES, and HLS (M3U8), or use BitTorrent files, magnet links, and ed2k links.
-- 🌱 **Full-featured BitTorrent** — use DHT peer discovery, uTP transport, Web Seeds, selective file downloads, tracker management, peer and piece statistics, and ratio- or time-based seeding limits.
+- 🧲 **Multiple protocols** — download via HTTP/HTTPS, FTP/FTPS/FTPES, HLS, BitTorrent, magnet links, and ed2k. FTP supports files and directories. HLS downloads merge on-demand `.m3u8` segments into a single playable file.
+- 🌱 **Full-featured BitTorrent** — use DHT peer discovery, uTP transport, Web Seeds, selective file downloads, tracker management (including WebTorrent trackers), peer and piece statistics, and ratio- or time-based seeding limits.
 - 📋 **Flexible task management** — pause, resume, retry, run batch operations, search, filter by status, organize with categories, and recover tasks after a restart.
 - 🪶 **Lightweight native experience** — the main interface is rendered natively with Flutter. No Electron. No WebView shell. Enjoy a smaller footprint, lower overhead, and responsive performance.
 - 💻 **Cross-platform** — available for Windows, macOS, Linux, Android, iOS, and the web, with Docker and QNAP deployment options.
@@ -44,6 +35,7 @@ Gopeed 2.0.0 introduces a redesigned interface across desktop, mobile, and web, 
 - 🗣️ **Available in 20+ languages** — including English, Simplified and Traditional Chinese, Japanese, Korean, and many more.
 - 🌐 **Browser integration** — send downloads from Chrome, Edge, Firefox, and other compatible browsers directly to Gopeed.
 - 🧩 **JavaScript extensions** — add support for video platforms, AI model hubs, cloud storage services, and other download sources.
+- 🎬 **Built-in FFmpeg** — JavaScript extensions can use the bundled WebAssembly runtime to merge separate video and audio tracks without re-encoding. [FFmpeg extension API](pkg/download/engine/ffmpeg/README.md)
 - 🤖 **AI integration** — use Gopeed's MCP endpoint to connect compatible AI agents and create, inspect, or manage downloads with natural language.
 - 🔌 **Automation-ready** — integrate with Gopeed through its REST API, CLI, authenticated web UI, webhooks, and post-download scripts.
 - 🛠️ **Built-in essentials** — customize headers and the User-Agent, use proxies and GitHub mirrors, receive notifications, and extract archives automatically.
