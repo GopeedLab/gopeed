@@ -27,6 +27,9 @@ on:
       - "go.sum"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 env:
   GO_VERSION: "1.27.4"
   FLUTTER_VERSION: "3.41.6"
