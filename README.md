@@ -33,7 +33,7 @@
 - 🗣️ **Available in 20+ languages** — including English, Simplified and Traditional Chinese, Japanese, Korean, and many more.
 - 🌐 **Browser integration** — send downloads from Chrome, Edge, Firefox, and other compatible browsers directly to Gopeed.
 - 🧩 **JavaScript extensions** — add support for video platforms, AI model hubs, cloud storage services, and other download sources.
-- 🎬 **Built-in FFmpeg** — JavaScript extensions can use the bundled WebAssembly runtime to merge separate video and audio tracks without re-encoding. [FFmpeg extension API](pkg/download/engine/ffmpeg/README.md)
+- 🎬 **Built-in FFmpeg** — JavaScript extensions can use the bundled WebAssembly runtime to merge separate video and audio tracks without re-encoding.
 - 🤖 **AI integration** — use Gopeed's MCP endpoint to connect compatible AI agents and create, inspect, or manage downloads with natural language.
 - 🔌 **Automation-ready** — integrate with Gopeed through its REST API, CLI, authenticated web UI, webhooks, and post-download scripts.
 - 🛠️ **Built-in essentials** — customize headers and the User-Agent, use proxies and GitHub mirrors, receive notifications, and extract archives automatically.

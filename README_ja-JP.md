@@ -33,7 +33,7 @@
 - 🗣️ **20 以上の UI 言語** — 日本語、英語、簡体字・繁体字中国語、韓国語など多くの言語に対応。
 - 🌐 **ブラウザー連携** — Chrome、Edge、Firefox などのダウンロードを Gopeed に送信できます。
 - 🧩 **JavaScript 拡張** — 動画サイト、AI モデルハブ、クラウドストレージなどのダウンロード元を追加できます。
-- 🎬 **FFmpeg 内蔵** — JavaScript 拡張は、Gopeed に同梱された WebAssembly ランタイムで、別々の映像トラックと音声トラックを再エンコードせずに結合できます。 [FFmpeg 拡張 API](pkg/download/engine/ffmpeg/README.md)
+- 🎬 **FFmpeg 内蔵** — JavaScript 拡張は、Gopeed に同梱された WebAssembly ランタイムで、別々の映像トラックと音声トラックを再エンコードせずに結合できます。
 - 🤖 **AI 連携** — MCP インターフェースを通じて対応する AI Agent と連携し、自然言語でダウンロードタスクを作成・確認・管理できます。
 - 🔌 **オープンなインターフェース** — REST API、CLI、認証付き Web UI、Webhook、完了後スクリプトに対応。
 - 🛠️ **便利な内蔵機能** — カスタム Header/User-Agent、Proxy、GitHub ミラー、通知、自動展開。

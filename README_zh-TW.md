@@ -33,7 +33,7 @@
 - 🗣️ **20+ 種介面語言** — 支援繁體中文、簡體中文、英文、日文、韓文等多種語言。
 - 🌐 **瀏覽器整合** — 可接管 Chrome、Edge、Firefox 等相容瀏覽器的下載。
 - 🧩 **JavaScript 擴充** — 新增影音網站、AI 模型平台、雲端儲存等下載來源。
-- 🎬 **內建 FFmpeg** — JavaScript 擴充功能可呼叫隨 Gopeed 發佈的 WebAssembly 執行環境，直接合併獨立的視訊與音訊軌，無需重新編碼。 [FFmpeg 擴充 API](pkg/download/engine/ffmpeg/README.md)
+- 🎬 **內建 FFmpeg** — JavaScript 擴充功能可呼叫隨 Gopeed 發佈的 WebAssembly 執行環境，直接合併獨立的視訊與音訊軌，無需重新編碼。
 - 🤖 **AI 整合** — 提供 MCP 介面，可串接相容的 AI Agent，以自然語言建立、查詢及管理下載任務。
 - 🔌 **開放介面** — 支援 REST API、CLI、認證 Web UI、Webhook 及下載後腳本。
 - 🛠️ **實用內建能力** — 自訂 Header/User-Agent、Proxy、GitHub 鏡像、通知及自動解壓縮。

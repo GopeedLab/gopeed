@@ -33,7 +33,7 @@
 - 🗣️ **Hơn 20 ngôn ngữ giao diện** — gồm tiếng Việt, tiếng Anh, tiếng Trung giản thể và phồn thể, tiếng Nhật, tiếng Hàn cùng nhiều ngôn ngữ khác.
 - 🌐 **Tích hợp trình duyệt** — gửi tải xuống từ Chrome, Edge, Firefox và các trình duyệt tương thích sang Gopeed.
 - 🧩 **Tiện ích JavaScript** — thêm nguồn tải từ nền tảng video, kho mô hình AI, lưu trữ đám mây và nhiều dịch vụ khác.
-- 🎬 **FFmpeg tích hợp** — tiện ích JavaScript có thể dùng môi trường WebAssembly đi kèm Gopeed để ghép luồng hình ảnh và âm thanh riêng biệt mà không cần mã hóa lại. [API tiện ích FFmpeg](pkg/download/engine/ffmpeg/README.md)
+- 🎬 **FFmpeg tích hợp** — tiện ích JavaScript có thể dùng môi trường WebAssembly đi kèm Gopeed để ghép luồng hình ảnh và âm thanh riêng biệt mà không cần mã hóa lại.
 - 🤖 **Tích hợp AI** — cung cấp giao diện MCP để kết nối với các AI Agent tương thích và tạo, kiểm tra hoặc quản lý tác vụ tải xuống bằng ngôn ngữ tự nhiên.
 - 🔌 **Giao diện mở** — REST API, CLI, Web UI có xác thực, webhook và script sau khi tải.
 - 🛠️ **Công cụ tích hợp** — Header/User-Agent tùy chỉnh, proxy, mirror GitHub, thông báo và tự động giải nén.
