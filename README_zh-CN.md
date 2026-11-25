@@ -14,9 +14,7 @@
 
 ## 🚀 介绍
 
-**Gopeed（够快下载器）是一款免费开源的现代化高速下载器**，适用于桌面端、移动端和 Web。支持 **HTTP/HTTPS、FTP/FTPS/FTPES、HLS（`.m3u8`）、BitTorrent 种子、磁力链接和 ed2k**。
-
-浏览器下载可以直接交给 Gopeed。JavaScript 扩展可以接入更多下载源，并调用内置 FFmpeg 合并音视频轨。你还可以通过 MCP 让 AI 助手管理下载，用 REST API 或 CLI 自动化任务，或自行部署 Web 界面。
+**Gopeed（够快下载器）是一款免费开源的现代化高速下载器**，适用于桌面端、移动端和 Web。支持 **HTTP、FTP、HLS、BitTorrent 种子、磁力链接和 ed2k**。
 
 访问 ✈ [官方网站](https://gopeed.com)
 

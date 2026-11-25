@@ -14,9 +14,7 @@
 
 ## 🚀 Introduction
 
-**Gopeed is a modern, high-speed download manager for desktop, mobile, and the web.** It’s free and open source, with support for **HTTP/HTTPS, FTP/FTPS/FTPES, HLS (`.m3u8`), BitTorrent files, magnet links, and ed2k**.
-
-Send browser downloads straight to Gopeed, or add download sources with JavaScript extensions that can merge audio and video with built-in FFmpeg. Manage downloads with an AI assistant through MCP, automate them with the REST API or CLI, or run your own web interface.
+**Gopeed is a modern, high-speed download manager for desktop, mobile, and the web.** It’s free and open source, with support for **HTTP, FTP, HLS, BitTorrent files, magnet links, and ed2k**.
 
 Visit ✈ [Official Website](https://gopeed.com)
 

@@ -14,9 +14,7 @@
 
 ## 🚀 Giới thiệu
 
-**Gopeed là trình quản lý tải xuống hiện đại, tốc độ cao dành cho máy tính, thiết bị di động và web.** Gopeed miễn phí, mã nguồn mở và hỗ trợ **HTTP/HTTPS, FTP/FTPS/FTPES, HLS (`.m3u8`), tệp BitTorrent, liên kết magnet và ed2k**.
-
-Chuyển lượt tải từ trình duyệt thẳng sang Gopeed. Tiện ích JavaScript có thể thêm nguồn tải và dùng FFmpeg tích hợp để ghép các luồng âm thanh và hình ảnh. Bạn cũng có thể dùng trợ lý AI qua MCP để quản lý lượt tải, tự động hóa tác vụ qua REST API hoặc CLI, hay tự triển khai giao diện web.
+**Gopeed là trình quản lý tải xuống hiện đại, tốc độ cao dành cho máy tính, thiết bị di động và web.** Gopeed miễn phí, mã nguồn mở và hỗ trợ **HTTP, FTP, HLS, tệp BitTorrent, liên kết magnet và ed2k**.
 
 Truy cập ✈ [Trang web chính thức](https://gopeed.com)
 

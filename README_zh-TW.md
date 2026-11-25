@@ -14,9 +14,7 @@
 
 ## 🚀 簡介
 
-**Gopeed 是一款免費開源的現代化高速下載器**，適用於桌面、行動裝置和 Web。支援 **HTTP/HTTPS、FTP/FTPS/FTPES、HLS（`.m3u8`）、BitTorrent 種子、磁力連結和 ed2k**。
-
-瀏覽器下載可以直接交給 Gopeed。JavaScript 擴充功能可以接入更多下載來源，並呼叫內建的 FFmpeg 合併音訊與視訊軌。你也可以透過 MCP 讓 AI 助理管理下載，使用 REST API 或 CLI 將任務自動化，或自行架設 Web 介面。
+**Gopeed 是一款免費開源的現代化高速下載器**，適用於桌面、行動裝置和 Web。支援 **HTTP、FTP、HLS、BitTorrent 種子、磁力連結和 ed2k**。
 
 瀏覽 ✈ [官方網站](https://gopeed.com)
 
