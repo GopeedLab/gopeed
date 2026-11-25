@@ -14,8 +14,8 @@ flutter 项目即可运行。
 
 ## 翻译
 
-Flutter 国际化文件位于 `ui/flutter/lib/l10n`，请以 `app_en.arb` 为源模板，修改或新增
-`app_<locale>.arb`（例如 `app_de.arb` 或 `app_zh_TW.arb`）。每个语种必须与英文模板包含相同的文案 key。
+Flutter 国际化文件位于 [`ui/flutter/lib/l10n`](ui/flutter/lib/l10n)，请以 [`app_en.arb`](ui/flutter/lib/l10n/app_en.arb) 为源模板，修改或新增
+`app_<locale>.arb`（例如 [`app_de.arb`](ui/flutter/lib/l10n/app_de.arb) 或 [`app_zh_TW.arb`](ui/flutter/lib/l10n/app_zh_TW.arb)）。每个语种必须与英文模板包含相同的文案 key。
 
 只翻译文案值，不要修改 `{count}`、`{name}` 等花括号中的变量名。以 `@` 开头的元数据 key 不需要翻译。
 提交时只包含修改过的 ARB 源文件，不需要生成或提交 `app_localizations*.dart`。PR 的 CI 会自动校验所有语种、

@@ -17,8 +17,8 @@ start the front-end flutter project in `debug` mode to run.
 
 ## Translation
 
-Flutter translations are ARB files in `ui/flutter/lib/l10n`. Use `app_en.arb` as the source template,
-then edit or add `app_<locale>.arb` (for example, `app_de.arb` or `app_zh_TW.arb`). Every locale must
+Flutter translations are ARB files in [`ui/flutter/lib/l10n`](ui/flutter/lib/l10n). Use [`app_en.arb`](ui/flutter/lib/l10n/app_en.arb) as the source template,
+then edit or add `app_<locale>.arb` (for example, [`app_de.arb`](ui/flutter/lib/l10n/app_de.arb) or [`app_zh_TW.arb`](ui/flutter/lib/l10n/app_zh_TW.arb)). Every locale must
 contain the same message keys as the English template.
 
 Translate message values only, and do not rename variables inside braces such as `{count}` and `{name}`.

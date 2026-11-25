@@ -10,23 +10,21 @@
 
 <a href="https://trendshift.io/repositories/7953" target="_blank"><img src="https://trendshift.io/api/badge/repositories/7953" alt="GopeedLab%2Fgopeed | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 
+[公式サイト](https://gopeed.com) · [拡張機能ストア](https://gopeed.com/store) · [ダウンロード](https://gopeed.com/#downloads)
+
 [English](/README.md) | [中文](/README_zh-CN.md) | [日本語](/README_ja-JP.md) | [正體中文](/README_zh-TW.md) | [Tiếng Việt](/README_vi-VN.md)
 
 ## 🚀 はじめに
 
-Gopeed（**Go Speed** の略）は、Go と Flutter で開発された高速でモダンな無料オープンソース・ダウンロードマネージャーです。HTTP、HTTPS、BitTorrent、Magnet、ed2k に対応し、デスクトップ、モバイル、Web で利用できます。
-
-ブラウザー連携、JavaScript 拡張、REST API、CLI、セルフホスト可能な Web UI により、日常利用から高度な自動化まで幅広く対応します。
-
-✈ [公式サイト](https://gopeed.com)
+**Gopeed は、デスクトップ、モバイル、Web で使えるモダンな高速ダウンロードマネージャーです。** 無料のオープンソースソフトウェアで、**HTTP、FTP、HLS、BitTorrent ファイル、マグネットリンク、ed2k** に対応しています。
 
 ![アプリのスクリーンショット](_docs/img/ui-concept-en.webp)
 
 ## ✨ 主な機能
 
 - ⚡ **高速ダウンロード** — 複数タスク、HTTP のマルチ接続分割転送、BitTorrent の P2P ダウンロードで帯域を最大限に活用します。
-- 🧲 **マルチプロトコル** — HTTP、HTTPS、BitTorrent、Magnet、ed2k を一つの画面で管理します。
-- 🌱 **充実した BT 機能** — DHT によるピア検出、uTP 転送、Web Seed、ファイル選択、Tracker 管理、Peer/ピース統計、共有率または時間によるシード制御。
+- 🧲 **マルチプロトコル** — HTTP/HTTPS、FTP/FTPS/FTPES、HLS、BitTorrent ファイル、マグネットリンク、ed2k リンクに対応します。FTP ではファイルとディレクトリをダウンロードでき、オンデマンド HLS（`.m3u8`）ではセグメントを 1 つの再生可能なファイルにまとめます。
+- 🌱 **充実した BT 機能** — DHT によるピア検出、uTP 転送、Web Seed、ファイル選択、トラッカー管理（WebTorrent 対応）、Peer/ピース統計、共有率または時間によるシード制御。
 - 📋 **タスク管理** — 一時停止、再開、再試行、一括操作、検索、状態フィルター、カテゴリ、起動時復元。
 - 🪶 **軽量なネイティブ体験** — メイン UI は Flutter でネイティブ描画。Electron 非採用。WebView ラッパーでもありません。パッケージサイズと実行時オーバーヘッドを抑え、軽快な応答性を実現します。
 - 💻 **クロスプラットフォーム** — Windows、macOS、Linux、Android、iOS、Web、Docker、QNAP に対応。
@@ -35,6 +33,7 @@ Gopeed（**Go Speed** の略）は、Go と Flutter で開発された高速で�
 - 🗣️ **20 以上の UI 言語** — 日本語、英語、簡体字・繁体字中国語、韓国語など多くの言語に対応。
 - 🌐 **ブラウザー連携** — Chrome、Edge、Firefox などのダウンロードを Gopeed に送信できます。
 - 🧩 **JavaScript 拡張** — 動画サイト、AI モデルハブ、クラウドストレージなどのダウンロード元を追加できます。
+- 🎬 **FFmpeg 内蔵** — JavaScript 拡張は、Gopeed に同梱された WebAssembly ランタイムで、別々の映像トラックと音声トラックを再エンコードせずに結合できます。
 - 🤖 **AI 連携** — MCP インターフェースを通じて対応する AI Agent と連携し、自然言語でダウンロードタスクを作成・確認・管理できます。
 - 🔌 **オープンなインターフェース** — REST API、CLI、認証付き Web UI、Webhook、完了後スクリプトに対応。
 - 🛠️ **便利な内蔵機能** — カスタム Header/User-Agent、Proxy、GitHub ミラー、通知、自動展開。
@@ -59,16 +58,6 @@ Gopeed を AI Agent と連携すると、自然言語でダウンロードを管
 
 ## ⬇️ インストール
 
-### 🧪 Gopeed 2.0.0 Beta
-
-Gopeed 2.0.0 は現在パブリックベータ版です。刷新されたインターフェース、デスクトップおよびモバイルから FFI で Go コアへ直接接続するネイティブ通信アーキテクチャ、より統一されたクロスプラットフォーム体験、強化されたタスク管理、より柔軟な API、MCP による AI Agent 連携機能を導入しています。一部の機能はまだ不完全または不安定な場合がありますので、ぜひお試しいただき、問題があればフィードバックをお寄せください。
-
-- [Gopeed 2.0.0 Beta 3 をダウンロード](https://github.com/GopeedLab/gopeed/releases/tag/v2.0.0-beta.3)
-
-機能と安定性が正式リリースの基準に達した時点で、Gopeed 2.0.0 正式版を公開します。ベータ版のユーザーは正式版へ直接アップデートできます。既存の安定版ユーザーが自動的にベータチャンネルへ移行することはありません。
-
-### 安定版
-
 - [公式サイトからダウンロード](https://gopeed.com)
 - [GitHub Releases](https://github.com/GopeedLab/gopeed/releases/latest)
 
@@ -86,14 +75,12 @@ Gopeed 2.0.0 は現在パブリックベータ版です。刷新されたイン�
 
 ## 👨‍💻 開発
 
-このプロジェクトは二つの部分に分かれており、フロントエンドでは `flutter` を、バックエンドでは `Golang` を使用し、両者は `http` プロトコルで通信する。ユニックスシステムでは `unix socket` を、ウィンドウズシステムでは `tcp` プロトコルを使用します。
-
-> フロントコードは `ui/flutter` ディレクトリにあります。
+Flutter アプリは `ui/flutter` にあります。Windows、macOS、Linux では Dart FFI を使い、Android と iOS ではプラットフォームチャネルと gomobile を使って Go コアを呼び出します。Flutter Web は Go の REST API を使います。ネイティブアプリでも外部連携用に REST API を有効にできます。
 
 ### 🌍 環境
 
-1. Go 言語 1.25+
-2. Flutter 3.41+
+1. Go 1.27.4
+2. Flutter 3.41.6
 
 ### 📋 クローン
 
@@ -103,7 +90,7 @@ git clone git@github.com:GopeedLab/gopeed.git
 
 ### 🤝 コントリビュート
 
-[CONTRIBUTING.md](/CONTRIBUTING_ja-JP.md) をご参照ください
+[CONTRIBUTING_ja-JP.md](CONTRIBUTING_ja-JP.md) をご参照ください
 
 ### 🏗️ ビルド
 
@@ -175,7 +162,7 @@ flutter build web
 cd ../../
 rm -rf cmd/web/dist
 cp -r ui/flutter/build/web cmd/web/dist
-go build -tags nosqlite,web -ldflags="-s -w" -o bin/ github.com/GopeedLab/gopeed/cmd/web
+CGO_ENABLED=0 go build -tags nosqlite,web -ldflags="-s -w" -o bin/ github.com/GopeedLab/gopeed/cmd/web
 ```
 
 ## ❤️ 感謝

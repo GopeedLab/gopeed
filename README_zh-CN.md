@@ -10,23 +10,21 @@
 
 <a href="https://trendshift.io/repositories/7953" target="_blank"><img src="https://trendshift.io/api/badge/repositories/7953" alt="GopeedLab%2Fgopeed | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 
+[官方网站](https://gopeed.com) · [扩展商店](https://gopeed.com/store) · [下载地址](https://gopeed.com/#downloads)
+
 [English](/README.md) | [中文](/README_zh-CN.md) | [日本語](/README_ja-JP.md) | [正體中文](/README_zh-TW.md) | [Tiếng Việt](/README_vi-VN.md)
 
 ## 🚀 介绍
 
-Gopeed（全称 **Go Speed**，也叫“够快下载器”）是一款使用 Go 和 Flutter 开发的高速、现代、免费开源下载器，支持 HTTP、HTTPS、BitTorrent、磁力链接和 ed2k，并覆盖桌面端、移动端与 Web。
-
-除了日常下载任务管理，Gopeed 还提供浏览器接管、JavaScript 扩展、REST API、命令行工具和可自托管 Web UI，方便高级用户扩展和自动化自己的下载流程。
-
-访问 ✈ [官方网站](https://gopeed.com)
+**Gopeed（够快下载器）是一款免费开源的现代化高速下载器**，适用于桌面端、移动端和 Web。支持 **HTTP、FTP、HLS、BitTorrent 种子、磁力链接和 ed2k**。
 
 ![应用截图](_docs/img/ui-concept-zh-CN.webp)
 
 ## ✨ 主要特性
 
 - ⚡ **高速下载** — 多任务并发、HTTP 多连接分段传输和 BitTorrent P2P 下载，充分利用可用带宽。
-- 🧲 **多协议支持** — 在同一个界面管理 HTTP、HTTPS、BitTorrent、磁力链接和 ed2k。
-- 🌱 **完整 BT 能力** — 支持 DHT 节点发现、uTP 传输、Web Seed、按文件选择下载、Tracker 管理、Peer/分片统计，以及按分享率或时间控制做种。
+- 🧲 **多协议支持** — 支持 HTTP/HTTPS、FTP/FTPS/FTPES、HLS、BitTorrent 种子、磁力链接和 ed2k 链接。FTP 支持下载文件和目录，HLS 支持将点播 `.m3u8` 的分片合并为一个可播放文件。
+- 🌱 **完整 BT 能力** — 支持 DHT 节点发现、uTP 传输、Web Seed、按文件选择下载、Tracker 管理（含 WebTorrent Tracker）、Peer/分片统计，以及按分享率或时间控制做种。
 - 📋 **实用任务管理** — 暂停、续传、重试、批量操作、搜索、状态筛选、下载分类和启动恢复。
 - 🪶 **轻量原生体验** — 主界面使用 Flutter 原生渲染，非 Electron，非 WebView 的套壳，安装包更轻量、运行开销更低、响应更流畅。
 - 💻 **全平台覆盖** — 支持 Windows、macOS、Linux、Android、iOS 和 Web，并提供 Docker、QNAP 部署方式。
@@ -35,6 +33,7 @@ Gopeed（全称 **Go Speed**，也叫“够快下载器”）是一款使用 Go 
 - 🗣️ **20+ 种界面语言** — 支持简体中文、繁体中文、英语、日语、韩语等多种语言。
 - 🌐 **浏览器接管** — 支持 Chrome、Edge、Firefox 等兼容浏览器，将下载任务直接发送到 Gopeed。
 - 🧩 **JavaScript 扩展** — 扩展视频网站、AI 模型站、网盘等更多下载源。
+- 🎬 **内置 FFmpeg** — JavaScript 扩展可直接调用随 Gopeed 分发的 WebAssembly 运行时，将独立视频轨与音频轨免转码合并。
 - 🤖 **AI 接入** — 开放 MCP 接口，可接入 AI Agent，通过自然语言创建、查询和管理下载任务。
 - 🔌 **开放接口** — 通过 REST API、CLI、带身份认证的 Web UI、Webhook 和下载后脚本进行自动化。
 - 🛠️ **常用内置能力** — 自定义 Header 与 User-Agent、代理、GitHub 镜像、通知和自动解压。
@@ -58,16 +57,6 @@ Gopeed（全称 **Go Speed**，也叫“够快下载器”）是一款使用 Go 
 | `delete_task` | 删除任务，并可选择同时删除已下载文件。 |
 
 ## ⬇️ 下载
-
-### 🧪 Gopeed 2.0.0 Beta
-
-Gopeed 2.0.0 目前处于公开 Beta 测试阶段，引入了全新界面、通过 FFI 直连 Go 核心的原生通信架构、更一致的跨平台体验、更完善的任务管理、更灵活的 API，以及用于 AI Agent 接入的 MCP 能力。部分功能仍可能不够完善或稳定，欢迎提前体验并向我们反馈问题。
-
-- [下载 Gopeed 2.0.0 Beta 3](https://github.com/GopeedLab/gopeed/releases/tag/v2.0.0-beta.3)
-
-当功能完整度和稳定性达到正式发布标准后，我们会发布 Gopeed 2.0.0 正式版。已安装 Beta 版本的用户可以直接升级到最终正式版，现有稳定版用户则不会被自动切换到 Beta 渠道。
-
-### 正式稳定版
 
 - [官方网站下载](https://gopeed.com)
 - [GitHub Releases](https://github.com/GopeedLab/gopeed/releases/latest)
@@ -96,14 +85,12 @@ Gopeed 还提供了浏览器扩展用于接管浏览器下载，支持 Chrome、
 
 ## 👨‍💻 开发
 
-本项目分为前端和后端两个部分，前端使用`flutter`，后端使用`Golang`，两边通过`http`协议进行通讯，在 unix 系统下，使用的是`unix socket`，在 windows 系统下，使用的是`tcp`协议。
-
-> 前端代码位于`ui/flutter`目录下。
+Flutter 应用位于 `ui/flutter`。Windows、macOS 和 Linux 通过 Dart FFI 调用 Go 核心，Android 和 iOS 通过平台通道与 gomobile 调用。Flutter Web 使用 Go REST API，原生客户端也可以开启该 API 供外部集成使用。
 
 ### 🌍 环境要求
 
-1. Golang 1.25+
-2. Flutter 3.41+
+1. Go 1.27.4
+2. Flutter 3.41.6
 
 ### 📋 克隆项目
 
@@ -185,7 +172,7 @@ flutter build web
 cd ../../
 rm -rf cmd/web/dist
 cp -r ui/flutter/build/web cmd/web/dist
-go build -tags nosqlite,web -ldflags="-s -w" -o bin/ github.com/GopeedLab/gopeed/cmd/web
+CGO_ENABLED=0 go build -tags nosqlite,web -ldflags="-s -w" -o bin/ github.com/GopeedLab/gopeed/cmd/web
 ```
 
 ## ❤️ 感谢

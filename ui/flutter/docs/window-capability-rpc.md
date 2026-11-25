@@ -4,8 +4,8 @@ This document defines the internal communication contract between the main windo
 
 ## 1. Ownership
 
-- The main window is the only owner of the Gopeed runtime, Gopeed API connection, and Hive database.
-- Child windows must never initialize `libgopeed`, initialize the Gopeed HTTP client, or open a Hive box.
+- The main window owns the Gopeed runtime and the native client. The Go runtime owns persistent storage.
+- Child windows must never initialize `libgopeed` or the Gopeed API client.
 - Child windows access application capabilities through `AppCapabilities` only.
 - Immutable window launch input, such as the window type and an initial create-task request, may use `AppWindowPayload`.
 - API addresses, API tokens, appearance state, locale, and persisted data must not be placed in launch payloads.
@@ -26,7 +26,7 @@ Presentation / Riverpod controllers
           |               |
  CapabilityRegistry  WindowMethodChannel
           |               |
- Gopeed HTTP/FFI + Hive in the main window
+ Gopeed FFI client in the main window
 ```
 
 The presentation layer must not branch on whether it is running in a main or child window. The root `ProviderScope` selects the local or remote capability implementation.
@@ -89,7 +89,7 @@ State broadcasting must observe the owning Riverpod state centrally. Do not broa
 
 ## 6. Storage
 
-- `Database` remains the low-level Hive implementation and is main-window infrastructure.
+- The main window reads and writes application preferences through the Go configuration API.
 - Product code used by child windows depends on `AppStorageService`.
 - Storage RPC methods expose business capabilities such as create-history operations, not raw `box.get` or `box.put` access.
 - Prefer batch mutations across the window boundary. For example, save all parsed URLs in one `saveCreateHistory(List<String>)` call.
@@ -97,15 +97,9 @@ State broadcasting must observe the owning Riverpod state centrally. Do not broa
 - Config reads, full config saves, and create-history mutations share one main-window queue. Each history mutation reads, changes, and writes the config within that queue. History reads wait for earlier saves.
 - `StorageMethods` owns `extra.createHistory`; full config saves preserve its latest value inside the queue so stale settings or child-window snapshots cannot overwrite history.
 
-## 7. Gopeed Backend Migration
+## 7. Gopeed Backend
 
-All structured task, configuration, extension, and webhook operations are exposed through `GopeedService`. The local registry currently binds them to `lib/api/api.dart`.
-
-When the backend moves to FFI:
-
-- Replace the main-window local bindings or their underlying implementation.
-- Keep `GopeedMethods`, `GopeedService`, child-window transport, pages, and controllers unchanged.
-- Keep raw HTTP proxy functionality separate unless an explicit capability contract is introduced for it.
+All structured task, configuration, extension, and webhook operations are exposed through `GopeedService`. The local registry calls the client in `lib/api/api.dart`, which uses the desktop FFI transport. Child windows invoke the same operations through the window capability channel.
 
 ## 8. Adding A Capability
 
@@ -122,9 +116,7 @@ When the backend moves to FFI:
 Child-window code must not:
 
 - Import `lib/api/api.dart`.
-- Call `api.init` or access the Gopeed socket/address/token.
-- Import or access `Database.instance`.
-- Open Hive boxes.
+- Initialize or access the Gopeed client directly.
 - Receive API configuration or persisted data through `AppWindowPayload`.
 - Add feature-specific MethodChannels.
 - Parse RPC JSON directly inside a page or widget.

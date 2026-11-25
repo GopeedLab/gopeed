@@ -17,8 +17,8 @@ khởi động dự án flutter frontend trong chế độ `debug` để chạy.
 
 ## Dịch thuật
 
-Các bản dịch Flutter là tệp ARB trong `ui/flutter/lib/l10n`. Hãy dùng `app_en.arb` làm mẫu nguồn,
-sau đó sửa hoặc thêm `app_<locale>.arb` (ví dụ `app_de.arb` hoặc `app_zh_TW.arb`). Mỗi ngôn ngữ phải
+Các bản dịch Flutter là tệp ARB trong [`ui/flutter/lib/l10n`](ui/flutter/lib/l10n). Hãy dùng [`app_en.arb`](ui/flutter/lib/l10n/app_en.arb) làm mẫu nguồn,
+sau đó sửa hoặc thêm `app_<locale>.arb` (ví dụ [`app_de.arb`](ui/flutter/lib/l10n/app_de.arb) hoặc [`app_zh_TW.arb`](ui/flutter/lib/l10n/app_zh_TW.arb)). Mỗi ngôn ngữ phải
 có cùng các khóa thông điệp như mẫu tiếng Anh.
 
 Chỉ dịch giá trị thông điệp; không đổi tên biến trong dấu ngoặc nhọn như `{count}` và `{name}`. Không dịch khóa

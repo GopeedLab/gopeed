@@ -10,23 +10,21 @@
 
 <a href="https://trendshift.io/repositories/7953" target="_blank"><img src="https://trendshift.io/api/badge/repositories/7953" alt="GopeedLab%2Fgopeed | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 
+[Trang web chính thức](https://gopeed.com) · [Cửa hàng tiện ích](https://gopeed.com/store) · [Tải xuống](https://gopeed.com/#downloads)
+
 [English](/README.md) | [中文](/README_zh-CN.md) | [日本語](/README_ja-JP.md) | [正體中文](/README_zh-TW.md) | [Tiếng Việt](/README_vi-VN.md)
 
 ## 🚀 Giới thiệu
 
-Gopeed (viết tắt của **Go Speed**) là trình quản lý tải xuống nhanh, hiện đại, miễn phí và mã nguồn mở, được xây dựng bằng Go và Flutter. Gopeed hỗ trợ HTTP, HTTPS, BitTorrent, Magnet và ed2k trên máy tính, thiết bị di động và Web.
-
-Ngoài việc quản lý tải xuống hằng ngày, Gopeed còn hỗ trợ tích hợp trình duyệt, tiện ích JavaScript, REST API, CLI và Web UI có thể tự lưu trữ để mở rộng và tự động hóa quy trình.
-
-Truy cập ✈ [Trang web chính thức](https://gopeed.com)
+**Gopeed là trình quản lý tải xuống hiện đại, tốc độ cao dành cho máy tính, thiết bị di động và web.** Gopeed miễn phí, mã nguồn mở và hỗ trợ **HTTP, FTP, HLS, tệp BitTorrent, liên kết magnet và ed2k**.
 
 ![Ảnh chụp màn hình ứng dụng](_docs/img/ui-concept-en.webp)
 
 ## ✨ Tính năng chính
 
 - ⚡ **Tải xuống tốc độ cao** — kết hợp nhiều tác vụ, truyền HTTP phân đoạn qua nhiều kết nối và tải BitTorrent P2P để tận dụng tối đa băng thông.
-- 🧲 **Đa giao thức** — quản lý HTTP, HTTPS, BitTorrent, Magnet và ed2k trong một giao diện.
-- 🌱 **Bộ công cụ BT đầy đủ** — hỗ trợ khám phá Peer qua DHT, truyền tải uTP, Web Seed, chọn tệp, quản lý Tracker, xem Peer/mảnh và kiểm soát seed theo tỷ lệ hoặc thời gian.
+- 🧲 **Đa giao thức** — tải qua HTTP/HTTPS, FTP/FTPS/FTPES, HLS hoặc dùng tệp BitTorrent, liên kết magnet và ed2k. FTP hỗ trợ tải tệp và thư mục. HLS ghép các phân đoạn của danh sách phát `.m3u8` theo yêu cầu thành một tệp có thể phát.
+- 🌱 **Bộ công cụ BT đầy đủ** — hỗ trợ khám phá Peer qua DHT, truyền tải uTP, Web Seed, chọn tệp, quản lý tracker (bao gồm tracker WebTorrent), xem Peer/mảnh và kiểm soát seed theo tỷ lệ hoặc thời gian.
 - 📋 **Quản lý tác vụ thực tế** — tạm dừng, tiếp tục, thử lại, thao tác hàng loạt, tìm kiếm, bộ lọc, danh mục và khôi phục khi khởi động.
 - 🪶 **Trải nghiệm native gọn nhẹ** — giao diện chính được Flutter kết xuất native. Không Electron. Không vỏ bọc WebView. Kích thước nhỏ hơn, ít tốn tài nguyên hơn và phản hồi nhanh hơn.
 - 💻 **Đa nền tảng** — Windows, macOS, Linux, Android, iOS, Web, Docker và QNAP.
@@ -35,6 +33,7 @@ Truy cập ✈ [Trang web chính thức](https://gopeed.com)
 - 🗣️ **Hơn 20 ngôn ngữ giao diện** — gồm tiếng Việt, tiếng Anh, tiếng Trung giản thể và phồn thể, tiếng Nhật, tiếng Hàn cùng nhiều ngôn ngữ khác.
 - 🌐 **Tích hợp trình duyệt** — gửi tải xuống từ Chrome, Edge, Firefox và các trình duyệt tương thích sang Gopeed.
 - 🧩 **Tiện ích JavaScript** — thêm nguồn tải từ nền tảng video, kho mô hình AI, lưu trữ đám mây và nhiều dịch vụ khác.
+- 🎬 **FFmpeg tích hợp** — tiện ích JavaScript có thể dùng môi trường WebAssembly đi kèm Gopeed để ghép luồng hình ảnh và âm thanh riêng biệt mà không cần mã hóa lại.
 - 🤖 **Tích hợp AI** — cung cấp giao diện MCP để kết nối với các AI Agent tương thích và tạo, kiểm tra hoặc quản lý tác vụ tải xuống bằng ngôn ngữ tự nhiên.
 - 🔌 **Giao diện mở** — REST API, CLI, Web UI có xác thực, webhook và script sau khi tải.
 - 🛠️ **Công cụ tích hợp** — Header/User-Agent tùy chỉnh, proxy, mirror GitHub, thông báo và tự động giải nén.
@@ -59,16 +58,6 @@ Sau khi kết nối Gopeed với AI Agent, bạn có thể quản lý tải xu�
 
 ## ⬇️ Tải về
 
-### 🧪 Gopeed 2.0.0 Beta
-
-Gopeed 2.0.0 hiện đang trong giai đoạn beta công khai, với giao diện được thiết kế lại, kiến trúc giao tiếp native kết nối trực tiếp ứng dụng desktop và di động với lõi Go qua FFI, trải nghiệm đa nền tảng nhất quán hơn, khả năng quản lý tác vụ được cải thiện, API linh hoạt hơn và khả năng tích hợp AI Agent qua MCP. Một số tính năng có thể vẫn chưa hoàn thiện hoặc chưa ổn định, vì vậy hãy dùng thử và gửi phản hồi nếu bạn gặp vấn đề.
-
-- [Tải Gopeed 2.0.0 Beta 3](https://github.com/GopeedLab/gopeed/releases/tag/v2.0.0-beta.3)
-
-Khi các tính năng và độ ổn định đáp ứng tiêu chuẩn phát hành, chúng tôi sẽ phát hành Gopeed 2.0.0 chính thức. Người dùng bản beta có thể nâng cấp trực tiếp lên bản chính thức, trong khi người dùng bản ổn định hiện tại sẽ không tự động được chuyển sang kênh beta.
-
-### Bản ổn định
-
 - [Tải xuống từ trang web chính thức](https://gopeed.com)
 - [GitHub Releases](https://github.com/GopeedLab/gopeed/releases/latest)
 
@@ -90,18 +79,16 @@ Theo dõi tài khoản chính thức để nhận các cập nhật và tin tứ
 
 Nếu bạn thích dự án này, xin vui lòng xem xét [quyên góp](https://gopeed.com/docs/donate) để hỗ trợ phát triển dự án này, cảm ơn bạn!
 
-## 👨‍💻 Development
+## 👨‍💻 Phát triển
 
-Dự án này được chia thành hai phần, phần giao diện sử dụng `flutter`, phần backend sử dụng `Golang`, và hai phía giao tiếp thông qua giao thức `http`. Trên hệ thống unix, sử dụng `unix socket`, và trên hệ thống windows, sử dụng giao thức `tcp`.
+Ứng dụng Flutter nằm trong `ui/flutter`. Windows, macOS và Linux gọi lõi Go qua Dart FFI. Android và iOS dùng kênh nền tảng và gomobile. Flutter Web dùng REST API của Go. Ứng dụng native cũng có thể bật API này để tích hợp với công cụ bên ngoài.
 
-> Mã giao diện nằm trong thư mục `ui/flutter`.
+### 🌍 Môi trường phát triển
 
-### 🌍 Environment
+1. Go 1.27.4
+2. Flutter 3.41.6
 
-1. Golang 1.25+
-2. Flutter 3.41+
-
-### 📋 Clone
+### 📋 Sao chép kho mã nguồn
 
 ```bash
 git clone git@github.com:GopeedLab/gopeed.git
@@ -181,7 +168,7 @@ flutter build web
 cd ../../
 rm -rf cmd/web/dist
 cp -r ui/flutter/build/web cmd/web/dist
-go build -tags nosqlite,web -ldflags="-s -w" -o bin/ github.com/GopeedLab/gopeed/cmd/web
+CGO_ENABLED=0 go build -tags nosqlite,web -ldflags="-s -w" -o bin/ github.com/GopeedLab/gopeed/cmd/web
 ```
 
 ## ❤️ Tín dụng

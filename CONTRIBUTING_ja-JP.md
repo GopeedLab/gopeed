@@ -17,8 +17,8 @@
 
 ## 翻訳
 
-Flutter の翻訳ファイルは `ui/flutter/lib/l10n` にあります。`app_en.arb` を原文テンプレートとして、
-`app_<locale>.arb`（例: `app_de.arb`、`app_zh_TW.arb`）を編集または追加してください。すべての言語で
+Flutter の翻訳ファイルは [`ui/flutter/lib/l10n`](ui/flutter/lib/l10n) にあります。[`app_en.arb`](ui/flutter/lib/l10n/app_en.arb) を原文テンプレートとして、
+`app_<locale>.arb`（例: [`app_de.arb`](ui/flutter/lib/l10n/app_de.arb)、[`app_zh_TW.arb`](ui/flutter/lib/l10n/app_zh_TW.arb)）を編集または追加してください。すべての言語で
 英語テンプレートと同じメッセージ key が必要です。
 
 翻訳するのはメッセージ値だけです。`{count}` や `{name}` など、中括弧内の変数名は変更しないでください。

@@ -12,8 +12,8 @@
 
 ## 翻譯
 
-Flutter 翻譯檔位於 `ui/flutter/lib/l10n`，請以 `app_en.arb` 為來源範本，修改或新增
-`app_<locale>.arb`（例如 `app_de.arb` 或 `app_zh_TW.arb`）。每個語言都必須與英文範本包含相同的訊息 key。
+Flutter 翻譯檔位於 [`ui/flutter/lib/l10n`](ui/flutter/lib/l10n)，請以 [`app_en.arb`](ui/flutter/lib/l10n/app_en.arb) 為來源範本，修改或新增
+`app_<locale>.arb`（例如 [`app_de.arb`](ui/flutter/lib/l10n/app_de.arb) 或 [`app_zh_TW.arb`](ui/flutter/lib/l10n/app_zh_TW.arb)）。每個語言都必須與英文範本包含相同的訊息 key。
 
 只翻譯訊息值，不要修改 `{count}`、`{name}` 等大括號中的變數名稱。以 `@` 開頭的中繼資料 key 不需要翻譯。
 提交時只需包含修改過的 ARB 來源檔，不需要產生或提交 `app_localizations*.dart`。PR 的 CI

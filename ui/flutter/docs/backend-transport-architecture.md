@@ -2,15 +2,15 @@
 
 ## 1. Background
 
-The Flutter native client currently starts the Go backend together with a REST server, then calls that REST API over TCP or a Unix socket. REST remains appropriate for the web client, but using it inside a native process introduces several problems:
+Before Gopeed 2.0, the native Flutter client called the Go backend over TCP or a Unix socket through a local REST server. That design introduced several problems for desktop and mobile:
 
-- Flutter and Go run in the same process but still need to manage a listening port, Unix socket, API token, and connection fallback.
-- The REST server lifecycle is coupled to the Downloader lifecycle, so the API server cannot be stopped without stopping the download core.
-- Go already emits task events, but Flutter can only poll the task list instead of receiving in-process notifications.
-- Flutter stores connection settings and preferences in Hive while Go uses Bolt Storage, creating two persistence systems.
-- Adding an API can require duplicate work in the Go REST layer, native bridge, and Flutter client.
+- Flutter and Go ran in the same process and still managed a listening port, Unix socket, API token, and connection fallback.
+- Stopping the REST server also stopped the Downloader.
+- Flutter polled the task list for updates while Go emitted task events.
+- Flutter stored connection settings and preferences in Hive while Go used Bolt Storage.
+- Adding an API could require duplicate work in the Go REST layer, native bridge, and Flutter client.
 
-The goal is to let native clients call Go directly, retain REST for the web, and provide one consistent API experience to Flutter components.
+Gopeed 2.0 uses direct calls on native platforms and REST on the web. Flutter components use the same API client on every platform.
 
 ## 2. Decision
 
@@ -516,7 +516,7 @@ This preserves the lifecycle rule that the main window owns the Go Runtime and c
 
 ### 9.3 Legacy data policy
 
-This branch intentionally does not migrate `database.hive`. After upgrade, window state, creation history, and the analytics fallback ID start from defaults. Download tasks, Downloader configuration, and extension data continue to come from existing Go Storage and are unaffected.
+On upgrade from Gopeed 1.x, window state, creation history, and the analytics fallback ID previously stored in `database.hive` start from defaults. Gopeed continues to load download tasks, Downloader configuration, and extension data from existing Go Storage.
 
 ### 9.4 Web login state
 
@@ -527,7 +527,7 @@ Web login state must not be stored in `DownloaderStoreConfig.extra`:
 - Config is returned to other authenticated clients, so persisting a browser token there would leak the session.
 - Native FFI/gomobile calls do not pass through REST authentication and do not need a web token.
 
-After synchronizing `feat/v2`, the login page and 401 redirect behavior remain in place. On successful login, Go uses `crypto/rand` to create a 256-bit random Session ID. It stores the session and its seven-day expiry in process memory and returns the ID only in a `HttpOnly + SameSite=Lax + Path=/` Cookie. HTTPS and trusted reverse-proxy requests also set `Secure`. The Cookie contains no username, password, or business data, and Flutter Web never reads, persists, or injects the Session ID.
+Flutter Web redirects to the login page on a 401 response. On successful login, Go uses `crypto/rand` to create a 256-bit random Session ID. It stores the session and its seven-day expiry in process memory and returns the ID only in a `HttpOnly + SameSite=Lax + Path=/` Cookie. HTTPS and trusted reverse-proxy requests also set `Secure`. The Cookie contains no username, password, or business data, and Flutter Web never reads, persists, or injects the Session ID.
 
 Sessions are not stored in Bolt and do not require AES. Their lifecycle is:
 
