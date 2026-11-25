@@ -38,6 +38,8 @@ jobs:
         working-directory: ui/flutter
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}

@@ -52,6 +52,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+        with:
+          persist-credentials: false
       - name: Enable long paths for flutter main branch checks
         run: |
           git config --global core.longpaths true
@@ -219,6 +221,8 @@ jobs:
       CGO_CXXFLAGS: "-O2 -g -mmacosx-version-min=13.0"
     steps:
       - uses: actions/checkout@v3
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
@@ -249,6 +253,8 @@ jobs:
     needs: [get-release, build-macos-amd64-lib]
     steps:
       - uses: actions/checkout@v3
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
@@ -340,6 +346,8 @@ jobs:
     needs: [get-release]
     steps:
       - uses: actions/checkout@v3
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
@@ -438,6 +446,8 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v3
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
@@ -583,6 +593,8 @@ jobs:
     needs: [get-release]
     steps:
       - uses: actions/checkout@v3
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
@@ -625,6 +637,8 @@ jobs:
     needs: [get-release]
     steps:
       - uses: actions/checkout@v3
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
@@ -658,6 +672,8 @@ jobs:
     needs: [get-release]
     steps:
       - uses: actions/checkout@v3
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
@@ -779,6 +795,8 @@ jobs:
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
       - uses: actions/checkout@v3
+        with:
+          persist-credentials: false
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
       - name: Set up Docker Buildx
