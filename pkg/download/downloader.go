@@ -1121,9 +1121,28 @@ func (d *Downloader) Pause(filter *TaskFilter) (err error) {
 			return ErrTaskNotFound
 		}
 	}
-	filter.NotStatuses = []base.Status{base.DownloadStatusPause, base.DownloadStatusError, base.DownloadStatusDone}
+	filter.NotStatuses = []base.Status{base.DownloadStatusPause, base.DownloadStatusError}
 	pauseTasks := d.GetTasksByFilter(filter)
+	// A done task can still be seeding. An explicit pause of that task stops
+	// its upload; a done task that is not uploading has nothing to pause.
+	seedStopped := false
+	running := pauseTasks[:0]
+	for _, task := range pauseTasks {
+		if d.taskStatus(task) != base.DownloadStatusDone {
+			running = append(running, task)
+			continue
+		}
+		stopped, stopErr := d.stopSeeding(task)
+		if stopErr != nil {
+			return stopErr
+		}
+		seedStopped = seedStopped || stopped
+	}
+	pauseTasks = running
 	if len(pauseTasks) == 0 {
+		if seedStopped {
+			return nil
+		}
 		return ErrTaskNotFound
 	}
 	d.lock.Lock()
@@ -1148,6 +1167,39 @@ func (d *Downloader) Pause(filter *TaskFilter) (err error) {
 	d.notifyRunning()
 
 	return
+}
+
+// stopSeeding stops the upload of a done task that is still seeding, without
+// changing its status or data. The stop is persisted, so the task does not
+// resume seeding after a restart. Process shutdown does not use this path and
+// keeps the seeding intention.
+func (d *Downloader) stopSeeding(task *Task) (bool, error) {
+	task.lock.Lock()
+	task.statusLock.Lock()
+	uploading := task.Status == base.DownloadStatusDone && task.Uploading
+	task.statusLock.Unlock()
+	if !uploading {
+		task.lock.Unlock()
+		return false, nil
+	}
+	f := task.fetcher
+	if _, ok := f.(fetcher.Uploader); !ok {
+		task.lock.Unlock()
+		return false, nil
+	}
+	if err := f.Close(); err != nil {
+		task.lock.Unlock()
+		return false, err
+	}
+	task.statusLock.Lock()
+	task.Uploading = false
+	task.statusLock.Unlock()
+	task.lock.Unlock()
+	if err := d.saveTask(task); err != nil {
+		return false, err
+	}
+	d.emit(EventKeyPause, task)
+	return true, nil
 }
 
 func (d *Downloader) pauseAll() (err error) {
