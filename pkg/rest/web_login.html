@@ -1,166 +1,340 @@
 <!DOCTYPE html>
 <html lang="{{.Lang}}">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="robots" content="noindex">
-  <title>{{.Title}}</title>
-  <style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<meta name="color-scheme" content="light dark">
+<title>{{.Title}}</title>
+<style>
+  :root {
+    --bg: #f6f8f7;
+    --side: #f0f4f1;
+    --blend: #edf3ee;
+    --card: #ffffff;
+    --input: #e7e8e9;
+    --border: rgba(192, 201, 186, 0.4);
+    --text: #191c1d;
+    --muted: #707a6d;
+    --action-bg: #191c1d;
+    --action-fg: #ffffff;
+    --action-hover: #303435;
+    --brand: #79c476;
+    --brand-soft: rgba(121, 196, 118, 0.08);
+    --brand-line: rgba(121, 196, 118, 0.28);
+    --dot: rgba(112, 122, 109, 0.12);
+    --mark-bg: #191c1d;
+    --mark-fg: #ffffff;
+    --error: #ba1a1a;
+    --shadow: 0 14px 36px rgba(25, 28, 29, 0.08);
+    --node-shadow: 0 4px 12px rgba(25, 28, 29, 0.08);
+  }
+  @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #f4f5f7;
-      --card: #ffffff;
-      --text: #1b1c1e;
-      --muted: #6b6f76;
-      --border: #d8dbe0;
-      --accent: #5b5bd6;
-      --accent-text: #ffffff;
-      --focus-ring: rgba(91, 91, 214, 0.22);
-      --error: #c8372d;
-      --error-bg: rgba(200, 55, 45, 0.08);
-      --shadow: 0 12px 32px rgba(16, 18, 22, 0.10);
+      --bg: #09090b;
+      --side: #111111;
+      --blend: #1a1f19;
+      --card: #0f0f11;
+      --input: #111111;
+      --border: #1b1b1d;
+      --text: #ffffff;
+      --muted: #71717a;
+      --action-bg: #fafafa;
+      --action-fg: #18181b;
+      --action-hover: #e4e4e7;
+      --brand: #a7f5a2;
+      --brand-soft: rgba(167, 245, 162, 0.1);
+      --brand-line: rgba(167, 245, 162, 0.28);
+      --dot: rgba(113, 113, 122, 0.12);
+      --mark-bg: #fafafa;
+      --mark-fg: #18181b;
+      --error: #ffb4ab;
+      --shadow: 0 14px 36px rgba(0, 0, 0, 0.45);
+      --node-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
     }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #131417;
-        --card: #1c1e22;
-        --text: #eceef1;
-        --muted: #9aa0a8;
-        --border: #32363d;
-        --accent: #8b8bf0;
-        --accent-text: #14151a;
-        --focus-ring: rgba(139, 139, 240, 0.28);
-        --error: #ff8a80;
-        --error-bg: rgba(255, 138, 128, 0.10);
-        --shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
-      }
-    }
-    * { box-sizing: border-box; }
-    html, body { height: 100%; }
-    body {
-      margin: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
-        "Hiragino Sans GB", "Microsoft YaHei", Roboto, Helvetica, Arial, sans-serif;
-      font-size: 15px;
-      line-height: 1.5;
-      -webkit-font-smoothing: antialiased;
-    }
-    .card {
-      width: 100%;
-      max-width: 360px;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 32px 28px 28px;
-      box-shadow: var(--shadow);
-    }
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 24px;
-    }
-    .logo {
-      width: 34px;
-      height: 34px;
-      border-radius: 9px;
-      background: var(--accent);
-      color: var(--accent-text);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 700;
-      font-size: 17px;
-      letter-spacing: -0.5px;
-    }
-    .brand-name { font-size: 17px; font-weight: 650; letter-spacing: 0.2px; }
-    .field { margin-bottom: 16px; }
-    label {
-      display: block;
-      margin-bottom: 6px;
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text);
-    }
-    input[type="text"], input[type="password"] {
-      width: 100%;
-      height: 42px;
-      padding: 0 12px;
-      font-size: 15px;
-      font-family: inherit;
-      color: var(--text);
-      background: transparent;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      outline: none;
-      transition: border-color 0.15s ease, box-shadow 0.15s ease;
-      -webkit-appearance: none;
-    }
-    input[type="text"]:focus, input[type="password"]:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px var(--focus-ring);
-    }
-    .error {
-      margin: 0 0 16px;
-      padding: 10px 12px;
-      font-size: 13px;
-      color: var(--error);
-      border: 1px solid var(--error);
-      border-radius: 10px;
-      background: var(--error-bg);
-    }
-    button {
-      width: 100%;
-      height: 44px;
-      margin-top: 8px;
-      font-size: 15px;
-      font-family: inherit;
-      font-weight: 600;
-      color: var(--accent-text);
-      background: var(--accent);
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      transition: filter 0.15s ease;
-    }
-    button:hover { filter: brightness(1.06); }
-    button:active { filter: brightness(0.95); }
-    .hint {
-      margin: 18px 0 0;
-      font-size: 12px;
-      color: var(--muted);
-      text-align: center;
-    }
-  </style>
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+      "Hiragino Sans GB", "Microsoft YaHei", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .card {
+    display: flex;
+    width: min(980px, 100%);
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+
+  /* brand art */
+  .art {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 520px;
+    overflow: hidden;
+    background: linear-gradient(135deg, var(--side) 0%, var(--blend) 55%, var(--card) 100%);
+  }
+  .art-grid {
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(circle, var(--dot) 1px, transparent 1.1px);
+    background-size: 28px 28px;
+    background-position: 14px 14px;
+  }
+  .art-flow {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+  .art-flow path {
+    fill: none;
+    vector-effect: non-scaling-stroke;
+  }
+  .art-flow .flow-brand { stroke: var(--brand-line); stroke-width: 1.8; }
+  .art-flow .flow-muted { stroke: var(--dot); stroke-width: 1; }
+  .art-glow {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 360px;
+    height: 360px;
+    margin: -180px 0 0 -180px;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--brand-soft) 0%, rgba(0, 0, 0, 0) 70%);
+  }
+  .art-wordmark {
+    position: absolute;
+    left: 32px;
+    top: 32px;
+    font-size: 19px;
+    font-weight: 800;
+    letter-spacing: 0.4px;
+    color: var(--text);
+  }
+  .orbit {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 260px;
+    height: 260px;
+    margin: -130px 0 0 -130px;
+  }
+  .orbit-rings { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .orbit-rings .ring { fill: none; stroke: var(--brand-line); stroke-width: 1.2; }
+  .orbit-rings .arc { fill: none; stroke: var(--brand); stroke-width: 2.2; stroke-linecap: round; opacity: 0.52; }
+  .orbit-rings .dot { fill: var(--brand); }
+  .core {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 96px;
+    height: 96px;
+    margin: -48px 0 0 -48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--card);
+    border: 1px solid var(--brand-line);
+    box-shadow: 0 0 32px 2px var(--brand-soft);
+  }
+  .mark { width: 74px; height: 74px; display: block; }
+  .mark-bg { fill: var(--mark-bg); }
+  .mark-cloud { fill: none; stroke: var(--mark-fg); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+  .mark-arrow { fill: var(--mark-fg); }
+  .node {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    border-radius: 8px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    box-shadow: var(--node-shadow);
+    color: var(--brand);
+  }
+  .node svg { width: 18px; height: 18px; display: block; }
+  .node-cloud { top: 16px; right: 20px; }
+  .node-disk { bottom: 20px; left: 14px; }
+  .node-gauge { bottom: 4px; right: 38px; width: 34px; height: 34px; }
+  .node-gauge svg { width: 15px; height: 15px; }
+
+  /* form */
+  .panel {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    width: 420px;
+    flex: 0 0 420px;
+    padding: 56px 48px;
+  }
+  h1 {
+    margin: 0 0 24px;
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1.15;
+    color: var(--text);
+  }
+  .field { margin-bottom: 16px; }
+  label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  input[type="text"], input[type="password"] {
+    width: 100%;
+    padding: 11px 12px;
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 1.3;
+    color: var(--text);
+    background: var(--input);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    -webkit-appearance: none;
+  }
+  input[type="text"]:focus, input[type="password"]:focus {
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px var(--brand-soft);
+  }
+  .error {
+    margin: 12px 0;
+    font-size: 12px;
+    line-height: 1.35;
+    color: var(--error);
+  }
+  .actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 24px;
+  }
+  button {
+    width: 148px;
+    height: 40px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--action-fg);
+    background: var(--action-bg);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+  }
+  button:hover { background: var(--action-hover); }
+  button:active { opacity: 0.9; }
+
+  @media (max-width: 899px) {
+    body { padding: 16px; }
+    .card { flex-direction: column; width: min(440px, 100%); }
+    .art { flex: 0 0 190px; min-height: 190px; }
+    .art-wordmark { left: 24px; top: 16px; font-size: 17px; }
+    .art-glow { width: 180px; height: 180px; margin: -90px 0 0 -90px; }
+    .orbit { transform: scale(0.508); }
+    .node-gauge { display: none; }
+    .panel { width: 100%; flex: 0 0 auto; padding: 24px; }
+  }
+</style>
 </head>
 <body>
   <main class="card">
-    <div class="brand">
-      <div class="logo" aria-hidden="true">G</div>
-      <span class="brand-name">Gopeed</span>
+    <div class="art" aria-hidden="true">
+      <div class="art-grid"></div>
+      <svg class="art-flow" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <path class="flow-brand" d="M-8,32 C20,18 32.5,36 50,50"></path>
+        <path class="flow-muted" d="M108,72 C78,84 67.5,59 50,50"></path>
+        <path class="flow-muted" d="M18,106 C26,72 36,64 50,50"></path>
+      </svg>
+      <div class="art-glow"></div>
+      <span class="art-wordmark">Gopeed</span>
+      <div class="orbit">
+        <svg class="orbit-rings" viewBox="0 0 260 260">
+          <circle class="ring" cx="130" cy="130" r="101.4"></circle>
+          <path class="arc" d="M65 96.7 A73 73 0 1 1 123.2 202.7"></path>
+          <circle class="dot" cx="65.4" cy="51.9" r="3.2"></circle>
+          <circle class="dot" cx="215.6" cy="184.3" r="3.2"></circle>
+          <circle class="dot" cx="56.1" cy="199.4" r="3.2"></circle>
+        </svg>
+        <div class="core">
+          <svg class="mark" viewBox="0 0 100 100" aria-hidden="true">
+            <defs>
+              <clipPath id="gopeed-mark-clip"><circle cx="50" cy="50" r="49"></circle></clipPath>
+            </defs>
+            <circle class="mark-bg" cx="50" cy="50" r="49"></circle>
+            <g clip-path="url(#gopeed-mark-clip)">
+              <path class="mark-cloud" d="M-2,83 C4,78 9,75 15,73 C12,66 13,60 20,57 C27,54 31,58 35,62 C46,42 66,40 78,50 C86,57 87,68 86,75 C92,76 98,79 103,84"></path>
+              <path class="mark-arrow" d="M41,66 H59 V86 H69 L50,102 L31,85 H41 Z"></path>
+            </g>
+          </svg>
+        </div>
+        <span class="node node-cloud">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 13v8l-4-4"></path>
+            <path d="m12 21 4-4"></path>
+            <path d="M4.393 15.269A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.436 8.284"></path>
+          </svg>
+        </span>
+        <span class="node node-disk">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 2v8"></path>
+            <path d="m16 6-4 4-4-4"></path>
+            <rect width="20" height="8" x="2" y="14" rx="2"></rect>
+            <path d="M6 18h.01"></path>
+            <path d="M10 18h.01"></path>
+          </svg>
+        </span>
+        <span class="node node-gauge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m12 14 4-4"></path>
+            <path d="M3.34 19a10 10 0 1 1 17.32 0"></path>
+          </svg>
+        </span>
+      </div>
     </div>
-    <form method="post" action="/login" autocomplete="on">
-      <input type="hidden" name="next" value="{{.Next}}">
-      {{if .Error}}<p class="error" role="alert">{{.Error}}</p>{{end}}
-      <div class="field">
-        <label for="username">{{.UsernameLabel}}</label>
-        <input id="username" name="username" type="text" autocomplete="username"
-          autocapitalize="none" autocorrect="off" spellcheck="false" required
-          {{if not .Username}}autofocus{{end}} value="{{.Username}}">
-      </div>
-      <div class="field">
-        <label for="password">{{.PasswordLabel}}</label>
-        <input id="password" name="password" type="password" autocomplete="current-password"
-          required {{if .Username}}autofocus{{end}}>
-      </div>
-      <button type="submit">{{.LoginButton}}</button>
-    </form>
-    <p class="hint">{{.Hint}}</p>
+    <section class="panel">
+      <h1>{{.Heading}}</h1>
+      <form method="post" action="/login" autocomplete="on">
+        <input type="hidden" name="next" value="{{.Next}}">
+        <div class="field">
+          <label for="username">{{.UsernameLabel}}</label>
+          <input id="username" name="username" type="text" autocomplete="username"
+            autocapitalize="none" autocorrect="off" spellcheck="false" required
+            {{if not .Username}}autofocus{{end}} value="{{.Username}}">
+        </div>
+        <div class="field">
+          <label for="password">{{.PasswordLabel}}</label>
+          <input id="password" name="password" type="password" autocomplete="current-password"
+            required {{if .Username}}autofocus{{end}}>
+        </div>
+        {{if .Error}}<p class="error" role="alert">{{.Error}}</p>{{end}}
+        <div class="actions">
+          <button type="submit">{{.LoginButton}}</button>
+        </div>
+      </form>
+    </section>
   </main>
 </body>
 </html>

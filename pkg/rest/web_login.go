@@ -33,7 +33,7 @@ type webLoginPageData struct {
 	UsernameLabel string
 	PasswordLabel string
 	LoginButton   string
-	Hint          string
+	Heading       string
 	Error         string
 	Username      string
 	Next          string
@@ -95,7 +95,7 @@ func (h *webLoginPageHandler) render(w http.ResponseWriter, r *http.Request, sta
 		UsernameLabel: text.username,
 		PasswordLabel: text.password,
 		LoginButton:   text.login,
-		Hint:          text.hint,
+		Heading:       text.heading,
 		Error:         message,
 		Username:      username,
 		Next:          next,
@@ -107,7 +107,7 @@ func (h *webLoginPageHandler) render(w http.ResponseWriter, r *http.Request, sta
 }
 
 type webLoginText struct {
-	lang, title, username, password, login, hint, invalidCredentials, serverError string
+	lang, title, heading, username, password, login, invalidCredentials, serverError string
 }
 
 func loginPageText(r *http.Request) webLoginText {
@@ -117,10 +117,10 @@ func loginPageText(r *http.Request) webLoginText {
 		return webLoginText{
 			lang:               "zh-CN",
 			title:              "登录 - Gopeed",
+			heading:            "登录",
 			username:           "用户名",
 			password:           "密码",
 			login:              "登录",
-			hint:               "登录状态保持 7 天",
 			invalidCredentials: "用户名或密码错误",
 			serverError:        "登录失败，请查看服务端日志",
 		}
@@ -128,10 +128,10 @@ func loginPageText(r *http.Request) webLoginText {
 	return webLoginText{
 		lang:               "en",
 		title:              "Sign in - Gopeed",
+		heading:            "Sign in",
 		username:           "Username",
 		password:           "Password",
 		login:              "Sign in",
-		hint:               "You stay signed in for 7 days",
 		invalidCredentials: "Incorrect username or password",
 		serverError:        "Sign-in failed, check the server logs",
 	}
