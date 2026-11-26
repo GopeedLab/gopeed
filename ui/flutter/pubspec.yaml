@@ -90,28 +90,39 @@ dependency_overrides:
   flutter_inappwebview:
     git:
       url: https://github.com/GopeedLab/flutter_inappwebview.git
-      ref: d579215760e1c1e58a4ff7601a6055b5e6adf8e8
+      ref: 0b96308862b7068ea49d871cff82723500f5762c
       path: flutter_inappwebview
   flutter_inappwebview_platform_interface:
     git:
       url: https://github.com/GopeedLab/flutter_inappwebview.git
-      ref: d579215760e1c1e58a4ff7601a6055b5e6adf8e8
+      ref: 0b96308862b7068ea49d871cff82723500f5762c
       path: flutter_inappwebview_platform_interface
   flutter_inappwebview_macos:
     git:
       url: https://github.com/GopeedLab/flutter_inappwebview.git
-      ref: d579215760e1c1e58a4ff7601a6055b5e6adf8e8
+      ref: 0b96308862b7068ea49d871cff82723500f5762c
       path: flutter_inappwebview_macos
   flutter_inappwebview_ios:
     git:
       url: https://github.com/GopeedLab/flutter_inappwebview.git
-      ref: d579215760e1c1e58a4ff7601a6055b5e6adf8e8
+      ref: 0b96308862b7068ea49d871cff82723500f5762c
       path: flutter_inappwebview_ios
   flutter_inappwebview_android:
     git:
       url: https://github.com/GopeedLab/flutter_inappwebview.git
-      ref: d579215760e1c1e58a4ff7601a6055b5e6adf8e8
+      ref: 0b96308862b7068ea49d871cff82723500f5762c
       path: flutter_inappwebview_android
+  # The Windows plugin crashes deterministically on some Windows machines
+  # during webview creation (MSVCP140 access violation, upstream
+  # flutter-inappwebview#2752/#2840), and the Windows webview runtime is
+  # disabled in app code. The fork strips the windows platform registration
+  # so Windows builds skip the native plugin entirely; re-add the override
+  # once upstream fixes the crash.
+  flutter_inappwebview_windows:
+    git:
+      url: https://github.com/GopeedLab/flutter_inappwebview.git
+      ref: 0b96308862b7068ea49d871cff82723500f5762c
+      path: flutter_inappwebview_windows
   # Prevent a native Windows crash when the push notification service is unavailable.
   # Keep this fork until https://github.com/MaikuB/flutter_local_notifications/pull/2813 is merged and released.
   flutter_local_notifications:
