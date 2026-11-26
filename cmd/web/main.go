@@ -56,6 +56,7 @@ func main() {
 		WhiteDownloadDirs: args.WhiteDownloadDirs,
 		ApiToken:          *args.ApiToken,
 		MCPEnable:         args.MCPEnable,
+		WebLoginPage:      args.WebLoginPage,
 		DownloadConfig:    args.DownloadConfig,
 		ProductionMode:    true,
 		WebEnable:         true,

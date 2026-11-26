@@ -20,6 +20,7 @@ type args struct {
 	Password          *string  `json:"password"`
 	ApiToken          *string  `json:"apiToken"`
 	MCPEnable         bool     `json:"mcpEnable"`
+	WebLoginPage      bool     `json:"webLoginPage"`
 	StorageDir        *string  `json:"storageDir"`
 	WhiteDownloadDirs []string `json:"whiteDownloadDirs"`
 	// DownloadConfig when the first time to start the server, it will be configured as initial value
@@ -55,6 +56,7 @@ func loadCliArgs() *args {
 	cfg.ApiToken = flag.String("T", "", "API token (requires web authentication with username and password)")
 	flag.StringVar(cfg.ApiToken, "api-token", "", "API token (requires web authentication with username and password)")
 	flag.BoolVar(&cfg.MCPEnable, "mcp-enable", false, "Enable MCP endpoint")
+	flag.BoolVar(&cfg.WebLoginPage, "web-login-page", false, "Serve a plain HTML login page at /login instead of the Flutter login screen, so browser password managers can fill in the credentials (requires username and password)")
 	cfg.TempDir = flag.String("temp-dir", "", "Temporary directory (defaults to the OS temporary directory)")
 	cfg.StorageDir = flag.String("d", "", "Storage directory")
 	flag.StringVar(cfg.StorageDir, "storage-dir", "", "Storage directory")
@@ -91,6 +93,8 @@ func overrideWithCliArgs(cfg *args, cliConfig *args) {
 			cfg.ApiToken = cliConfig.ApiToken
 		case "mcp-enable":
 			cfg.MCPEnable = cliConfig.MCPEnable
+		case "web-login-page":
+			cfg.WebLoginPage = cliConfig.WebLoginPage
 		case "temp-dir":
 			cfg.TempDir = cliConfig.TempDir
 		case "d", "storage-dir":

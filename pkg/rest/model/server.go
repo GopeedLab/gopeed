@@ -36,6 +36,10 @@ type StartConfig struct {
 	WebEnable bool
 	WebFS     fs.FS
 	WebAuth   *WebAuth
+	// WebLoginPage serves a plain HTML login form at /login before the web UI
+	// is loaded. It exists so password managers can recognise the credentials
+	// fields, which is impossible with the Flutter-rendered login screen.
+	WebLoginPage bool
 }
 
 func (cfg *StartConfig) APIEnabled() bool {

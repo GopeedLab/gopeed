@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="{{.Lang}}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>{{.Title}}</title>
+  <style>
+    :root {
+      --bg: #f4f5f7;
+      --card: #ffffff;
+      --text: #1b1c1e;
+      --muted: #6b6f76;
+      --border: #d8dbe0;
+      --accent: #5b5bd6;
+      --accent-text: #ffffff;
+      --focus-ring: rgba(91, 91, 214, 0.22);
+      --error: #c8372d;
+      --error-bg: rgba(200, 55, 45, 0.08);
+      --shadow: 0 12px 32px rgba(16, 18, 22, 0.10);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #131417;
+        --card: #1c1e22;
+        --text: #eceef1;
+        --muted: #9aa0a8;
+        --border: #32363d;
+        --accent: #8b8bf0;
+        --accent-text: #14151a;
+        --focus-ring: rgba(139, 139, 240, 0.28);
+        --error: #ff8a80;
+        --error-bg: rgba(255, 138, 128, 0.10);
+        --shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+      }
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+        "Hiragino Sans GB", "Microsoft YaHei", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 15px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+    .card {
+      width: 100%;
+      max-width: 360px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px 28px 28px;
+      box-shadow: var(--shadow);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+    .logo {
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+      background: var(--accent);
+      color: var(--accent-text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 17px;
+      letter-spacing: -0.5px;
+    }
+    .brand-name { font-size: 17px; font-weight: 650; letter-spacing: 0.2px; }
+    .field { margin-bottom: 16px; }
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    input[type="text"], input[type="password"] {
+      width: 100%;
+      height: 42px;
+      padding: 0 12px;
+      font-size: 15px;
+      font-family: inherit;
+      color: var(--text);
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      -webkit-appearance: none;
+    }
+    input[type="text"]:focus, input[type="password"]:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--focus-ring);
+    }
+    .error {
+      margin: 0 0 16px;
+      padding: 10px 12px;
+      font-size: 13px;
+      color: var(--error);
+      border: 1px solid var(--error);
+      border-radius: 10px;
+      background: var(--error-bg);
+    }
+    button {
+      width: 100%;
+      height: 44px;
+      margin-top: 8px;
+      font-size: 15px;
+      font-family: inherit;
+      font-weight: 600;
+      color: var(--accent-text);
+      background: var(--accent);
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: filter 0.15s ease;
+    }
+    button:hover { filter: brightness(1.06); }
+    button:active { filter: brightness(0.95); }
+    .hint {
+      margin: 18px 0 0;
+      font-size: 12px;
+      color: var(--muted);
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">G</div>
+      <span class="brand-name">Gopeed</span>
+    </div>
+    <form method="post" action="/login" autocomplete="on">
+      <input type="hidden" name="next" value="{{.Next}}">
+      {{if .Error}}<p class="error" role="alert">{{.Error}}</p>{{end}}
+      <div class="field">
+        <label for="username">{{.UsernameLabel}}</label>
+        <input id="username" name="username" type="text" autocomplete="username"
+          autocapitalize="none" autocorrect="off" spellcheck="false" required
+          {{if not .Username}}autofocus{{end}} value="{{.Username}}">
+      </div>
+      <div class="field">
+        <label for="password">{{.PasswordLabel}}</label>
+        <input id="password" name="password" type="password" autocomplete="current-password"
+          required {{if .Username}}autofocus{{end}}>
+      </div>
+      <button type="submit">{{.LoginButton}}</button>
+    </form>
+    <p class="hint">{{.Hint}}</p>
+  </main>
+</body>
+</html>
