@@ -12,6 +12,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/GopeedLab/gopeed/internal/speedlimit"
 	"io"
 	"os"
 	"path"
@@ -700,6 +701,13 @@ func (f *Fetcher) fetchSegment(ctx context.Context, t *target, files map[int]*os
 		n := int(min(int64(len(buf)), end-pos+1))
 		_ = resp.SetDeadline(time.Now().Add(readTimeout))
 		nr, rerr := resp.Read(buf[:n])
+		if nr > 0 && f.ctl != nil {
+			// Wait after the read and before the next deadline, so a low
+			// limit does not look like a stalled data connection.
+			if werr := speedlimit.Wait(ctx, f.ctl.DownloadLimiter, nr); werr != nil && rerr == nil {
+				rerr = werr
+			}
+		}
 		if nr > 0 {
 			if _, werr := file.WriteAt(buf[:nr], pos); werr != nil {
 				return fmt.Errorf("%w: %w", errDiskWrite, werr)

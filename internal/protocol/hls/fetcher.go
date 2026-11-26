@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/GopeedLab/gopeed/internal/speedlimit"
 	"io"
 	"net/http"
 	"net/url"
@@ -720,7 +721,10 @@ func (f *Fetcher) tryGetSegment(run *hlsRun, seg *Segment) ([]byte, error) {
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, fmt.Errorf("segment %s: unexpected status %d", seg.URI, resp.StatusCode)
 	}
-	reader := &stallReader{rc: resp.Body, timeout: f.timeout()}
+	var reader io.Reader = &stallReader{rc: resp.Body, timeout: f.timeout()}
+	if f.Ctl != nil {
+		reader = speedlimit.Reader(run.ctx, reader, f.Ctl.DownloadLimiter)
+	}
 	var buf bytes.Buffer
 	chunk := make([]byte, 64<<10)
 	for {
