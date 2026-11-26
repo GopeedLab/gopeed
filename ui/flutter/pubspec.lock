@@ -466,8 +466,8 @@ packages:
     dependency: "direct main"
     description:
       path: flutter_inappwebview
-      ref: "2e4f574468dd2c46c28ca45c84f6700a2bf66ced"
-      resolved-ref: "2e4f574468dd2c46c28ca45c84f6700a2bf66ced"
+      ref: "0b96308862b7068ea49d871cff82723500f5762c"
+      resolved-ref: "0b96308862b7068ea49d871cff82723500f5762c"
       url: "https://github.com/GopeedLab/flutter_inappwebview.git"
     source: git
     version: "6.1.5"
@@ -475,8 +475,8 @@ packages:
     dependency: "direct overridden"
     description:
       path: flutter_inappwebview_android
-      ref: "2e4f574468dd2c46c28ca45c84f6700a2bf66ced"
-      resolved-ref: "2e4f574468dd2c46c28ca45c84f6700a2bf66ced"
+      ref: "0b96308862b7068ea49d871cff82723500f5762c"
+      resolved-ref: "0b96308862b7068ea49d871cff82723500f5762c"
       url: "https://github.com/GopeedLab/flutter_inappwebview.git"
     source: git
     version: "1.1.3"
@@ -492,8 +492,8 @@ packages:
     dependency: "direct overridden"
     description:
       path: flutter_inappwebview_ios
-      ref: "2e4f574468dd2c46c28ca45c84f6700a2bf66ced"
-      resolved-ref: "2e4f574468dd2c46c28ca45c84f6700a2bf66ced"
+      ref: "0b96308862b7068ea49d871cff82723500f5762c"
+      resolved-ref: "0b96308862b7068ea49d871cff82723500f5762c"
       url: "https://github.com/GopeedLab/flutter_inappwebview.git"
     source: git
     version: "1.1.2"
@@ -501,8 +501,8 @@ packages:
     dependency: "direct overridden"
     description:
       path: flutter_inappwebview_macos
-      ref: "2e4f574468dd2c46c28ca45c84f6700a2bf66ced"
-      resolved-ref: "2e4f574468dd2c46c28ca45c84f6700a2bf66ced"
+      ref: "0b96308862b7068ea49d871cff82723500f5762c"
+      resolved-ref: "0b96308862b7068ea49d871cff82723500f5762c"
       url: "https://github.com/GopeedLab/flutter_inappwebview.git"
     source: git
     version: "1.1.2"
@@ -510,8 +510,8 @@ packages:
     dependency: "direct overridden"
     description:
       path: flutter_inappwebview_platform_interface
-      ref: "2e4f574468dd2c46c28ca45c84f6700a2bf66ced"
-      resolved-ref: "2e4f574468dd2c46c28ca45c84f6700a2bf66ced"
+      ref: "0b96308862b7068ea49d871cff82723500f5762c"
+      resolved-ref: "0b96308862b7068ea49d871cff82723500f5762c"
       url: "https://github.com/GopeedLab/flutter_inappwebview.git"
     source: git
     version: "1.3.0+1"
@@ -527,8 +527,8 @@ packages:
     dependency: "direct overridden"
     description:
       path: flutter_inappwebview_windows
-      ref: "2e4f574468dd2c46c28ca45c84f6700a2bf66ced"
-      resolved-ref: "2e4f574468dd2c46c28ca45c84f6700a2bf66ced"
+      ref: "0b96308862b7068ea49d871cff82723500f5762c"
+      resolved-ref: "0b96308862b7068ea49d871cff82723500f5762c"
       url: "https://github.com/GopeedLab/flutter_inappwebview.git"
     source: git
     version: "0.6.0"
