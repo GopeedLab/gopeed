@@ -36,6 +36,35 @@ import 'package:gopeed/l10n/app_localizations.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
 void main() {
+  testWidgets('regular download keeps the resolved extension for a rename entered before preview', (tester) async {
+    CreateTaskBatch? submitted;
+    final registry = CapabilityRegistry(createAppCapabilityCodecs())
+      ..bind(GopeedMethods.getConfig, (_) => DownloaderConfig(downloadDir: '/downloads'))
+      ..bind(
+        GopeedMethods.resolve,
+        (_) => ResolveResult(
+          id: 'report-rid',
+          res: Resource(files: [FileInfo(name: 'report.pdf')]),
+        ),
+      )
+      ..bind(GopeedMethods.createTaskBatch, (batch) {
+        submitted = batch;
+        return CreateTaskBatchResult(taskIds: ['report-task']);
+      })
+      ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
+    await _pumpCreateRoute(tester, registry);
+    await tester.enterText(find.byKey(const ValueKey('create-task-url-input')), 'https://example.com/download');
+    await tester.enterText(find.byKey(const ValueKey('create-task-rename-input')), 'meeting-notes');
+    await tester.tap(find.byKey(const ValueKey('create-task-confirm-button')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byKey(const ValueKey('resolve-create-button')));
+    await tester.pumpAndSettle();
+
+    expect(submitted?.reqs?.single.rid, 'report-rid');
+    expect(submitted?.reqs?.single.opts?.name, 'meeting-notes.pdf');
+  });
+
   testWidgets('extension file paths and estimates survive batch submission and window serialization', (tester) async {
     tester.view.physicalSize = const Size(900, 1000);
     tester.view.devicePixelRatio = 1;

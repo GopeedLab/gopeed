@@ -2,10 +2,13 @@ import 'dart:async';
 
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:flutter/widgets.dart' as flutter show Flexible;
+import 'package:path/path.dart' as path;
 
 import '../../../../core/capabilities/gopeed_capability.dart';
 import '../../../../l10n/l10n.dart';
 import '../../../../shared/theme/app_palette.dart';
+import '../../../../shared/widgets/app_form_row.dart';
+import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../shared/widgets/app_tooltip.dart';
 import '../../application/pending_download.dart';
 import 'create_task_action_buttons.dart';
@@ -38,6 +41,10 @@ class _ResolveDownloadsDialog extends StatefulWidget {
 }
 
 class _ResolveDownloadsDialogState extends State<_ResolveDownloadsDialog> {
+  final _renameController = TextEditingController();
+  final _renameFocus = FocusNode();
+  String? _originalFileName;
+  bool _renameStarted = false;
   bool _cancelled = false;
   bool _submitting = false;
   String? _errorText;
@@ -45,6 +52,7 @@ class _ResolveDownloadsDialogState extends State<_ResolveDownloadsDialog> {
   @override
   void initState() {
     super.initState();
+    _renameFocus.addListener(_selectRenameStem);
     WidgetsBinding.instance.addPostFrameCallback((_) => _resolveAll());
   }
 
@@ -52,6 +60,8 @@ class _ResolveDownloadsDialogState extends State<_ResolveDownloadsDialog> {
   void dispose() {
     _cancelled = true;
     _releasePreviews();
+    _renameFocus.dispose();
+    _renameController.dispose();
     super.dispose();
   }
 
@@ -63,8 +73,30 @@ class _ResolveDownloadsDialogState extends State<_ResolveDownloadsDialog> {
       setState(() {});
       await resolving;
       if (_cancelled || !mounted) return;
+      if (widget.sources.length == 1) _prepareRename(source);
       setState(() {});
     }
+  }
+
+  void _prepareRename(PendingDownload source) {
+    if (source.files.length != 1 || source.isBt || (source.isFtp && source.result!.res.name.isNotEmpty)) return;
+    final original = source.files.single.name;
+    if (original.isEmpty) return;
+    _originalFileName = original;
+    var draft = source.options.name;
+    if (draft.isEmpty) {
+      draft = original;
+    } else if (path.extension(draft).isEmpty) {
+      draft += path.extension(original);
+    }
+    _renameController.text = draft;
+  }
+
+  void _selectRenameStem() {
+    if (!_renameFocus.hasFocus || _renameStarted) return;
+    _renameStarted = true;
+    final name = _renameController.text;
+    _renameController.selection = TextSelection(baseOffset: 0, extentOffset: name.length - path.extension(name).length);
   }
 
   void _releasePreviews() {
@@ -81,6 +113,10 @@ class _ResolveDownloadsDialogState extends State<_ResolveDownloadsDialog> {
 
   Future<void> _submit() async {
     if (_submitting || widget.sources.any((source) => source.loading)) return;
+    if (_originalFileName != null) {
+      final name = _renameController.text.trim();
+      widget.sources.single.options.name = name == _originalFileName ? '' : name;
+    }
     final batches = planDownloads(widget.sources);
     if (batches.isEmpty) return;
     setState(() {
@@ -159,6 +195,19 @@ class _ResolveDownloadsDialogState extends State<_ResolveDownloadsDialog> {
                 ),
               ),
             ),
+            if (_originalFileName != null) ...[
+              const SizedBox(height: 12),
+              AppFormRow(
+                label: context.l10n.rename,
+                child: AppTextField(
+                  key: const ValueKey('resolve-rename-input'),
+                  controller: _renameController,
+                  focusNode: _renameFocus,
+                  hintText: context.l10n.keepOriginalName,
+                  enabled: !_submitting,
+                ),
+              ),
+            ],
             if (_errorText != null)
               ConstrainedBox(
                 constraints: BoxConstraints(maxHeight: screen.height * 0.15),
