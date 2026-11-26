@@ -216,6 +216,11 @@ flutter:
 flutter_launcher_icons:
   image_path: "assets/icon/icon_1024.png"
   android: true
+  adaptive_icon_background: "#5DC76C"
+  adaptive_icon_foreground: "assets/icon/icon_android_foreground.png"
+  adaptive_icon_monochrome: "assets/icon/icon_android_foreground.png"
+  # The foreground artwork already fits inside the adaptive icon safe area.
+  adaptive_icon_foreground_inset: 0
   ios: true
   remove_alpha_ios: true
   web:
