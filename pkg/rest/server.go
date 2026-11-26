@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -227,29 +228,25 @@ func buildServer(startCfg *model.StartConfig, continueOnStartup bool) (*http.Ser
 	enableApiToken := startCfg.ApiToken != ""
 	enableWebAuth := startCfg.WebEnable && startCfg.WebAuth != nil
 	var webSessions *webSessionStore
+	var webLoginPage *webLoginPageHandler
 	if enableWebAuth {
 		webSessions = newWebSessionStore()
-	}
-	if enableWebAuth {
+		if startCfg.WebLoginPage {
+			webLoginPage = newWebLoginPageHandler(startCfg.WebAuth, webSessions)
+			r.Path(webLoginPagePath).Methods(http.MethodGet, http.MethodHead).Handler(webLoginPage)
+			r.Path(webLoginPagePath).Methods(http.MethodPost).HandlerFunc(webLoginPage.handlePost)
+			r.Path(webLogoutPath).Methods(http.MethodGet, http.MethodHead).HandlerFunc(webLoginPage.handleLogout)
+		}
 		r.Methods(http.MethodPost).Path("/api/web/login").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var loginReq model.WebAuth
 			if ReadJson(r, w, &loginReq) {
-				if loginReq.Username == startCfg.WebAuth.Username && loginReq.Password == startCfg.WebAuth.Password {
+				if validWebCredentials(startCfg.WebAuth, loginReq.Username, loginReq.Password) {
 					sessionID, expiresAt, err := webSessions.create()
 					if err != nil {
 						WriteJson(w, model.NewErrorResult(err.Error()))
 						return
 					}
-					http.SetCookie(w, &http.Cookie{
-						Name:     webAuthCookieName,
-						Value:    sessionID,
-						Path:     "/",
-						MaxAge:   int(webAuthSessionTTL.Seconds()),
-						Expires:  expiresAt,
-						HttpOnly: true,
-						Secure:   requestUsesHTTPS(r),
-						SameSite: http.SameSiteLaxMode,
-					})
+					setWebSessionCookie(w, r, sessionID, expiresAt)
 
 					WriteJson(w, model.NewNilResult())
 					return
@@ -274,6 +271,23 @@ func buildServer(startCfg *model.StartConfig, continueOnStartup bool) (*http.Ser
 
 		r.Use(func(h http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if webLoginPage != nil {
+					if r.URL.Path == webLoginPagePath || r.URL.Path == webLogoutPath {
+						h.ServeHTTP(w, r)
+						return
+					}
+					// Browser navigations are sent to the HTML login page so the
+					// credentials fields exist in the DOM; API and sub resource
+					// requests keep their own handling below.
+					if isHTMLNavigation(r) && !webLoginPage.isAuthenticated(r) {
+						target := webLoginPagePath
+						if r.URL.Path != "/" {
+							target += "?next=" + url.QueryEscape(r.URL.RequestURI())
+						}
+						http.Redirect(w, r, target, http.StatusSeeOther)
+						return
+					}
+				}
 				protectedPath := strings.HasPrefix(r.URL.Path, "/api/") || isProtectedWebFilePath(r.URL.Path) ||
 					(startCfg.MCPEnable && isMCPPath(r.URL.Path))
 				if r.URL.Path == "/api/web/login" || !protectedPath {
