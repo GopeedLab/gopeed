@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:path/path.dart' as path;
 
 import '../../../../api/model/extension.dart';
@@ -16,6 +17,11 @@ class ExtensionIconSource {
 
   final ExtensionIconSourceKind kind;
   final String location;
+
+  bool get isSvg {
+    final iconPath = kind == ExtensionIconSourceKind.network ? Uri.tryParse(location)?.path ?? location : location;
+    return path.extension(iconPath).toLowerCase() == '.svg';
+  }
 }
 
 @visibleForTesting
@@ -82,16 +88,30 @@ class ExtensionIcon extends StatelessWidget {
       child: Image.asset('assets/extension/default_icon.png', fit: fallbackFit),
     );
     final source = resolveExtensionIconSource(item);
-    final image = switch (source.kind) {
-      ExtensionIconSourceKind.asset => fallback,
-      ExtensionIconSourceKind.file => Image.file(
+    final image = switch ((source.kind, source.isSvg)) {
+      (ExtensionIconSourceKind.asset, _) => fallback,
+      (ExtensionIconSourceKind.file, true) => SvgPicture.file(
         File(source.location),
         width: size,
         height: size,
         fit: BoxFit.cover,
         errorBuilder: (_, _, _) => fallback,
       ),
-      ExtensionIconSourceKind.network => Image.network(
+      (ExtensionIconSourceKind.network, true) => SvgPicture.network(
+        source.location,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => fallback,
+      ),
+      (ExtensionIconSourceKind.file, false) => Image.file(
+        File(source.location),
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => fallback,
+      ),
+      (ExtensionIconSourceKind.network, false) => Image.network(
         source.location,
         width: size,
         height: size,
