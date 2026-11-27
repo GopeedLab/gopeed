@@ -2230,7 +2230,9 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('starting the API server validates and applies the MCP draft without a separate save', (tester) async {
+  final mcpStartVariant = ValueVariant({false, true});
+  testWidgets('starting the API server validates and saves the current API settings', (tester) async {
+    final enableMcp = mcpStartVariant.currentValue!;
     await _setTestSize(tester, const Size(1024, 900));
     final runtimeController = RecordingStartConfigRuntimeController(initiallyRunning: false);
     await tester.pumpWidget(
@@ -2253,15 +2255,17 @@ void main() {
     final startButton = find.byKey(const ValueKey('toggle-api-server-button'));
     final saveButton = find.byKey(const ValueKey('save-api-config-button'));
     expect(tester.widget<shad.Switch>(mcpSwitch).value, isFalse);
-    await tester.ensureVisible(mcpSwitch);
-    await tester.tap(mcpSwitch);
+    if (enableMcp) {
+      await tester.ensureVisible(mcpSwitch);
+      await tester.tap(mcpSwitch);
+    }
     await tester.enterText(host, '');
     await tester.ensureVisible(startButton);
     await tester.tap(startButton);
     await tester.pumpAndSettle();
 
     expect(runtimeController.savedStartConfig, isNull);
-    expect(tester.widget<shad.Switch>(mcpSwitch).value, isTrue);
+    expect(tester.widget<shad.Switch>(mcpSwitch).value, enableMcp);
     expect(find.text('Server is required'), findsOneWidget);
     await tester.pump(const Duration(seconds: 6));
     await tester.pumpAndSettle();
@@ -2273,14 +2277,14 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(runtimeController.savedStartConfig?.apiEnable, isTrue);
-    expect(runtimeController.savedStartConfig?.mcpEnable, isTrue);
+    expect(runtimeController.savedStartConfig?.mcpEnable, enableMcp);
     expect(runtimeController.savedStartConfig?.address, '127.0.0.1:0');
-    expect(tester.widget<shad.Switch>(mcpSwitch).value, isTrue);
+    expect(tester.widget<shad.Switch>(mcpSwitch).value, enableMcp);
     expect(tester.widget<AppLoadingButton>(saveButton).onPressed, isNull);
     expect(find.text('http://127.0.0.1:54321'), findsOneWidget);
-    final runtime = ProviderScope.containerOf(tester.element(mcpSwitch)).read(appRuntimeControllerProvider);
-    expect(runtime.requireValue.apiServerState.mcpEnabled, isTrue);
-  });
+    final container = ProviderScope.containerOf(tester.element(mcpSwitch), listen: false);
+    expect(container.read(appRuntimeControllerProvider).requireValue.apiServerState.mcpEnabled, enableMcp);
+  }, variant: mcpStartVariant);
 
   testWidgets('read-only MCP settings keep the Agent setup link available', (WidgetTester tester) async {
     var changeCount = 0;
