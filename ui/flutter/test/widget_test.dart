@@ -2234,7 +2234,11 @@ void main() {
   testWidgets('starting the API server validates and saves the current API settings', (tester) async {
     final enableMcp = mcpStartVariant.currentValue!;
     await _setTestSize(tester, const Size(1024, 900));
-    final runtimeController = RecordingStartConfigRuntimeController(initiallyRunning: false);
+    final startGate = Completer<void>();
+    final runtimeController = RecordingStartConfigRuntimeController(
+      initiallyRunning: false,
+      startGate: startGate.future,
+    );
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -2274,6 +2278,12 @@ void main() {
     await tester.enterText(port, '0');
     await tester.ensureVisible(startButton);
     await tester.tap(startButton);
+    await tester.pump();
+    expect(tester.widget<AppLoadingButton>(startButton).loading, isTrue);
+    expect(tester.widget<AppLoadingButton>(saveButton).loading, isFalse);
+    expect(tester.widget<AppLoadingButton>(saveButton).onPressed, isNull);
+
+    startGate.complete();
     await tester.pumpAndSettle();
 
     expect(runtimeController.savedStartConfig?.apiEnable, isTrue);
@@ -2282,6 +2292,7 @@ void main() {
     expect(tester.widget<shad.Switch>(mcpSwitch).value, enableMcp);
     expect(tester.widget<AppLoadingButton>(saveButton).onPressed, isNull);
     expect(find.text('http://127.0.0.1:54321'), findsOneWidget);
+    expect(find.text('API settings saved'), findsNothing);
     final container = ProviderScope.containerOf(tester.element(mcpSwitch), listen: false);
     expect(container.read(appRuntimeControllerProvider).requireValue.apiServerState.mcpEnabled, enableMcp);
   }, variant: mcpStartVariant);
@@ -6306,9 +6317,10 @@ class FailingTrackerRuntimeController extends FakeRuntimeController {
 }
 
 class RecordingStartConfigRuntimeController extends AppRuntimeController {
-  RecordingStartConfigRuntimeController({this.initiallyRunning = true});
+  RecordingStartConfigRuntimeController({this.initiallyRunning = true, this.startGate});
 
   final bool initiallyRunning;
+  final Future<void>? startGate;
   StartConfig? savedStartConfig;
 
   @override
@@ -6337,7 +6349,10 @@ class RecordingStartConfigRuntimeController extends AppRuntimeController {
       _record(config, running: state.requireValue.apiServerState.running);
 
   @override
-  Future<void> startApiServer(StartConfig config) async => _record(config..apiEnable = true, running: true);
+  Future<void> startApiServer(StartConfig config) async {
+    await startGate;
+    _record(config..apiEnable = true, running: true);
+  }
 
   @override
   Future<void> stopApiServer() async => _record(state.requireValue.startConfig..apiEnable = false, running: false);
