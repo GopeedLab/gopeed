@@ -309,9 +309,10 @@ class AppRuntimeController extends AsyncNotifier<AppRuntimeState> {
     await _persistApiServerConfig(config);
   }
 
-  Future<void> startApiServer() async {
+  Future<void> startApiServer(StartConfig config) async {
     if (kIsWeb) return;
-    await _persistApiServerEnabled(true);
+    final desired = _copyStartConfig(config)..apiEnable = true;
+    await _persistApiServerConfig(desired);
     await _applyApiServerOperation(LibgopeedBoot.instance.startApiServer());
   }
 

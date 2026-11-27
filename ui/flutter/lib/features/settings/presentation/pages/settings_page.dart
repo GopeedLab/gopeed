@@ -96,7 +96,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   Timer? _textSaveTimer;
   bool _syncingControllers = false;
   bool _syncingStartControllers = false;
-  bool _savingStartConfig = false;
+  _ApiServerAction? _apiServerAction;
 
   List<TextEditingController> get _textControllers => [
     _downloadDirController,
@@ -297,6 +297,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     AppRuntimeState? runtimeState,
   ) {
     final apiConfigDirty = _startConfig != null && _startDraftSignature() != _loadedStartSignature;
+    final canEditApiConfig = !kIsWeb && _apiServerAction == null;
     final apiServerVisualState = _apiServerVisualState(runtimeState);
     final palette = AppPalette.of(context);
     switch (section) {
@@ -834,17 +835,21 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       portController: _apiPortController,
                       hostKey: const ValueKey('api-host-input'),
                       portKey: const ValueKey('api-port-input'),
-                      enabled: !kIsWeb,
+                      enabled: canEditApiConfig,
                     ),
                   ),
                   if (!kIsWeb)
                     SettingsItem(
                       title: context.l10n.apiToken,
-                      child: _TextSettingControl(controller: _apiTokenController, obscureText: true),
+                      child: _TextSettingControl(
+                        controller: _apiTokenController,
+                        obscureText: true,
+                        enabled: canEditApiConfig,
+                      ),
                     ),
                   McpSettingsItem(
                     enabled: _startConfig?.mcpEnable ?? false,
-                    readOnly: kIsWeb,
+                    readOnly: !canEditApiConfig,
                     onChanged: (value) => setState(() => _startConfig?.mcpEnable = value),
                     onOpenAgentSetup: () => unawaited(_openMcpAgentSetup(runtimeState)),
                   ),
@@ -866,8 +871,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           ),
                         AppLoadingButton(
                           key: const ValueKey('toggle-api-server-button'),
-                          onPressed: kIsWeb || runtimeState == null ? null : _toggleApiServer,
-                          loading: _savingStartConfig,
+                          onPressed: canEditApiConfig && runtimeState != null ? _toggleApiServer : null,
+                          loading: _apiServerAction == _ApiServerAction.toggle,
                           icon: Icon(
                             kIsWeb || (runtimeState?.apiServerState.running ?? false)
                                 ? Icons.stop_circle_outlined
@@ -881,8 +886,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         ),
                         AppLoadingButton(
                           key: const ValueKey('save-api-config-button'),
-                          onPressed: kIsWeb || runtimeState == null || !apiConfigDirty ? null : _saveApiServerConfig,
-                          loading: _savingStartConfig,
+                          onPressed: canEditApiConfig && runtimeState != null && apiConfigDirty
+                              ? _saveApiServerConfig
+                              : null,
+                          loading: _apiServerAction == _ApiServerAction.save,
                           icon: const Icon(Icons.save_outlined),
                           variant: AppLoadingButtonVariant.primary,
                           child: Text(context.l10n.save),
@@ -1235,12 +1242,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     config.protocolConfig.bt.customTrackers = _lines(_customTrackersController.text);
   }
 
-  void _applyStartControllers(StartConfig config) {
-    config.network = 'tcp';
-    config.address = _joinHostPort(_apiHostController.text, _apiPortController.text);
-    config.apiToken = _apiTokenController.text.trim();
-  }
-
   Future<bool> _saveConfig() async {
     final config = _config;
     if (config == null) {
@@ -1262,22 +1263,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Future<void> _saveApiServerConfig() async {
-    final config = _startConfig;
     final runtimeState = ref.read(appRuntimeControllerProvider).value;
-    if (config == null || runtimeState == null || _savingStartConfig) {
+    if (runtimeState == null || _apiServerAction != null) return;
+    final snapshot = _validatedApiServerDraft();
+    if (snapshot == null) return;
+    if (runtimeState.apiServerState.running && (!await _confirmRestartApiServer() || !mounted)) {
       return;
     }
-    final snapshot = _copyStartConfig(config);
-    _applyStartControllers(snapshot);
-    final validationMessage = await _validateStartConfig(snapshot);
-    if (validationMessage != null) {
-      if (mounted) _toast(validationMessage);
-      return;
-    }
-    if (runtimeState.apiServerState.running && !await _confirmRestartApiServer()) {
-      return;
-    }
-    setState(() => _savingStartConfig = true);
+    setState(() => _apiServerAction = _ApiServerAction.save);
     try {
       final controller = ref.read(appRuntimeControllerProvider.notifier);
       if (runtimeState.apiServerState.running) {
@@ -1285,32 +1278,40 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       } else {
         await controller.saveApiServerConfig(snapshot);
       }
-      _syncStartConfig(ref.read(appRuntimeControllerProvider).requireValue.startConfig, force: true);
-      if (mounted) _toast(context.l10n.apiConfigSaved, type: AppToastType.success);
+      if (mounted) {
+        _syncStartConfig(ref.read(appRuntimeControllerProvider).requireValue.startConfig, force: true);
+        _toast(context.l10n.apiConfigSaved, type: AppToastType.success);
+      }
     } catch (error) {
       if (mounted) _toast(error.toString());
     } finally {
-      if (mounted) setState(() => _savingStartConfig = false);
+      if (mounted) setState(() => _apiServerAction = null);
     }
   }
 
   Future<void> _toggleApiServer() async {
     final runtimeState = ref.read(appRuntimeControllerProvider).value;
-    if (runtimeState == null || _savingStartConfig) return;
-    if (runtimeState.apiServerState.running && !await _confirmDisableApiServer()) return;
+    if (runtimeState == null || _apiServerAction != null) return;
+    final running = runtimeState.apiServerState.running;
+    final snapshot = running ? null : _validatedApiServerDraft();
+    if (running) {
+      if (!await _confirmDisableApiServer() || !mounted) return;
+    } else if (snapshot == null) {
+      return;
+    }
 
-    setState(() => _savingStartConfig = true);
+    setState(() => _apiServerAction = _ApiServerAction.toggle);
     try {
       final controller = ref.read(appRuntimeControllerProvider.notifier);
-      if (runtimeState.apiServerState.running) {
+      if (snapshot == null) {
         await controller.stopApiServer();
       } else {
-        await controller.startApiServer();
+        await controller.startApiServer(snapshot);
       }
     } catch (error) {
       if (mounted) _toast(error.toString());
     } finally {
-      if (mounted) setState(() => _savingStartConfig = false);
+      if (mounted) setState(() => _apiServerAction = null);
     }
   }
 
@@ -1366,14 +1367,24 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     return await overlay.future ?? false;
   }
 
-  Future<String?> _validateStartConfig(StartConfig candidate) async {
-    final l10n = context.l10n;
-    final address = _splitHostPort(candidate.address);
-    if (address.host.isEmpty) return l10n.serverRequired;
-    final port = int.tryParse(address.port);
-    if (port == null || port < 0 || port > 65535) return l10n.portRangeError;
+  StartConfig? _validatedApiServerDraft() {
+    final config = _startConfig;
+    if (config == null) return null;
+    final host = _apiHostController.text.trim();
+    if (host.isEmpty) {
+      _toast(context.l10n.serverRequired);
+      return null;
+    }
+    final port = int.tryParse(_apiPortController.text.trim());
+    if (port == null || port < 0 || port > 65535) {
+      _toast(context.l10n.portRangeError);
+      return null;
+    }
 
-    return null;
+    return _copyStartConfig(config)
+      ..network = 'tcp'
+      ..address = _joinHostPort(host, _apiPortController.text)
+      ..apiToken = _apiTokenController.text.trim();
   }
 
   Future<void> _runAction(Future<void> Function() action) async {
@@ -1800,6 +1811,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 }
 
+enum _ApiServerAction { save, toggle }
+
 enum _ApiServerVisualState { loading, running, stopped, failed }
 
 class _ApiServerStatusLight extends StatefulWidget {
@@ -2022,6 +2035,7 @@ class _TextSettingControl extends StatelessWidget {
     this.hintText,
     this.minLines = 1,
     this.obscureText = false,
+    this.enabled = true,
   });
 
   final TextEditingController controller;
@@ -2029,6 +2043,7 @@ class _TextSettingControl extends StatelessWidget {
   final String? hintText;
   final int minLines;
   final bool obscureText;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
@@ -2041,6 +2056,7 @@ class _TextSettingControl extends StatelessWidget {
         hintText: hintText,
         keyboardType: minLines > 1 ? TextInputType.multiline : null,
         obscureText: obscureText,
+        enabled: enabled,
         minLines: minLines,
         maxLines: minLines == 1 ? 1 : minLines,
       ),
