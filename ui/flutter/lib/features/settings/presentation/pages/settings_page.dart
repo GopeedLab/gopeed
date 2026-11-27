@@ -834,17 +834,21 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       portController: _apiPortController,
                       hostKey: const ValueKey('api-host-input'),
                       portKey: const ValueKey('api-port-input'),
-                      enabled: !kIsWeb,
+                      enabled: !kIsWeb && !_savingStartConfig,
                     ),
                   ),
                   if (!kIsWeb)
                     SettingsItem(
                       title: context.l10n.apiToken,
-                      child: _TextSettingControl(controller: _apiTokenController, obscureText: true),
+                      child: _TextSettingControl(
+                        controller: _apiTokenController,
+                        obscureText: true,
+                        enabled: !_savingStartConfig,
+                      ),
                     ),
                   McpSettingsItem(
                     enabled: _startConfig?.mcpEnable ?? false,
-                    readOnly: kIsWeb,
+                    readOnly: kIsWeb || _savingStartConfig,
                     onChanged: (value) => setState(() => _startConfig?.mcpEnable = value),
                     onOpenAgentSetup: () => unawaited(_openMcpAgentSetup(runtimeState)),
                   ),
@@ -1235,12 +1239,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     config.protocolConfig.bt.customTrackers = _lines(_customTrackersController.text);
   }
 
-  void _applyStartControllers(StartConfig config) {
-    config.network = 'tcp';
-    config.address = _joinHostPort(_apiHostController.text, _apiPortController.text);
-    config.apiToken = _apiTokenController.text.trim();
-  }
-
   Future<bool> _saveConfig() async {
     final config = _config;
     if (config == null) {
@@ -1262,19 +1260,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Future<void> _saveApiServerConfig() async {
-    final config = _startConfig;
     final runtimeState = ref.read(appRuntimeControllerProvider).value;
-    if (config == null || runtimeState == null || _savingStartConfig) {
-      return;
-    }
-    final snapshot = _copyStartConfig(config);
-    _applyStartControllers(snapshot);
-    final validationMessage = await _validateStartConfig(snapshot);
-    if (validationMessage != null) {
-      if (mounted) _toast(validationMessage);
-      return;
-    }
-    if (runtimeState.apiServerState.running && !await _confirmRestartApiServer()) {
+    if (runtimeState == null || _savingStartConfig) return;
+    final snapshot = _validatedApiServerDraft();
+    if (snapshot == null) return;
+    if (runtimeState.apiServerState.running && (!await _confirmRestartApiServer() || !mounted)) {
       return;
     }
     setState(() => _savingStartConfig = true);
@@ -1285,8 +1275,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       } else {
         await controller.saveApiServerConfig(snapshot);
       }
-      _syncStartConfig(ref.read(appRuntimeControllerProvider).requireValue.startConfig, force: true);
-      if (mounted) _toast(context.l10n.apiConfigSaved, type: AppToastType.success);
+      if (mounted) {
+        _syncStartConfig(ref.read(appRuntimeControllerProvider).requireValue.startConfig, force: true);
+        _toast(context.l10n.apiConfigSaved, type: AppToastType.success);
+      }
     } catch (error) {
       if (mounted) _toast(error.toString());
     } finally {
@@ -1297,15 +1289,21 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   Future<void> _toggleApiServer() async {
     final runtimeState = ref.read(appRuntimeControllerProvider).value;
     if (runtimeState == null || _savingStartConfig) return;
-    if (runtimeState.apiServerState.running && !await _confirmDisableApiServer()) return;
+    final running = runtimeState.apiServerState.running;
+    final snapshot = running ? null : _validatedApiServerDraft();
+    if (running) {
+      if (!await _confirmDisableApiServer() || !mounted) return;
+    } else if (snapshot == null) {
+      return;
+    }
 
     setState(() => _savingStartConfig = true);
     try {
       final controller = ref.read(appRuntimeControllerProvider.notifier);
-      if (runtimeState.apiServerState.running) {
+      if (snapshot == null) {
         await controller.stopApiServer();
       } else {
-        await controller.startApiServer();
+        await controller.startApiServer(snapshot);
       }
     } catch (error) {
       if (mounted) _toast(error.toString());
@@ -1366,14 +1364,24 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     return await overlay.future ?? false;
   }
 
-  Future<String?> _validateStartConfig(StartConfig candidate) async {
-    final l10n = context.l10n;
-    final address = _splitHostPort(candidate.address);
-    if (address.host.isEmpty) return l10n.serverRequired;
-    final port = int.tryParse(address.port);
-    if (port == null || port < 0 || port > 65535) return l10n.portRangeError;
+  StartConfig? _validatedApiServerDraft() {
+    final config = _startConfig;
+    if (config == null) return null;
+    final host = _apiHostController.text.trim();
+    if (host.isEmpty) {
+      _toast(context.l10n.serverRequired);
+      return null;
+    }
+    final port = int.tryParse(_apiPortController.text.trim());
+    if (port == null || port < 0 || port > 65535) {
+      _toast(context.l10n.portRangeError);
+      return null;
+    }
 
-    return null;
+    return _copyStartConfig(config)
+      ..network = 'tcp'
+      ..address = _joinHostPort(host, _apiPortController.text)
+      ..apiToken = _apiTokenController.text.trim();
   }
 
   Future<void> _runAction(Future<void> Function() action) async {
@@ -2022,6 +2030,7 @@ class _TextSettingControl extends StatelessWidget {
     this.hintText,
     this.minLines = 1,
     this.obscureText = false,
+    this.enabled = true,
   });
 
   final TextEditingController controller;
@@ -2029,6 +2038,7 @@ class _TextSettingControl extends StatelessWidget {
   final String? hintText;
   final int minLines;
   final bool obscureText;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
@@ -2041,6 +2051,7 @@ class _TextSettingControl extends StatelessWidget {
         hintText: hintText,
         keyboardType: minLines > 1 ? TextInputType.multiline : null,
         obscureText: obscureText,
+        enabled: enabled,
         minLines: minLines,
         maxLines: minLines == 1 ? 1 : minLines,
       ),

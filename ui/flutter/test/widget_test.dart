@@ -2230,6 +2230,58 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('starting the API server validates and applies the MCP draft without a separate save', (tester) async {
+    await _setTestSize(tester, const Size(1024, 900));
+    final runtimeController = RecordingStartConfigRuntimeController(initiallyRunning: false);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appRuntimeControllerProvider.overrideWith(() => runtimeController),
+          appPlatformControllerProvider.overrideWith(FakePlatformController.new),
+          settingsControllerProvider.overrideWith(FakeSettingsController.new),
+        ],
+        child: const _SettingsTestApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Advanced'));
+    await tester.pumpAndSettle();
+
+    final mcpSwitch = find.byKey(const ValueKey('mcp-endpoint-switch'));
+    final host = find.byKey(const ValueKey('api-host-input'));
+    final port = find.byKey(const ValueKey('api-port-input'));
+    final startButton = find.byKey(const ValueKey('toggle-api-server-button'));
+    final saveButton = find.byKey(const ValueKey('save-api-config-button'));
+    expect(tester.widget<shad.Switch>(mcpSwitch).value, isFalse);
+    await tester.ensureVisible(mcpSwitch);
+    await tester.tap(mcpSwitch);
+    await tester.enterText(host, '');
+    await tester.ensureVisible(startButton);
+    await tester.tap(startButton);
+    await tester.pumpAndSettle();
+
+    expect(runtimeController.savedStartConfig, isNull);
+    expect(tester.widget<shad.Switch>(mcpSwitch).value, isTrue);
+    expect(find.text('Server is required'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 6));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(host, '127.0.0.1');
+    await tester.enterText(port, '0');
+    await tester.ensureVisible(startButton);
+    await tester.tap(startButton);
+    await tester.pumpAndSettle();
+
+    expect(runtimeController.savedStartConfig?.apiEnable, isTrue);
+    expect(runtimeController.savedStartConfig?.mcpEnable, isTrue);
+    expect(runtimeController.savedStartConfig?.address, '127.0.0.1:0');
+    expect(tester.widget<shad.Switch>(mcpSwitch).value, isTrue);
+    expect(tester.widget<AppLoadingButton>(saveButton).onPressed, isNull);
+    expect(find.text('http://127.0.0.1:54321'), findsOneWidget);
+    final runtime = ProviderScope.containerOf(tester.element(mcpSwitch)).read(appRuntimeControllerProvider);
+    expect(runtime.requireValue.apiServerState.mcpEnabled, isTrue);
+  });
+
   testWidgets('read-only MCP settings keep the Agent setup link available', (WidgetTester tester) async {
     var changeCount = 0;
     var openCount = 0;
@@ -6250,6 +6302,9 @@ class FailingTrackerRuntimeController extends FakeRuntimeController {
 }
 
 class RecordingStartConfigRuntimeController extends AppRuntimeController {
+  RecordingStartConfigRuntimeController({this.initiallyRunning = true});
+
+  final bool initiallyRunning;
   StartConfig? savedStartConfig;
 
   @override
@@ -6257,14 +6312,18 @@ class RecordingStartConfigRuntimeController extends AppRuntimeController {
     final config = StartConfig()
       ..network = 'tcp'
       ..address = '192.168.1.20:4321'
-      ..apiEnable = true
+      ..apiEnable = initiallyRunning
       ..apiToken = 'token'
       ..storage = 'bolt'
       ..storageDir = ''
       ..refreshInterval = 0;
     return AppRuntimeState(
       startConfig: config,
-      apiServerState: _testApiServerState(running: true, port: 4321, address: config.address),
+      apiServerState: _testApiServerState(
+        running: initiallyRunning,
+        port: initiallyRunning ? 4321 : 0,
+        address: config.address,
+      ),
       downloaderConfig: DownloaderConfig(),
     );
   }
@@ -6274,7 +6333,7 @@ class RecordingStartConfigRuntimeController extends AppRuntimeController {
       _record(config, running: state.requireValue.apiServerState.running);
 
   @override
-  Future<void> startApiServer() async => _record(state.requireValue.startConfig..apiEnable = true, running: true);
+  Future<void> startApiServer(StartConfig config) async => _record(config..apiEnable = true, running: true);
 
   @override
   Future<void> stopApiServer() async => _record(state.requireValue.startConfig..apiEnable = false, running: false);
@@ -6301,6 +6360,7 @@ class RecordingStartConfigRuntimeController extends AppRuntimeController {
           port: running ? 54321 : 0,
           address: config.address,
           enabled: config.apiEnable,
+          mcpEnabled: running && config.mcpEnable,
         ),
         downloaderConfig: current.downloaderConfig,
         localBackendStarted: current.localBackendStarted,
@@ -6315,10 +6375,11 @@ ApiServerState _testApiServerState({
   required int port,
   String address = '127.0.0.1:9999',
   bool? enabled,
+  bool mcpEnabled = false,
 }) {
   return ApiServerState(
     enabled: enabled ?? running,
-    mcpEnabled: false,
+    mcpEnabled: mcpEnabled,
     running: running,
     network: running ? 'tcp' : '',
     address: running ? address : '',
