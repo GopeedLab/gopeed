@@ -6,7 +6,7 @@ toolchain go1.27.4
 
 require (
 	codeberg.org/gruf/go-ffmpreg v0.6.23-0.20260827095416-df1836cb5be0
-	github.com/GopeedLab/webview_go v0.0.0-20260918010912-0d4c27bb7914
+	github.com/GopeedLab/webview_go v0.0.0-20261128161410-c40114411ec5
 	github.com/RoaringBitmap/roaring/v2 v2.16.0
 	github.com/anacrolix/torrent v1.63.1-0.20261124060611-f601c604a677
 	github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5
