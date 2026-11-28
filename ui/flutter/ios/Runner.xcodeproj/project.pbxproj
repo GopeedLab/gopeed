@@ -134,6 +134,9 @@
 		D081C25B294826C0006EB10B /* libc++.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = "libc++.tbd"; path = "usr/lib/libc++.tbd"; sourceTree = SDKROOT; };
 		D0E623A729482D030001185E /* Libgopeed.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = Libgopeed.xcframework; path = Frameworks/Libgopeed.xcframework; sourceTree = "<group>"; };
 		EB8C142A455C80367DDD68AE /* GopeedLiveActivityManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GopeedLiveActivityManager.swift; sourceTree = "<group>"; };
+		A21BC90258B74F62BB297E00 /* ShareExtension-Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = "ShareExtension-Debug.xcconfig"; path = "Flutter/ShareExtension-Debug.xcconfig"; sourceTree = "<group>"; };
+		A21BC90258B74F62BB297E01 /* ShareExtension-Profile.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = "ShareExtension-Profile.xcconfig"; path = "Flutter/ShareExtension-Profile.xcconfig"; sourceTree = "<group>"; };
+		A21BC90258B74F62BB297E02 /* ShareExtension-Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = "ShareExtension-Release.xcconfig"; path = "Flutter/ShareExtension-Release.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -240,6 +243,9 @@
 				9740EEB21CF90195004384FC /* Debug.xcconfig */,
 				7AFA3C8E1D35360C0083082E /* Release.xcconfig */,
 				9740EEB31CF90195004384FC /* Generated.xcconfig */,
+				A21BC90258B74F62BB297E00 /* ShareExtension-Debug.xcconfig */,
+				A21BC90258B74F62BB297E01 /* ShareExtension-Profile.xcconfig */,
+				A21BC90258B74F62BB297E02 /* ShareExtension-Release.xcconfig */,
 			);
 			name = Flutter;
 			sourceTree = "<group>";
@@ -665,7 +671,7 @@
 /* Begin XCBuildConfiguration section */
 		0C585CC32D41E28900FF2EC0 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = BFA76EAE38733F2444C8A609 /* Pods-ShareExtension.debug.xcconfig */;
+			baseConfigurationReference = A21BC90258B74F62BB297E00 /* ShareExtension-Debug.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
@@ -679,7 +685,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
 				PRODUCT_BUNDLE_IDENTIFIER = com.gopeed.gopeed.ShareExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -692,7 +698,7 @@
 		};
 		0C585CC42D41E28900FF2EC0 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 7A8BE504A2C253C45B760DD5 /* Pods-ShareExtension.release.xcconfig */;
+			baseConfigurationReference = A21BC90258B74F62BB297E02 /* ShareExtension-Release.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
@@ -706,7 +712,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
 				PRODUCT_BUNDLE_IDENTIFIER = com.gopeed.gopeed.ShareExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -717,7 +723,7 @@
 		};
 		0C585CC52D41E28900FF2EC0 /* Profile */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 78EE8538B1DF04DAF73E75D3 /* Pods-ShareExtension.profile.xcconfig */;
+			baseConfigurationReference = A21BC90258B74F62BB297E01 /* ShareExtension-Profile.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
@@ -731,7 +737,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
 				PRODUCT_BUNDLE_IDENTIFIER = com.gopeed.gopeed.ShareExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
