@@ -296,6 +296,15 @@ jobs:
           gomobile bind -tags nosqlite -ldflags="-w -s" -o ui/flutter/ios/Frameworks/Libgopeed.xcframework -target=ios github.com/GopeedLab/gopeed/bind/mobile
           cd ui/flutter
           flutter build ipa --no-codesign
+          app="build/ios/archive/Runner.xcarchive/Products/Applications/Runner.app"
+          for key in CFBundleVersion CFBundleShortVersionString; do
+            app_version="$(/usr/libexec/PlistBuddy -c "Print :$key" "$app/Info.plist")"
+            extension_version="$(/usr/libexec/PlistBuddy -c "Print :$key" "$app/PlugIns/ShareExtension.appex/Info.plist")"
+            if [[ -z "$app_version" || "$app_version" != "$extension_version" ]]; then
+              echo "ShareExtension $key must match Runner (got '$extension_version', expected '$app_version')" >&2
+              exit 1
+            fi
+          done
       - if: runner.os == 'Linux'
         uses: actions/setup-java@v3
         with:
